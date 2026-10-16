@@ -39,24 +39,17 @@ body{
 a{color:inherit;text-decoration:none}
 button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
-/* ============================================================
-   ЭКРАН ВХОДА
-   ============================================================ */
+/* ---------- Экран входа ---------- */
 .login-overlay{
   position:fixed;inset:0;z-index:100;
   display:flex;align-items:center;justify-content:center;
-  padding:20px;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
+  padding:20px;background:rgba(0,0,0,.55);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 .login-overlay[hidden]{display:none}
 .login-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:32px 34px 28px;
-  max-width:420px;width:100%;
+  background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:32px 34px 28px;max-width:420px;width:100%;
   box-shadow:0 20px 60px -20px rgba(0,0,0,.5);
 }
 .login-brand{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
@@ -64,46 +57,31 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   font-size:11px;letter-spacing:.08em;text-transform:uppercase;
   padding:4px 10px;border-radius:6px;background:var(--accent-soft);color:var(--accent);
 }
-.login-card h1{
-  margin:0;font-size:24px;letter-spacing:-.01em;color:var(--text);
-}
-.login-sub{
-  color:var(--text-soft);font-size:14px;margin:0 0 20px;line-height:1.5;
-}
+.login-card h1{margin:0;font-size:24px;letter-spacing:-.01em;color:var(--text);}
+.login-sub{color:var(--text-soft);font-size:14px;margin:0 0 20px;line-height:1.5;}
 .login-card label{
   display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--muted);margin:14px 0 6px;
 }
 .login-card input{
-  width:100%;padding:12px 14px;
-  border:1px solid var(--border);border-radius:10px;
-  background:var(--card-soft);color:var(--text);
-  font-size:15px;outline:none;font-family:inherit;
+  width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;
+  background:var(--card-soft);color:var(--text);font-size:15px;outline:none;font-family:inherit;
   transition:border-color .15s, background .15s;
 }
-.login-card input:focus{
-  border-color:var(--accent);background:var(--card);
-}
-.login-btn{
-  width:100%;margin-top:22px;
-  padding:14px;font-size:15px;font-weight:600;
-}
-.login-hint{
-  margin:14px 0 0;color:var(--muted);font-size:12.5px;text-align:center;
-}
+.login-card input:focus{border-color:var(--accent);background:var(--card);}
+.login-btn{width:100%;margin-top:22px;padding:14px;font-size:15px;font-weight:600;}
+.login-hint{margin:14px 0 0;color:var(--muted);font-size:12.5px;text-align:center;}
 
-/* topbar */
+/* ---------- Шапка ---------- */
 .topbar{
   display:flex;align-items:center;gap:12px;padding:12px 24px;
-  border-bottom:1px solid var(--border);
-  background:var(--card);
+  border-bottom:1px solid var(--border);background:var(--card);
   position:sticky;top:0;z-index:10;
 }
 .nav-group{display:flex;align-items:center;gap:10px}
 .nav-btn{
-  width:34px;height:34px;border-radius:9px;
-  border:1px solid var(--border);background:var(--card-soft);
-  color:var(--text);font-size:16px;line-height:1;
+  width:34px;height:34px;border-radius:9px;border:1px solid var(--border);
+  background:var(--card-soft);color:var(--text);font-size:16px;line-height:1;
   display:inline-flex;align-items:center;justify-content:center;
   transition:background .15s, border-color .15s;
 }
@@ -116,42 +94,31 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .brand-title{font-size:14px;color:var(--text)}
 .crumbs{margin-left:auto;color:var(--muted);font-size:13px}
-
 .user-chip{
   display:inline-flex;flex-direction:column;align-items:flex-end;
-  padding:4px 12px;border-radius:10px;
-  background:var(--accent-soft);color:var(--accent);
-  font-size:12px;line-height:1.2;
-  cursor:pointer;
-  transition:background .15s;
-  max-width:220px;
+  padding:4px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent);
+  font-size:12px;line-height:1.2;cursor:pointer;transition:background .15s;max-width:220px;
 }
 .user-chip:hover{background:var(--accent);color:#fff}
 .user-chip-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 .user-chip-group{font-size:11px;opacity:.85}
-
 .topbar-btn{
-  width:38px;height:38px;border-radius:10px;
-  border:1px solid var(--border);background:var(--card-soft);
-  display:inline-flex;align-items:center;justify-content:center;
-  font-size:16px;line-height:1;
-  transition:background .15s, border-color .15s;
+  width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
+  background:var(--card-soft);display:inline-flex;align-items:center;justify-content:center;
+  font-size:16px;line-height:1;transition:background .15s, border-color .15s;
 }
 .topbar-btn:hover{border-color:var(--accent);color:var(--accent)}
 .topbar-ico{font-size:16px}
-
 .theme-toggle{
-  width:38px;height:38px;border-radius:10px;
-  border:1px solid var(--border);background:var(--card-soft);
-  display:inline-flex;align-items:center;justify-content:center;
-  font-size:17px;line-height:1;
-  transition:background .15s, border-color .15s;
+  width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
+  background:var(--card-soft);display:inline-flex;align-items:center;justify-content:center;
+  font-size:17px;line-height:1;transition:background .15s, border-color .15s;
 }
 .theme-toggle:hover{border-color:var(--accent)}
 
 #app{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
 
-/* hero */
+/* ---------- Hero ---------- */
 .hero{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
   padding:28px 32px;box-shadow:var(--shadow);margin-bottom:24px;
@@ -165,7 +132,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .hero .hello b{color:var(--accent)}
 
-/* steps */
+/* ---------- Шаги ---------- */
 .steps-title{margin:32px 4px 12px;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:32px}
 .step{
@@ -175,7 +142,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .step .num{color:var(--accent);font-size:12px;letter-spacing:.06em;margin-bottom:6px}
 .step .name{font-weight:600;font-size:14px}
 
-/* module */
+/* ---------- Модуль ---------- */
 .module{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
   padding:24px 28px;box-shadow:var(--shadow);margin-bottom:24px;
@@ -189,19 +156,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .kpi .k-value{font-size:18px;font-weight:600}
 .module .desc{color:var(--text-soft);margin:14px 0}
 
-/* info */
+/* ---------- Информация! ---------- */
 .info-block{
-  background:var(--info-bg);
-  border:2px solid var(--info-border);
-  border-radius:var(--radius);
-  padding:24px 28px;
-  margin-bottom:32px;
-  box-shadow:var(--shadow);
+  background:var(--info-bg);border:2px solid var(--info-border);
+  border-radius:var(--radius);padding:24px 28px;margin-bottom:32px;box-shadow:var(--shadow);
 }
-.info-head{
-  display:flex;align-items:center;gap:14px;
-  margin-bottom:14px;flex-wrap:wrap;
-}
+.info-head{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;}
 .info-badge{
   display:inline-block;background:var(--accent);color:#fff;
   font-size:12px;font-weight:700;letter-spacing:.14em;
@@ -222,7 +182,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .fmt-block li{margin:5px 0;font-size:14px;color:var(--text-soft);}
 .fmt-block li b{color:var(--text);}
 
-/* topics */
+/* ---------- Темы ---------- */
 .topics{display:flex;flex-direction:column;gap:12px}
 .topic{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
@@ -237,7 +197,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .topic .t-hours{color:var(--accent);font-size:13px;font-weight:600;white-space:nowrap}
 .topic .t-progress{color:var(--muted);font-size:12px;white-space:nowrap}
 
-/* topic head */
+/* ---------- Тема ---------- */
 .topic-head{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
   padding:24px 28px;box-shadow:var(--shadow);margin-bottom:20px;
@@ -270,7 +230,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 20px}
 .kpi-row .kpi{padding:16px}
 
-/* practice */
+/* ---------- Практические ---------- */
 .practice{
   border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px;
   background:var(--card-soft);
@@ -294,7 +254,6 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .practice .p-solution li{margin:6px 0;font-size:14px;color:var(--text-soft)}
 .practice .p-solution li b{color:var(--text)}
 
-/* variants */
 .variants{margin-top:14px;border-top:1px dashed var(--border);padding-top:12px}
 .variants .v-title{
   font-size:12px;color:var(--accent);letter-spacing:.06em;
@@ -309,7 +268,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .v-table th{background:var(--table-head);position:sticky;top:0;font-weight:600}
 .v-table tr:last-child td{border-bottom:none}
 
-/* test / self */
+/* ---------- Тесты и самостоятельные ---------- */
 .question{border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;background:var(--card-soft)}
 .question .q-text{font-weight:600;margin-bottom:10px}
 .option{
@@ -340,20 +299,19 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .self-feedback.ok{color:var(--ok)}
 .self-feedback.bad{color:var(--err)}
 
-/* videos */
+/* ---------- Видео ---------- */
 .videos{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:8px}
 .video-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card-soft)}
 .video-card video{width:100%;height:220px;display:block;background:#000}
 .video-card .v-cap{padding:10px 14px;font-size:13px}
 
-/* docs */
+/* ---------- Документы ---------- */
 .doc-grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:14px;margin-top:8px;}
 .doc-card{
   display:block;border:1px solid var(--border);border-radius:12px;
   padding:16px 18px;background:var(--card-soft);color:var(--text);
   transition:border-color .15s, transform .15s, background .15s;
-  cursor:pointer;
-  outline:none;
+  cursor:pointer;outline:none;
 }
 .doc-card:hover,
 .doc-card:focus{border-color:var(--accent);transform:translateY(-1px);background:var(--card);}
@@ -365,7 +323,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .backlink{display:inline-block;color:var(--accent);font-size:13px;margin-bottom:14px}
 .footer{text-align:center;color:var(--muted);font-size:12px;padding:24px;border-top:1px solid var(--border);}
 
-/* figures / tables / code */
+/* ---------- Иллюстрации / таблицы / код ---------- */
 figure{margin:18px 0;text-align:center}
 figure img{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--border);background:var(--card-soft);}
 figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:italic}
@@ -387,16 +345,12 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
 }
 .panel pre code{background:none;color:inherit;padding:0}
 
-/* ============================================================
-   МОДАЛКА ОТЧЁТА
-   ============================================================ */
+/* ---------- Отчёт ---------- */
 .report-overlay{
   position:fixed;inset:0;z-index:90;
   display:flex;align-items:center;justify-content:center;
-  padding:20px;
-  background:rgba(0,0,0,.55);
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
+  padding:20px;background:rgba(0,0,0,.55);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 .report-overlay[hidden]{display:none}
 .report-modal{
@@ -417,111 +371,55 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
 .report-status.ok{color:var(--ok)}
 .report-status.bad{color:var(--err)}
 
-/* ============================================================
-   МОДАЛКА ПРОСМОТРА PDF
-   ============================================================ */
+/* ---------- PDF ---------- */
 .pdf-overlay{
   position:fixed;inset:0;z-index:150;
   display:flex;align-items:center;justify-content:center;
-  padding:20px;
-  background:rgba(0,0,0,.7);
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
+  padding:20px;background:rgba(0,0,0,.7);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 .pdf-modal{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:16px;
-  width:100%;max-width:1100px;
-  height:90vh;
-  display:flex;flex-direction:column;
-  overflow:hidden;
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  width:100%;max-width:1100px;height:90vh;
+  display:flex;flex-direction:column;overflow:hidden;
   box-shadow:0 20px 60px -20px rgba(0,0,0,.6);
 }
 .pdf-head{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:14px 20px;
-  border-bottom:1px solid var(--border);
-  background:var(--card-soft);
-  flex-wrap:wrap;
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  background:var(--card-soft);flex-wrap:wrap;
 }
 .pdf-title{
   font-weight:600;font-size:15px;color:var(--text);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
 }
 .pdf-actions{display:flex;gap:8px;flex-wrap:wrap}
 .pdf-actions .btn{padding:8px 14px;font-size:13px}
-.pdf-body{
-  flex:1;min-height:0;
-  background:#2b2b2b;
-}
-.pdf-body iframe{
-  width:100%;height:100%;border:0;display:block;
-}
+.pdf-body{flex:1;min-height:0;background:#2b2b2b;}
+.pdf-body iframe{width:100%;height:100%;border:0;display:block;}
 
-/* ============================================================
-   МЕНЮ ПРОФИЛЯ ПОЛЬЗОВАТЕЛЯ
-   ============================================================ */
+/* ---------- Меню профиля ---------- */
 .user-menu{
-  z-index:200;
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:12px;
-  box-shadow:0 20px 50px -18px rgba(0,0,0,.45);
-  min-width:260px;
-  overflow:hidden;
+  z-index:200;background:var(--card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 20px 50px -18px rgba(0,0,0,.45);min-width:260px;overflow:hidden;
   animation:menuFade .12s ease-out;
 }
-@keyframes menuFade{
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.user-menu-head{
-  padding:14px 16px;
-  border-bottom:1px solid var(--border);
-  background:var(--card-soft);
-}
-.user-menu-name{
-  font-weight:600;
-  color:var(--text);
-  font-size:14px;
-  margin-bottom:2px;
-}
-.user-menu-group{
-  font-size:12px;
-  color:var(--muted);
-}
+@keyframes menuFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.user-menu-head{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--card-soft);}
+.user-menu-name{font-weight:600;color:var(--text);font-size:14px;margin-bottom:2px;}
+.user-menu-group{font-size:12px;color:var(--muted);}
 .user-menu-item{
-  display:block;
-  width:100%;
-  text-align:left;
-  padding:11px 16px;
-  font-size:14px;
-  color:var(--text-soft);
-  border-bottom:1px solid var(--border-soft);
+  display:block;width:100%;text-align:left;padding:11px 16px;
+  font-size:14px;color:var(--text-soft);border-bottom:1px solid var(--border-soft);
   transition:background .12s, color .12s;
 }
 .user-menu-item:last-child{border-bottom:none}
-.user-menu-item:hover{
-  background:var(--accent-soft);
-  color:var(--accent);
-}
-.user-menu-item.danger:hover{
-  background:rgba(192,57,43,.12);
-  color:var(--err);
-}
-html[data-theme="dark"] .user-menu-item.danger:hover{
-  background:rgba(255,110,94,.15);
-  color:var(--err);
-}
+.user-menu-item:hover{background:var(--accent-soft);color:var(--accent);}
+.user-menu-item.danger:hover{background:rgba(192,57,43,.12);color:var(--err);}
+html[data-theme="dark"] .user-menu-item.danger:hover{background:rgba(255,110,94,.15);color:var(--err);}
 
-/* ============================================================
-   АДАПТИВНОСТЬ
-   ============================================================ */
-@media (max-width:900px){
-  .crumbs{display:none}
-}
+/* ---------- Адаптивность ---------- */
+@media (max-width:900px){ .crumbs{display:none} }
 @media (max-width:860px){
   .steps,.tabs{grid-template-columns:repeat(2,1fr)}
   .kpis,.kpi-row{grid-template-columns:repeat(2,1fr)}
@@ -534,10 +432,7 @@ html[data-theme="dark"] .user-menu-item.danger:hover{
 }
 @media (max-width:640px){
   .pdf-overlay{padding:0}
-  .pdf-modal{
-    border-radius:0;
-    height:100vh;max-width:100%;
-  }
+  .pdf-modal{border-radius:0;height:100vh;max-width:100%;}
   .pdf-head{padding:10px 12px;gap:6px}
   .pdf-title{font-size:13px}
   .pdf-actions .btn{padding:6px 10px;font-size:12px}

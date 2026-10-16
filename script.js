@@ -9,7 +9,6 @@
 const REPORT_EMAIL = "camelia.2110@yandex.ru";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 
-/* ---------- состояние ---------- */
 const state = {
   student: JSON.parse(localStorage.getItem("mdk0701.student") || "null"),
   progress: {},
@@ -17,16 +16,12 @@ const state = {
   selfResults: {}
 };
 
-/* ---------- ключ студента ---------- */
 function studentKey(s){
   s = s || state.student;
   if (!s || !s.name || !s.group) return null;
-  return encodeURIComponent(
-    s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()
-  );
+  return encodeURIComponent(s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase());
 }
 
-/* ---------- сохранение/загрузка данных студента ---------- */
 function loadStudentData(){
   const k = studentKey();
   if (!k){
@@ -49,18 +44,16 @@ function saveStudentData(){
 }
 
 function saveStudent(){ localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); }
-
-/* обёртки — совместимы с вызовами в renderXxx */
 function saveProgress(){ saveStudentData(); }
 function saveResults(){ saveStudentData(); }
 function saveSelfResults(){ saveStudentData(); }
 
-/* ---------- утилиты ---------- */
 function el(html){
   const t = document.createElement("template");
   t.innerHTML = html.trim();
   return t.content.firstChild;
 }
+
 function findTopic(id){
   for (const s of COURSE.sections)
     for (const t of s.topics) if (t.id === id) return { section: s, topic: t };
@@ -130,19 +123,14 @@ function initAuth(){
 
   [nameInput, groupInput].forEach(inp=>{
     if (!inp) return;
-    inp.addEventListener("keydown", (e)=>{
-      if (e.key === "Enter") btn.click();
-    });
+    inp.addEventListener("keydown", (e)=>{ if (e.key === "Enter") btn.click(); });
     inp.addEventListener("input", ()=>{ inp.style.borderColor = ""; });
   });
 
   const chip = document.getElementById("userChip");
-  if (chip){
-    chip.addEventListener("click", openUserMenu);
-  }
+  if (chip) chip.addEventListener("click", openUserMenu);
 }
 
-/* ---------- чип пользователя ---------- */
 function renderUserChip(){
   const chip = document.getElementById("userChip");
   const nameEl = document.getElementById("userChipName");
@@ -153,10 +141,8 @@ function renderUserChip(){
   groupEl.textContent = "Гр. " + state.student.group;
 }
 
-/* ---------- меню профиля ---------- */
 function openUserMenu(){
   document.querySelectorAll(".user-menu").forEach(m=>m.remove());
-
   const chip = document.getElementById("userChip");
   const rect = chip.getBoundingClientRect();
 
@@ -179,7 +165,7 @@ function openUserMenu(){
   menu.style.right = (window.innerWidth - rect.right) + "px";
 
   const close = (e)=>{
-    if (!menu.contains(e.target) && e.target !== chip) {
+    if (!menu.contains(e.target) && e.target !== chip){
       menu.remove();
       document.removeEventListener("click", close);
     }
@@ -232,7 +218,6 @@ function openUserMenu(){
   });
 }
 
-/* ---------- экспорт профиля ---------- */
 function exportProfile(){
   const s = state.student;
   if (!s) return;
@@ -247,7 +232,7 @@ function exportProfile(){
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  const safeName = s.name.replace(/[^\wа-яё\-]+/gi, "_");
+  const safeName  = s.name.replace(/[^\wа-яё\-]+/gi, "_");
   const safeGroup = s.group.replace(/[^\wа-яё\-]+/gi, "_");
   a.href = url;
   a.download = "mdk0701_" + safeName + "_" + safeGroup + ".json";
@@ -257,19 +242,16 @@ function exportProfile(){
   URL.revokeObjectURL(url);
 }
 
-/* ---------- импорт профиля ---------- */
 function importProfile(file){
   const reader = new FileReader();
   reader.onload = (e)=>{
     let data;
     try { data = JSON.parse(e.target.result); }
     catch (err){ alert("Не удалось прочитать файл: " + err.message); return; }
-
     if (!data || !data.student || !data.student.name){
       alert("Это не файл профиля МДК 07.01.");
       return;
     }
-
     if (!confirm(
       "Загрузить профиль:\n" +
       data.student.name + " (гр. " + data.student.group + ")\n\n" +
@@ -290,7 +272,7 @@ function importProfile(file){
 }
 
 /* ============================================================
-   ТЕМА (светлая / тёмная)
+   ТЕМА
    ============================================================ */
 function initTheme(){
   const saved = localStorage.getItem("mdk0701.theme");
@@ -310,9 +292,6 @@ function toggleTheme(){
   applyTheme(cur === "dark" ? "light" : "dark");
 }
 
-/* ============================================================
-   НАВИГАЦИЯ
-   ============================================================ */
 function initNav(){
   const back = document.getElementById("navBack");
   const fwd  = document.getElementById("navForward");
@@ -333,9 +312,7 @@ function renderHome(){
       <div class="meta">${COURSE.specialty} · набор 2024</div>
       <h1>${COURSE.title}</h1>
       <p>${COURSE.module}</p>
-      ${state.student ? `
-        <div class="hello">Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.</div>
-      ` : ""}
+      ${state.student ? `<div class="hello">Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.</div>` : ""}
     </section>
   `));
 
@@ -408,7 +385,6 @@ function renderHome(){
     app.appendChild(list);
   });
 
-  /* Паспорта станков — с просмотром PDF в модалке */
   if (COURSE.passports && COURSE.passports.length){
     app.appendChild(el(`<div class="steps-title">Паспорта станков</div>`));
     const block = el(`<section class="module">
@@ -429,10 +405,7 @@ function renderHome(){
       `);
       card.addEventListener("click", ()=>openPdfModal(p.file, p.title));
       card.addEventListener("keydown", (e)=>{
-        if (e.key === "Enter" || e.key === " "){
-          e.preventDefault();
-          openPdfModal(p.file, p.title);
-        }
+        if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openPdfModal(p.file, p.title); }
       });
       grid.appendChild(card);
     });
@@ -746,7 +719,7 @@ function renderTest(panel, t){
 }
 
 /* ============================================================
-   ПРОСМОТР PDF В МОДАЛКЕ
+   ПРОСМОТР PDF
    ============================================================ */
 function openPdfModal(file, title){
   document.querySelectorAll(".pdf-overlay").forEach(x=>x.remove());
@@ -768,7 +741,6 @@ function openPdfModal(file, title){
       </div>
     </div>
   `);
-
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
 
@@ -889,10 +861,7 @@ function openReportModal(){
     params.append("report",  buildReport());
 
     try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        body: params
-      });
+      await fetch(APPS_SCRIPT_URL, { method: "POST", body: params });
       status.textContent = "✔ Отчёт отправлен на camelia.2110@yandex.ru и anna.shirockix@gmail.com";
       status.className = "report-status ok";
       btn.textContent = "Отправлено";
