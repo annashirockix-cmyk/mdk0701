@@ -1,26 +1,15 @@
 /* ============================================================
-   SPA-роутер и рендер МДК 07.01
-   + авторизация
-   + синхронизация прогресса через Google Apps Script
-   + PDF в модалке
-   + отчёт
-   + отдельная страница «Комментарии» (#/comments)
-   + аватарки
-   + режимы теста: Контроль (таймер, shuffle) и Тренировка
-   + разбор ошибок
-   + CSV/JSON экспорт
-   + дашборд статистики
-   + журнал активности
-   + глобальный поиск (Ctrl+K) и горячие клавиши
+   МДК 07.01 — Основной модуль (ядро + рендер + роутер)
    ============================================================ */
 
 const REPORT_EMAIL    = "camelia.2110@yandex.ru";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
+const TEST_TIME_LIMIT_SEC = 15 * 60;
+const ACTIVITY_MAX        = 100;
+const TEACHER_PASS_HASH   = "c3f6e8b7f11c8e1b8a5e2a4d6c9e3f8a2d1b4c7e9f0a3d6b8c1e4f7a0d3b6c9"; // sha256("teacher2024")
+const BACKUP_INTERVAL_MS  = 5 * 60 * 1000;   // 5 минут
+const ONLINE_TIMEOUT_SEC  = 90;
 
-const TEST_TIME_LIMIT_SEC = 15 * 60;   /* 15 минут на контрольный тест */
-const ACTIVITY_MAX        = 100;       /* сколько последних действий хранить */
-
-/* ---------- Аватарки ---------- */
 const AVATARS = [
   "👨‍🎓","👩‍🎓","🧑‍🎓","👨‍🔧","👩‍🔧","🧑‍🔧",
   "👷","👨‍🏭","👩‍🏭","🧑‍🏭","🦾","🤖",
@@ -29,113 +18,137 @@ const AVATARS = [
   "💡","🎓","🏆","🎯","🧠","🧑‍💻"
 ];
 const DEFAULT_AVATAR = AVATARS[0];
+const GOSTS = [
+  { code:"ГОСТ 18097-93", url:"https://docs.cntd.ru/document/901852946", title:"Станки токарные. Нормы точности" },
+  { code:"ГОСТ 8-82",     url:"https://docs.cntd.ru/document/1200007574", title:"Станки металлорежущие. Нормы точности" },
+  { code:"ГОСТ 8593-81",  url:"https://docs.cntd.ru/document/1200012830", title:"Конусы и конические соединения" },
+  { code:"ГОСТ 20999-83", url:"https://docs.cntd.ru/document/1200005144", title:"Устройства ЧПУ. Коды" },
+  { code:"ГОСТ 2.105-2019", url:"https://docs.cntd.ru/document/1200166805", title:"ЕСКД. Общие требования к текстовым документам" },
+  { code:"ГОСТ 12.0.003-2015", url:"https://docs.cntd.ru/document/1200136071", title:"Классификация опасных и вредных факторов" }
+];
+const QUOTES = [
+  "Точность — вежливость королей.",
+  "Семь раз отмерь — один раз отрежь.",
+  "Практика без теории слепа, теория без практики мертва.",
+  "Станок не прощает спешки.",
+  "Хороший технолог видит деталь до того, как она появится.",
+  "Стружка — это металл, который вы потеряли.",
+  "Управляющая программа — это музыка, которую исполняет станок.",
+  "Качество не бывает случайным.",
+  "Ошибка в кадре стоит часа работы.",
+  "Знание G-кода открывает любые станки."
+];
 
+/* ---------- Состояние ---------- */
 const state = {
   student: JSON.parse(localStorage.getItem("mdk0701.student") || "null"),
   progress: {},
   results: {},
   selfResults: {},
   activity: [],
+  corrections: {},   // ручные корректировки преподавателя
   lastSync: ""
 };
 
-/* ---------- ключ студента ---------- */
+/* ---------- Ключи и утилиты ---------- */
 function studentKey(s){
   s = s || state.student;
   if (!s || !s.name || !s.group) return null;
   return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase());
 }
-function getAvatar(){
-  return (state.student && state.student.avatar) || DEFAULT_AVATAR;
+function getAvatar(){ return (state.student && state.student.avatar) || DEFAULT_AVATAR; }
+function el(html){ const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function stripHtml(html){ const d = document.createElement("div"); d.innerHTML = html || ""; return d.textContent || ""; }
+function findTopic(id){
+  for (const s of COURSE.sections) for (const t of s.topics) if (t.id === id) return { section: s, topic: t };
+  return null;
 }
-
-/* ---------- локальное хранилище ---------- */
-function loadStudentData(){
-  const k = studentKey();
-  if (!k){
-    state.progress = {}; state.results = {}; state.selfResults = {}; state.activity = [];
-    return;
-  }
-  const ek = encodeURIComponent(k);
-  state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress."    + ek) || "{}");
-  state.results     = JSON.parse(localStorage.getItem("mdk0701.results."     + ek) || "{}");
-  state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
-  state.activity    = JSON.parse(localStorage.getItem("mdk0701.activity."    + ek) || "[]");
-  state.lastSync    = localStorage.getItem("mdk0701.lastSync." + ek) || "";
+function shuffled(a){
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; }
+  return r;
 }
-function saveStudentData(){
-  const k = studentKey();
-  if (!k) return;
-  const ek = encodeURIComponent(k);
-  localStorage.setItem("mdk0701.progress."    + ek, JSON.stringify(state.progress));
-  localStorage.setItem("mdk0701.results."     + ek, JSON.stringify(state.results));
-  localStorage.setItem("mdk0701.selfResults." + ek, JSON.stringify(state.selfResults));
-  localStorage.setItem("mdk0701.activity."    + ek, JSON.stringify(state.activity));
-  if (state.lastSync){
-    localStorage.setItem("mdk0701.lastSync." + ek, state.lastSync);
-  }
-}
-function saveStudent(){ localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); }
-function saveProgress(){ saveStudentData(); scheduleCloudSave(); }
-function saveResults(){ saveStudentData(); scheduleCloudSave(); }
-function saveSelfResults(){ saveStudentData(); scheduleCloudSave(); }
-function saveActivity(){ saveStudentData(); }
-
-/* ---------- журнал активности ---------- */
-function logActivity(type, text){
-  state.activity = state.activity || [];
-  state.activity.push({ type, text, date: new Date().toISOString() });
-  if (state.activity.length > ACTIVITY_MAX) state.activity = state.activity.slice(-ACTIVITY_MAX);
-  saveActivity();
-}
-function activityIcon(type){
-  return ({
-    login:  "🚪",
-    topic:  "📖",
-    test:   "🎯",
-    self:   "✍️",
-    comment:"💬",
-    avatar: "🎨",
-    report: "📧"
-  })[type] || "•";
-}
-function formatRelDate(iso){
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = (now - d) / 1000;
+function todayIndex(){ const d = new Date(); return Math.floor(d.getTime() / 86400000); }
+function quoteOfDay(){ return QUOTES[todayIndex() % QUOTES.length]; }
+function fmtDate(d){ return new Date(d).toLocaleString("ru-RU", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }); }
+function fmtRel(iso){
+  const d = new Date(iso), now = new Date(), diff = (now - d) / 1000;
   if (diff < 60) return "только что";
   if (diff < 3600) return Math.floor(diff/60) + " мин назад";
   if (diff < 86400) return Math.floor(diff/3600) + " ч назад";
   if (diff < 86400*7) return Math.floor(diff/86400) + " дн назад";
   return d.toLocaleDateString("ru-RU");
 }
+async function sha256(str){
+  const buf = new TextEncoder().encode(str);
+  const h = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
-/* ---------- синхронизация с облаком ---------- */
-let cloudTimer = null;
-let cloudBusy  = false;
+/* ---------- Локальное хранилище ---------- */
+function loadStudentData(){
+  const k = studentKey();
+  if (!k){ state.progress = {}; state.results = {}; state.selfResults = {}; state.activity = []; state.corrections = {}; return; }
+  const ek = encodeURIComponent(k);
+  state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress."    + ek) || "{}");
+  state.results     = JSON.parse(localStorage.getItem("mdk0701.results."     + ek) || "{}");
+  state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
+  state.activity    = JSON.parse(localStorage.getItem("mdk0701.activity."    + ek) || "[]");
+  state.corrections = JSON.parse(localStorage.getItem("mdk0701.corrections." + ek) || "{}");
+  state.lastSync    = localStorage.getItem("mdk0701.lastSync." + ek) || "";
+}
+function saveStudentData(){
+  const k = studentKey(); if (!k) return;
+  const ek = encodeURIComponent(k);
+  localStorage.setItem("mdk0701.progress."    + ek, JSON.stringify(state.progress));
+  localStorage.setItem("mdk0701.results."     + ek, JSON.stringify(state.results));
+  localStorage.setItem("mdk0701.selfResults." + ek, JSON.stringify(state.selfResults));
+  localStorage.setItem("mdk0701.activity."    + ek, JSON.stringify(state.activity));
+  localStorage.setItem("mdk0701.corrections." + ek, JSON.stringify(state.corrections));
+  if (state.lastSync) localStorage.setItem("mdk0701.lastSync." + ek, state.lastSync);
+}
+function saveStudent(){ localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); }
+function saveProgress(){ saveStudentData(); scheduleCloudSave(); }
+function saveResults(){ saveStudentData(); scheduleCloudSave(); }
+function saveSelfResults(){ saveStudentData(); scheduleCloudSave(); }
+function saveCorrections(){ saveStudentData(); scheduleCloudSave(); }
+
+/* ---------- Журнал ---------- */
+function logActivity(type, text){
+  state.activity = state.activity || [];
+  state.activity.push({ type, text, date: new Date().toISOString() });
+  if (state.activity.length > ACTIVITY_MAX) state.activity = state.activity.slice(-ACTIVITY_MAX);
+  saveStudentData();
+}
+function activityIcon(type){
+  return ({ login:"🚪", topic:"📖", test:"🎯", self:"✍️", comment:"💬",
+    avatar:"🎨", report:"📧", chat:"💭", question:"❓", upload:"📎", correction:"✏️" })[type] || "•";
+}
+
+/* ---------- Облако ---------- */
+let cloudTimer = null, cloudBusy = false;
 function scheduleCloudSave(){
   if (cloudTimer) clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(()=>{ cloudSave(true); }, 3000);
+  cloudTimer = setTimeout(()=>cloudSave(true), 3000);
 }
 async function cloudSave(silent){
   if (!state.student || cloudBusy) return false;
+  if (!navigator.onLine){
+    if (window.OfflineQueue) window.OfflineQueue.enqueue({ kind:"save", payload: buildCloudPayload() });
+    if (!silent) setSyncStatus("Офлайн — в очередь");
+    return false;
+  }
   cloudBusy = true;
   if (!silent) setSyncStatus("Отправляем…");
-
   const params = new URLSearchParams();
-  params.append("action",  "save");
-  params.append("key",     studentKey());
-  params.append("name",    state.student.name);
-  params.append("group",   state.student.group);
-  params.append("payload", JSON.stringify({
-    avatar:      state.student.avatar || DEFAULT_AVATAR,
-    progress:    state.progress,
-    results:     state.results,
-    selfResults: state.selfResults
-  }));
-
+  params.append("action", "save");
+  params.append("key", studentKey());
+  params.append("name", state.student.name);
+  params.append("group", state.student.group);
+  params.append("payload", JSON.stringify(buildCloudPayload()));
   try {
-    const res  = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
+    const res = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
     const data = await res.json();
     if (data && data.ok){
       state.lastSync = data.savedAt || new Date().toISOString();
@@ -147,23 +160,31 @@ async function cloudSave(silent){
     }
     if (!silent) setSyncStatus("Ошибка сервера");
   } catch (err){
-    if (!silent) setSyncStatus("Нет связи с облаком");
+    if (window.OfflineQueue) window.OfflineQueue.enqueue({ kind:"save", payload: buildCloudPayload() });
+    if (!silent) setSyncStatus("Нет связи — в очередь");
   }
   cloudBusy = false;
   return false;
 }
+function buildCloudPayload(){
+  return {
+    avatar: state.student.avatar || DEFAULT_AVATAR,
+    progress: state.progress,
+    results: state.results,
+    selfResults: state.selfResults,
+    corrections: state.corrections
+  };
+}
 async function cloudLoad(){
-  if (!state.student) return null;
+  if (!state.student || !navigator.onLine) return null;
   const params = new URLSearchParams();
   params.append("action", "load");
-  params.append("key",    studentKey());
+  params.append("key", studentKey());
   try {
-    const res  = await fetch(APPS_SCRIPT_URL + "?" + params.toString(), { method:"GET" });
+    const res = await fetch(APPS_SCRIPT_URL + "?" + params.toString(), { method:"GET" });
     const data = await res.json();
-    if (data && data.ok && data.payload){
-      return { payload: JSON.parse(data.payload), savedAt: data.savedAt || "" };
-    }
-  } catch (err){ /* оффлайн */ }
+    if (data && data.ok && data.payload) return { payload: JSON.parse(data.payload), savedAt: data.savedAt || "" };
+  } catch (err) {}
   return null;
 }
 function setSyncStatus(text){
@@ -173,37 +194,107 @@ function setSyncStatus(text){
   node.className = "sync-status";
   setTimeout(()=>{ if (node.textContent === text) node.textContent = ""; }, 3000);
 }
+function applyCloudPayload(p){
+  state.progress    = p.progress    || {};
+  state.results     = p.results     || {};
+  state.selfResults = p.selfResults || {};
+  state.corrections = p.corrections || {};
+}
 
-/* ---------- утилиты ---------- */
-function el(html){
-  const t = document.createElement("template");
-  t.innerHTML = html.trim();
-  return t.content.firstChild;
+/* ---------- Авто-бэкап ---------- */
+function startAutoBackup(){
+  if (window._backupTimer) clearInterval(window._backupTimer);
+  window._backupTimer = setInterval(()=>{
+    if (state.student && navigator.onLine){
+      saveBackupSnapshot();
+      cloudSave(true);
+    }
+  }, BACKUP_INTERVAL_MS);
 }
-function findTopic(id){
-  for (const s of COURSE.sections)
-    for (const t of s.topics) if (t.id === id) return { section: s, topic: t };
-  return null;
+function saveBackupSnapshot(){
+  const k = studentKey(); if (!k) return;
+  const ek = encodeURIComponent(k);
+  const snap = { savedAt: new Date().toISOString(), payload: buildCloudPayload() };
+  localStorage.setItem("mdk0701.backup." + ek, JSON.stringify(snap));
+  // оставляем только 3 последних
+  const key = "mdk0701.backupList." + ek;
+  const list = JSON.parse(localStorage.getItem(key) || "[]");
+  list.push(snap);
+  while (list.length > 3) list.shift();
+  localStorage.setItem(key, JSON.stringify(list));
 }
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function restoreFromBackup(){
+  const k = studentKey(); if (!k) return false;
+  const ek = encodeURIComponent(k);
+  const list = JSON.parse(localStorage.getItem("mdk0701.backupList." + ek) || "[]");
+  if (!list.length) return false;
+  const last = list[list.length - 1];
+  applyCloudPayload(last.payload);
+  saveStudentData();
+  logActivity("login", "Восстановлено из бэкапа");
+  route();
+  return true;
 }
-function stripHtml(html){
-  const d = document.createElement("div");
-  d.innerHTML = html || "";
-  return d.textContent || "";
+function showBackupModal(){
+  const k = studentKey(); if (!k) return;
+  const ek = encodeURIComponent(k);
+  const list = JSON.parse(localStorage.getItem("mdk0701.backupList." + ek) || "[]");
+  document.querySelectorAll(".report-overlay").forEach(x=>x.remove());
+  const modal = el(`
+    <div class="report-overlay">
+      <div class="report-modal">
+        <h2>Резервные копии</h2>
+        <p class="report-sub">Автосохранение каждые 5 минут. Хранится 3 последних.</p>
+        <div class="backup-list"></div>
+        <div class="report-actions"><button class="btn ghost" id="bkClose">Закрыть</button></div>
+      </div>
+    </div>
+  `);
+  const listEl = modal.querySelector(".backup-list");
+  if (!list.length) listEl.appendChild(el(`<p class="sub">Пока нет копий.</p>`));
+  else list.slice().reverse().forEach((s, i)=>{
+    const row = el(`<div class="event-item">
+      <span class="ev-date">${fmtDate(s.savedAt)}</span>
+      <span class="ev-text">Тем: ${Object.keys(s.payload.progress||{}).length}, тестов: ${Object.keys(s.payload.results||{}).length}</span>
+      <button class="btn ghost" data-idx="${list.length - 1 - i}">Восстановить</button>
+    </div>`);
+    listEl.appendChild(row);
+  });
+  modal.querySelectorAll("button[data-idx]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const idx = Number(b.dataset.idx);
+      const snap = list[idx];
+      if (!snap) return;
+      if (!confirm("Восстановить из копии от " + fmtDate(snap.savedAt) + "?")) return;
+      applyCloudPayload(snap.payload);
+      saveStudentData(); modal.remove(); route();
+      alert("✔ Восстановлено.");
+    });
+  });
+  document.body.appendChild(modal);
+  modal.querySelector("#bkClose").addEventListener("click", ()=>modal.remove());
 }
-function shuffled(arr){
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+
+/* ---------- Валидация ФИО и группы ---------- */
+function normalizeName(v){
+  const parts = v.trim().split(/\s+/).map(p => p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "").filter(Boolean);
+  return parts.slice(0, 3).join(" ");
+}
+function validateName(v){
+  const parts = v.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return { ok:false, msg:"Введите минимум фамилию и имя" };
+  if (parts.some(p => p.length < 2)) return { ok:false, msg:"Слишком короткое слово" };
+  return { ok:true, msg:"Похоже на ФИО", normalized: normalizeName(v) };
+}
+function validateGroup(v){
+  const t = v.trim().toUpperCase();
+  if (t.length < 2) return { ok:false, msg:"Слишком короткая группа" };
+  if (!/^[А-ЯЁ]{2,4}-?\d{2}$/.test(t)) return { ok:false, msg:"Формат: ТМ-21, ТС-22" };
+  return { ok:true, msg:"", normalized: t };
 }
 
 /* ============================================================
-   АВАТАРКИ
+   АВАТАРЫ
    ============================================================ */
 function buildAvatarPicker(selected, onPick){
   const wrap = el(`<div class="avatar-picker-inline"></div>`);
@@ -221,13 +312,12 @@ function buildAvatarPicker(selected, onPick){
 function openAvatarModal(){
   if (!state.student) return;
   document.querySelectorAll(".avatar-overlay").forEach(x=>x.remove());
-
   let picked = getAvatar();
   const modal = el(`
     <div class="avatar-overlay">
       <div class="avatar-modal">
         <h3>Выберите аватар</h3>
-        <p class="avatar-sub">Отображается в шапке профиля и рядом с вашими отзывами.</p>
+        <p class="avatar-sub">Отображается в шапке и рядом с вашими отзывами.</p>
         <div class="avatar-grid"></div>
         <div class="avatar-modal-actions">
           <button class="btn ghost" id="avatarCancel">Отмена</button>
@@ -238,25 +328,23 @@ function openAvatarModal(){
   `);
   const grid = modal.querySelector(".avatar-grid");
   AVATARS.forEach(a=>{
-    const b = el(`<button type="button" class="avatar-option ${a===picked?"selected":""}" data-av="${a}">${a}</button>`);
+    const b = el(`<button type="button" class="avatar-option ${a===picked?"selected":""}">${a}</button>`);
     b.addEventListener("click", ()=>{
       grid.querySelectorAll(".avatar-option").forEach(x=>x.classList.remove("selected"));
-      b.classList.add("selected");
-      picked = a;
+      b.classList.add("selected"); picked = a;
     });
     grid.appendChild(b);
   });
   document.body.appendChild(modal);
   const close = ()=> modal.remove();
   modal.querySelector("#avatarCancel").addEventListener("click", close);
-  modal.addEventListener("click", (e)=>{ if (e.target === modal) close(); });
+  modal.addEventListener("click", e => { if (e.target === modal) close(); });
   modal.querySelector("#avatarSave").addEventListener("click", ()=>{
     state.student.avatar = picked;
     saveStudent(); saveStudentData();
     renderUserChip();
     logActivity("avatar", "Сменил аватар");
-    cloudSave(true);
-    close();
+    cloudSave(true); close();
   });
 }
 
@@ -264,102 +352,93 @@ function openAvatarModal(){
    АВТОРИЗАЦИЯ
    ============================================================ */
 function initAuth(){
-  const overlay    = document.getElementById("loginOverlay");
-  const nameInput  = document.getElementById("loginName");
+  const overlay = document.getElementById("loginOverlay");
+  const nameInput = document.getElementById("loginName");
   const groupInput = document.getElementById("loginGroup");
-  const btn        = document.getElementById("loginBtn");
+  const nameHint = document.getElementById("nameHint");
+  const groupHint = document.getElementById("groupHint");
+  const btn = document.getElementById("loginBtn");
 
   let loginAvatar = DEFAULT_AVATAR;
   const loginPicker = document.getElementById("loginAvatarPicker");
-  if (loginPicker) loginPicker.appendChild(buildAvatarPicker(loginAvatar, (a)=>{ loginAvatar = a; }));
+  if (loginPicker) loginPicker.appendChild(buildAvatarPicker(loginAvatar, a => { loginAvatar = a; }));
+
+  nameInput.addEventListener("input", ()=>{
+    const v = nameInput.value;
+    const r = validateName(v);
+    if (!v.trim()){ nameHint.textContent = ""; nameHint.className = "field-hint"; return; }
+    nameHint.textContent = r.ok ? "✔ " + r.msg : "✘ " + r.msg;
+    nameHint.className = "field-hint " + (r.ok ? "ok" : "bad");
+  });
+  groupInput.addEventListener("input", ()=>{
+    const v = groupInput.value;
+    const r = validateGroup(v);
+    if (!v.trim()){ groupHint.textContent = ""; groupHint.className = "field-hint"; return; }
+    groupHint.textContent = r.ok ? "✔ ОК" : "✘ " + r.msg;
+    groupHint.className = "field-hint " + (r.ok ? "ok" : "bad");
+  });
 
   if (!state.student){
     overlay.hidden = false;
     document.body.style.overflow = "hidden";
-    if (nameInput) nameInput.focus();
+    nameInput.focus();
   } else {
-    loadStudentData();
-    overlay.hidden = true;
+    loadStudentData(); overlay.hidden = true;
     document.body.style.overflow = "";
     setTimeout(async ()=>{
       const cloud = await cloudLoad();
       if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
         if (cloud.payload.avatar && !state.student.avatar){ state.student.avatar = cloud.payload.avatar; saveStudent(); }
-        state.progress    = cloud.payload.progress    || {};
-        state.results     = cloud.payload.results     || {};
-        state.selfResults = cloud.payload.selfResults || {};
-        state.lastSync    = cloud.savedAt;
-        saveStudentData();
-        route();
+        applyCloudPayload(cloud.payload);
+        state.lastSync = cloud.savedAt;
+        saveStudentData(); route();
       }
     }, 500);
   }
 
   btn.addEventListener("click", async ()=>{
-    const name  = (nameInput.value  || "").trim();
-    const group = (groupInput.value || "").trim();
-    if (!name || name.length < 3){ nameInput.focus(); nameInput.style.borderColor = "var(--err)"; return; }
-    if (!group || group.length < 2){ groupInput.focus(); groupInput.style.borderColor = "var(--err)"; return; }
-
+    const rn = validateName(nameInput.value);
+    const rg = validateGroup(groupInput.value);
+    if (!rn.ok){ nameInput.focus(); nameInput.style.borderColor = "var(--err)"; return; }
+    if (!rg.ok){ groupInput.focus(); groupInput.style.borderColor = "var(--err)"; return; }
     if (state.student) saveStudentData();
-
-    state.student = { name, group, avatar: loginAvatar, loginAt: new Date().toISOString() };
-    saveStudent();
-    loadStudentData();
-
-    overlay.hidden = true;
-    document.body.style.overflow = "";
+    state.student = { name: rn.normalized, group: rg.normalized, avatar: loginAvatar, loginAt: new Date().toISOString() };
+    saveStudent(); loadStudentData();
+    overlay.hidden = true; document.body.style.overflow = "";
     renderUserChip();
-
     const cloud = await cloudLoad();
     let restored = false;
     if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
-      if (cloud.payload.avatar){
-        state.student.avatar = cloud.payload.avatar;
-        saveStudent();
-        renderUserChip();
-      }
-      state.progress    = cloud.payload.progress    || {};
-      state.results     = cloud.payload.results     || {};
-      state.selfResults = cloud.payload.selfResults || {};
-      state.lastSync    = cloud.savedAt;
-      saveStudentData();
-      restored = true;
+      if (cloud.payload.avatar){ state.student.avatar = cloud.payload.avatar; saveStudent(); renderUserChip(); }
+      applyCloudPayload(cloud.payload);
+      state.lastSync = cloud.savedAt; saveStudentData(); restored = true;
     }
-
     logActivity("login", "Вход в систему");
+    startAutoBackup();
     route();
     if (restored) setTimeout(()=>alert("Прогресс восстановлен из облака."), 200);
   });
-
-  [nameInput, groupInput].forEach(inp=>{
-    if (!inp) return;
-    inp.addEventListener("keydown", (e)=>{ if (e.key === "Enter") btn.click(); });
+  [nameInput, groupInput].forEach(inp => {
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") btn.click(); });
     inp.addEventListener("input", ()=>{ inp.style.borderColor = ""; });
   });
-
-  const chip = document.getElementById("userChip");
-  if (chip) chip.addEventListener("click", openUserMenu);
+  document.getElementById("userChip").addEventListener("click", openUserMenu);
 }
 
 function renderUserChip(){
-  const chip    = document.getElementById("userChip");
-  const avEl    = document.getElementById("userChipAvatar");
-  const nameEl  = document.getElementById("userChipName");
-  const groupEl = document.getElementById("userChipGroup");
+  const chip = document.getElementById("userChip");
   if (!chip || !state.student) return;
   chip.hidden = false;
-  if (avEl) avEl.textContent = getAvatar();
-  nameEl.textContent  = state.student.name;
-  groupEl.textContent = "Гр. " + state.student.group;
+  document.getElementById("userChipAvatar").textContent = getAvatar();
+  document.getElementById("userChipName").textContent = state.student.name;
+  document.getElementById("userChipGroup").textContent = "Гр. " + state.student.group;
 }
 
-/* ---------- меню профиля ---------- */
+/* ---------- Меню профиля ---------- */
 function openUserMenu(){
-  document.querySelectorAll(".user-menu").forEach(m=>m.remove());
+  document.querySelectorAll(".user-menu, .more-menu").forEach(m => m.remove());
   const chip = document.getElementById("userChip");
   const rect = chip.getBoundingClientRect();
-
   const menu = el(`
     <div class="user-menu">
       <div class="user-menu-head">
@@ -371,47 +450,37 @@ function openUserMenu(){
       </div>
       <button class="user-menu-item" data-act="avatar">🎨 Сменить аватар</button>
       <button class="user-menu-item" data-act="dashboard">📊 Статистика</button>
-      <button class="user-menu-item" data-act="comments">💬 Комментарии</button>
-      <button class="user-menu-item" data-act="sync">☁ Синхронизировать сейчас</button>
+      <button class="user-menu-item" data-act="gallery">🖼 Галерея работ</button>
+      <button class="user-menu-item" data-act="backup">💾 Резервные копии</button>
+      <button class="user-menu-item" data-act="sync">☁ Синхронизировать</button>
       <button class="user-menu-item" data-act="switch">🔄 Сменить пользователя</button>
       <button class="user-menu-item" data-act="export">⬇️ Скачать профиль (.json)</button>
       <button class="user-menu-item" data-act="import">⬆️ Загрузить профиль (.json)</button>
-      <button class="user-menu-item danger" data-act="clear">🗑 Очистить мой прогресс</button>
-    </div>
-  `);
+      <button class="user-menu-item danger" data-act="clear">🗑 Очистить прогресс</button>
+    </div>`);
   document.body.appendChild(menu);
   menu.style.position = "fixed";
-  menu.style.top  = (rect.bottom + 8) + "px";
+  menu.style.top = (rect.bottom + 8) + "px";
   menu.style.right = Math.max(8, window.innerWidth - rect.right) + "px";
-
-  const close = (e)=>{
-    if (!menu.contains(e.target) && e.target !== chip){
-      menu.remove();
-      document.removeEventListener("click", close);
-    }
+  const close = e => {
+    if (!menu.contains(e.target) && e.target !== chip){ menu.remove(); document.removeEventListener("click", close); }
   };
   setTimeout(()=>document.addEventListener("click", close), 0);
-
   menu.querySelector('[data-act="avatar"]').addEventListener("click", ()=>{ menu.remove(); openAvatarModal(); });
   menu.querySelector('[data-act="dashboard"]').addEventListener("click", ()=>{ menu.remove(); location.hash = "#/dashboard"; });
-  menu.querySelector('[data-act="comments"]').addEventListener("click", ()=>{ menu.remove(); location.hash = "#/comments"; });
-  menu.querySelector('[data-act="sync"]').addEventListener("click", async ()=>{
-    menu.remove();
-    const ok = await cloudSave(false);
-    if (ok) alert("Прогресс отправлен в облако.");
-  });
+  menu.querySelector('[data-act="gallery"]').addEventListener("click", ()=>{ menu.remove(); location.hash = "#/gallery"; });
+  menu.querySelector('[data-act="backup"]').addEventListener("click", ()=>{ menu.remove(); showBackupModal(); });
+  menu.querySelector('[data-act="sync"]').addEventListener("click", async ()=>{ menu.remove(); if (await cloudSave(false)) alert("Прогресс отправлен."); });
   menu.querySelector('[data-act="switch"]').addEventListener("click", ()=>{
     menu.remove();
-    if (!confirm("Сменить пользователя? Ваш прогресс сохранён локально и в облаке.")) return;
+    if (!confirm("Сменить пользователя?")) return;
     saveStudentData();
-    state.student = null;
-    state.progress = {}; state.results = {}; state.selfResults = {}; state.activity = [];
+    state.student = null; state.progress = {}; state.results = {}; state.selfResults = {}; state.activity = [];
     saveStudent();
     document.getElementById("loginOverlay").hidden = false;
     document.body.style.overflow = "hidden";
     document.getElementById("loginName").value = "";
     document.getElementById("loginGroup").value = "";
-    document.getElementById("loginName").focus();
     document.getElementById("userChip").hidden = true;
   });
   menu.querySelector('[data-act="export"]').addEventListener("click", ()=>{ menu.remove(); exportProfile(); });
@@ -419,50 +488,40 @@ function openUserMenu(){
     menu.remove();
     const input = document.createElement("input");
     input.type = "file"; input.accept = ".json,application/json";
-    input.addEventListener("change", (e)=>{ const f = e.target.files[0]; if (f) importProfile(f); });
+    input.addEventListener("change", e => { const f = e.target.files[0]; if (f) importProfile(f); });
     input.click();
   });
   menu.querySelector('[data-act="clear"]').addEventListener("click", ()=>{
     menu.remove();
-    if (!confirm("Очистить ВЕСЬ прогресс (тесты, самостоятельные, открытые вкладки)?")) return;
-    state.progress = {}; state.results = {}; state.selfResults = {};
+    if (!confirm("Очистить ВЕСЬ прогресс?")) return;
+    state.progress = {}; state.results = {}; state.selfResults = {}; state.corrections = {};
     saveStudentData(); route(); cloudSave(true);
   });
 }
-
 function exportProfile(){
   const s = state.student; if (!s) return;
-  const data = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    student: s,
-    progress: state.progress,
-    results: state.results,
-    selfResults: state.selfResults
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  const safeName  = s.name.replace(/[^\wа-яё\-]+/gi, "_");
-  const safeGroup = s.group.replace(/[^\wа-яё\-]+/gi, "_");
-  a.href = url;
-  a.download = "mdk0701_" + safeName + "_" + safeGroup + ".json";
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  const blob = new Blob([JSON.stringify({
+    version:1, exportedAt:new Date().toISOString(), student:s,
+    progress:state.progress, results:state.results, selfResults:state.selfResults, corrections:state.corrections
+  }, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safe = (s.name + "_" + s.group).replace(/[^\wа-яё\-]+/gi, "_");
+  a.href = url; a.download = "mdk0701_" + safe + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
 function importProfile(file){
   const reader = new FileReader();
-  reader.onload = (e)=>{
-    let data;
-    try { data = JSON.parse(e.target.result); }
-    catch (err){ alert("Не удалось прочитать файл: " + err.message); return; }
-    if (!data || !data.student || !data.student.name){ alert("Это не файл профиля МДК 07.01."); return; }
-    if (!confirm("Загрузить профиль:\n" + data.student.name + " (гр. " + data.student.group + ")\n\nТекущий прогресс будет заменён.")) return;
+  reader.onload = e => {
+    let data; try { data = JSON.parse(e.target.result); }
+    catch (err){ alert("Не удалось прочитать файл"); return; }
+    if (!data || !data.student || !data.student.name){ alert("Это не профиль МДК 07.01"); return; }
+    if (!confirm("Загрузить профиль " + data.student.name + "?")) return;
     state.student = data.student;
     if (!state.student.avatar) state.student.avatar = DEFAULT_AVATAR;
-    state.progress = data.progress || {};
-    state.results = data.results || {};
-    state.selfResults = data.selfResults || {};
+    state.progress = data.progress || {}; state.results = data.results || {};
+    state.selfResults = data.selfResults || {}; state.corrections = data.corrections || {};
     saveStudent(); saveStudentData();
     renderUserChip(); route(); cloudSave(true);
     alert("✔ Профиль загружен.");
@@ -477,13 +536,11 @@ function initTheme(){
   const saved = localStorage.getItem("mdk0701.theme");
   const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   applyTheme(saved || (systemDark ? "dark" : "light"));
-  const btn = document.getElementById("themeToggle");
-  if (btn) btn.addEventListener("click", toggleTheme);
+  document.getElementById("themeToggle").addEventListener("click", toggleTheme);
 }
 function applyTheme(theme){
   document.documentElement.setAttribute("data-theme", theme);
-  const icon = document.getElementById("themeIcon");
-  if (icon) icon.textContent = theme === "dark" ? "☀️" : "🌙";
+  document.getElementById("themeIcon").textContent = theme === "dark" ? "☀️" : "🌙";
   localStorage.setItem("mdk0701.theme", theme);
 }
 function toggleTheme(){
@@ -491,10 +548,8 @@ function toggleTheme(){
   applyTheme(cur === "dark" ? "light" : "dark");
 }
 function initNav(){
-  const back = document.getElementById("navBack");
-  const fwd  = document.getElementById("navForward");
-  if (back) back.addEventListener("click", ()=>window.history.back());
-  if (fwd)  fwd.addEventListener("click", ()=>window.history.forward());
+  document.getElementById("navBack").addEventListener("click", ()=>window.history.back());
+  document.getElementById("navForward").addEventListener("click", ()=>window.history.forward());
 }
 
 /* ============================================================
@@ -516,15 +571,19 @@ function renderHome(){
         <span>Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.
         <span class="sync-status" id="syncStatus"></span></span>
       </div>` : ""}
+      <div class="hero-quote" id="quoteLine">${quoteOfDay()}</div>
     </section>
   `));
 
+  // Погода
+  const weather = el(`<div style="margin-bottom:24px"><span class="weather-pill" id="weatherPill">🌤 Загрузка погоды…</span></div>`);
+  app.appendChild(weather);
+  loadWeather(weather.querySelector("#weatherPill"));
+
   app.appendChild(el(`<div class="steps-title">Как устроена тема</div>`));
-  const steps = [["01","Паспорт часов"],["02","Лекция"],["03","Практические"],["04","Самостоятельная"],["05","Контроль темы"]];
   const stepsWrap = el(`<div class="steps"></div>`);
-  steps.forEach(([n,name])=>{
-    stepsWrap.appendChild(el(`<div class="step"><div class="num">${n}</div><div class="name">${name}</div></div>`));
-  });
+  [["01","Паспорт часов"],["02","Лекция"],["03","Практические"],["04","Самостоятельная"],["05","Контроль темы"]]
+    .forEach(([n,name]) => stepsWrap.appendChild(el(`<div class="step"><div class="num">${n}</div><div class="name">${name}</div></div>`)));
   app.appendChild(stepsWrap);
 
   app.appendChild(el(`
@@ -537,32 +596,17 @@ function renderHome(){
         <div class="kpi"><div class="k-label">Практика</div><div class="k-value">Уч. ${COURSE.totals.uchPr} ч · Пр. ${COURSE.totals.prPr} ч</div></div>
         <div class="kpi"><div class="k-label">Аттестация</div><div class="k-value">Экзамен ${COURSE.totals.exam} ч</div></div>
       </div>
-      <p class="desc">Сумма тем: теория 58, практика 70, вместе 128. Плюс практика 72 и 36 и экзамен 12 — ровно ${COURSE.totals.plan}.
-      Практическая подготовка модуля 70+72+36 = 178 ч.</p>
-    </section>
-  `));
+    </section>`));
 
   if (COURSE.practiceFormatting){
     const f = COURSE.practiceFormatting;
     const infoBlock = el(`
       <section class="info-block">
-        <div class="info-head">
-          <span class="info-badge">ИНФОРМАЦИЯ!</span>
-          <h2>${f.title}</h2>
-        </div>
-        <p class="info-intro">${f.intro}</p>
-        <div class="fmt-grid"></div>
-      </section>
-    `);
+        <div class="info-head"><span class="info-badge">ИНФОРМАЦИЯ!</span><h2>${f.title}</h2></div>
+        <p class="info-intro">${f.intro}</p><div class="fmt-grid"></div>
+      </section>`);
     const grid = infoBlock.querySelector(".fmt-grid");
-    f.blocks.forEach(b=>{
-      grid.appendChild(el(`
-        <div class="fmt-block">
-          <h4>${b.title}</h4>
-          <ul>${b.items.map(i=>`<li>${i}</li>`).join("")}</ul>
-        </div>
-      `));
-    });
+    f.blocks.forEach(b=>grid.appendChild(el(`<div class="fmt-block"><h4>${b.title}</h4><ul>${b.items.map(i=>`<li>${i}</li>`).join("")}</ul></div>`)));
     app.appendChild(infoBlock);
   }
 
@@ -572,125 +616,84 @@ function renderHome(){
     sec.topics.forEach(t=>{
       const totalDone = state.progress[t.id]?.done || 0;
       const card = el(`
-        <div class="topic" data-id="${t.id}">
+        <div class="topic">
           <div class="t-code">${t.code}</div>
-          <div class="t-body">
-            <div class="t-title">${t.title}</div>
-            <div class="t-meta">${t.hours.total} ак. ч / в т.ч. практическая подготовка ${t.hours.practice} ак. ч</div>
-          </div>
+          <div class="t-body"><div class="t-title">${t.title}</div>
+          <div class="t-meta">${t.hours.total} ак. ч / в т.ч. практическая подготовка ${t.hours.practice} ак. ч</div></div>
           <div class="t-hours">${t.hours.total}\\${t.hours.practice}</div>
           <div class="t-progress">${totalDone}/5</div>
-        </div>
-      `);
+        </div>`);
       card.addEventListener("click", ()=>location.hash = "#/topic/" + t.id);
       list.appendChild(card);
     });
     app.appendChild(list);
   });
 
-  if (COURSE.passports && COURSE.passports.length){
+  // Паспорта
+  if (COURSE.passports?.length){
     app.appendChild(el(`<div class="steps-title">Паспорта станков</div>`));
-    const block = el(`<section class="module">
-      <div class="meta">Справочные материалы</div>
-      <h2>Паспорта станков</h2>
-      <p class="sub">PDF-файлы из папки <code>passport/</code>. Открываются прямо на странице.</p>
-      <div class="doc-grid"></div>
-    </section>`);
+    const block = el(`<section class="module"><div class="meta">Справочные материалы</div>
+      <h2>Паспорта станков</h2><p class="sub">PDF-файлы. Открываются прямо на странице.</p><div class="doc-grid"></div></section>`);
     const grid = block.querySelector(".doc-grid");
     COURSE.passports.forEach(p=>{
-      const card = el(`
-        <div class="doc-card" role="button" tabindex="0">
-          <div class="doc-code">${p.code}</div>
-          <div class="doc-title">${p.title}</div>
-          <div class="doc-summary">${p.summary}</div>
-          <div class="doc-action">Открыть PDF →</div>
-        </div>
-      `);
+      const card = el(`<div class="doc-card" role="button" tabindex="0">
+        <div class="doc-code">${p.code}</div><div class="doc-title">${p.title}</div>
+        <div class="doc-summary">${p.summary}</div><div class="doc-action">Открыть PDF →</div></div>`);
       card.addEventListener("click", ()=>openPdfModal(p.file, p.title));
-      card.addEventListener("keydown", (e)=>{
-        if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openPdfModal(p.file, p.title); }
-      });
       grid.appendChild(card);
     });
     app.appendChild(block);
   }
 
-  if (COURSE.safety && COURSE.safety.length){
+  // Охрана труда
+  if (COURSE.safety?.length){
     app.appendChild(el(`<div class="steps-title">Охрана труда</div>`));
-    const block = el(`<section class="module">
-      <div class="meta">Нормативные документы</div>
-      <h2>Инструкции по охране труда</h2>
-      <p class="sub">DOCX-файлы из папки <code>ohranatruda/</code>. При клике скачиваются на компьютер.</p>
-      <div class="doc-grid"></div>
-    </section>`);
+    const block = el(`<section class="module"><div class="meta">Нормативные документы</div>
+      <h2>Инструкции по охране труда</h2><p class="sub">DOCX-файлы. Скачиваются на компьютер.</p><div class="doc-grid"></div></section>`);
     const grid = block.querySelector(".doc-grid");
-    COURSE.safety.forEach(s=>{
-      grid.appendChild(el(`
-        <a class="doc-card" href="${s.file}" download>
-          <div class="doc-code">${s.code}</div>
-          <div class="doc-title">${s.title}</div>
-          <div class="doc-summary">${s.summary}</div>
-          <div class="doc-action">Скачать .docx →</div>
-        </a>
-      `));
-    });
+    COURSE.safety.forEach(s=>grid.appendChild(el(`<a class="doc-card" href="${s.file}" download>
+      <div class="doc-code">${s.code}</div><div class="doc-title">${s.title}</div>
+      <div class="doc-summary">${s.summary}</div><div class="doc-action">Скачать .docx →</div></a>`)));
     app.appendChild(block);
   }
 
+  // Видео
   app.appendChild(el(`<div class="steps-title">История робототехники СССР</div>`));
-  const vids = el(`<section class="module">
-    <div class="meta">Модуль 4 · Видеоматериалы</div>
-    <h2>История робототехники СССР</h2>
-    <p class="sub">Видеоматериалы к разделу. Просмотр — прямо на странице.</p>
-    <div class="videos"></div>
-  </section>`);
+  const vids = el(`<section class="module"><div class="meta">Модуль 4 · Видеоматериалы</div>
+    <h2>История робототехники СССР</h2><p class="sub">Просмотр — прямо на странице.</p><div class="videos"></div></section>`);
   const vwrap = vids.querySelector(".videos");
-  COURSE.videos.forEach((v)=>{
-    vwrap.appendChild(el(`
-      <div class="video-card">
-        <video controls preload="metadata">
-          <source src="${v.src}" type="video/mp4">
-        </video>
-        <div class="v-cap">${v.title}</div>
-      </div>
-    `));
-  });
+  COURSE.videos.forEach(v => vwrap.appendChild(el(`<div class="video-card">
+    <video controls preload="metadata"><source src="${v.src}" type="video/mp4"></video>
+    <div class="v-cap">${v.title}</div></div>`)));
   app.appendChild(vids);
 
+  // Итоговое
   app.appendChild(el(`<div class="steps-title">Итоговое задание</div>`));
-  app.appendChild(el(`
-    <section class="module">
-      <h2>${COURSE.final.title}</h2>
-      <p class="desc"><b>Задание:</b> ${COURSE.final.task}</p>
-      <h3>Требования:</h3>
-      <ul>${COURSE.final.requirements.map(r=>`<li>${r}</li>`).join("")}</ul>
-      <h3>Критерии оценки:</h3>
-      <div class="kpis">
-        ${COURSE.final.criteria.map(c=>`<div class="kpi"><div class="k-label">${c.weight}</div><div class="k-value" style="font-size:14px">${c.name}</div></div>`).join("")}
-      </div>
-      <p class="desc"><b>Срок:</b> ${COURSE.final.deadline}</p>
-    </section>
-  `));
+  app.appendChild(el(`<section class="module"><h2>${COURSE.final.title}</h2>
+    <p class="desc"><b>Задание:</b> ${COURSE.final.task}</p>
+    <h3>Требования:</h3><ul>${COURSE.final.requirements.map(r=>`<li>${r}</li>`).join("")}</ul>
+    <h3>Критерии оценки:</h3><div class="kpis">
+      ${COURSE.final.criteria.map(c=>`<div class="kpi"><div class="k-label">${c.weight}</div><div class="k-value" style="font-size:14px">${c.name}</div></div>`).join("")}
+    </div><p class="desc"><b>Срок:</b> ${COURSE.final.deadline}</p></section>`));
 
-  app.appendChild(renderCommentsBlock());
+  // Комментарии
+  if (window.renderCommentsBlock) app.appendChild(window.renderCommentsBlock());
+}
+
+async function loadWeather(node){
+  try {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=54.9653&longitude=39.0326&current=temperature_2m,weather_code&timezone=Europe/Moscow";
+    const res = await fetch(url);
+    const data = await res.json();
+    const t = Math.round(data.current.temperature_2m);
+    const c = data.current.weather_code;
+    const icon = c === 0 ? "☀️" : c < 3 ? "🌤" : c < 50 ? "☁️" : c < 70 ? "🌧" : c < 80 ? "❄️" : "⛈";
+    node.textContent = `${icon} Луховицы: ${t}°C`;
+  } catch (err){ node.textContent = "🌤 Погода недоступна"; }
 }
 
 /* ============================================================
-   КОММЕНТАРИИ / СТРАНИЦА
-   ============================================================ */
-function renderCommentsPage(){
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Комментарии";
-  setActiveTopBtn("comments");
-  app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
-  const wrap = el(`<div class="comments-page"></div>`);
-  wrap.appendChild(renderCommentsBlock());
-  app.appendChild(wrap);
-}
-
-/* ============================================================
-   ТЕМА
+   ТЕМА / ТЕСТЫ (рендер)
    ============================================================ */
 function renderTopic(id, tab = "passport", extra = ""){
   const found = findTopic(id);
@@ -701,42 +704,36 @@ function renderTopic(id, tab = "passport", extra = ""){
   document.getElementById("crumbs").textContent = topic.code + " · " + topic.title;
   setActiveTopBtn("");
 
-  app.appendChild(el(`
-    <a class="backlink" href="#/" onclick="goHome(event)">← К программе</a>
+  app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← К программе</a>
     <section class="topic-head">
       <div class="crumb">ПМ.07 · ${topic.code} · ${section.title}</div>
       <h1>${topic.title}</h1>
-      <div class="meta">${topic.hours.total}\\${topic.hours.practice} · ${topic.hours.total} ак. ч / в т.ч. практическая подготовка ${topic.hours.practice} ак. ч</div>
-    </section>
-  `));
+      <div class="meta">${topic.hours.total}\\${topic.hours.practice} · ${topic.hours.total} ак. ч</div>
+    </section>`));
 
   const tabs = [
-    ["passport","01","Паспорт часов"],
-    ["lecture","02","Лекция"],
-    ["practice","03","Практические"],
-    ["self","04","Самостоятельная"],
-    ["test","05","Контроль темы"]
+    ["passport","01","Паспорт часов"],["lecture","02","Лекция"],
+    ["practice","03","Практические"],["self","04","Самостоятельная"],["test","05","Контроль темы"]
   ];
-  const tabsWrap = el(`<div class="tabs"></div>`);
-  tabs.forEach(([key,num,name])=>{
-    const t = el(`<button class="tab ${key===tab?"active":""}"><span class="t-num">${num}</span><span class="t-name">${name}</span></button>`);
-    t.addEventListener("click", ()=>{ location.hash = `#/topic/${id}/${key}`; });
-    tabsWrap.appendChild(t);
+  const tw = el(`<div class="tabs"></div>`);
+  tabs.forEach(([k,n,name])=>{
+    const t = el(`<button class="tab ${k===tab?"active":""}"><span class="t-num">${n}</span><span class="t-name">${name}</span></button>`);
+    t.addEventListener("click", ()=>{ location.hash = `#/topic/${id}/${k}`; });
+    tw.appendChild(t);
   });
-  app.appendChild(tabsWrap);
+  app.appendChild(tw);
 
   const panel = el(`<section class="panel"></section>`);
   app.appendChild(panel);
 
   if (tab === "passport") renderPassport(panel, topic);
-  if (tab === "lecture") renderLecture(panel, topic);
+  if (tab === "lecture")  renderLecture(panel, topic);
   if (tab === "practice") renderPractice(panel, topic);
-  if (tab === "self") renderSelf(panel, topic);
-  if (tab === "test") renderTest(panel, topic, extra || "control");
+  if (tab === "self")     renderSelf(panel, topic);
+  if (tab === "test")     renderTest(panel, topic, extra || "control");
 
   markDone(topic.id, tab);
 }
-
 function markDone(topicId, tab){
   state.progress[topicId] = state.progress[topicId] || { done: 0, tabs: {} };
   if (!state.progress[topicId].tabs[tab]){
@@ -747,24 +744,24 @@ function markDone(topicId, tab){
     saveProgress();
     const t = findTopic(topicId)?.topic;
     if (before === 0 && t) logActivity("topic", `Начата тема ${t.code}`);
-    if (after === 5 && before < 5 && t) logActivity("topic", `Пройдена тема ${t.code} полностью`);
+    if (after === 5 && before < 5 && t){
+      logActivity("topic", `Пройдена тема ${t.code} полностью`);
+      if (window.playSound) window.playSound("done");
+    }
   }
 }
-
 function renderPassport(panel, t){
-  panel.innerHTML = `
-    <h2>Паспорт часов</h2>
+  panel.innerHTML = `<h2>Паспорт часов</h2>
     <p>Тема <b>${t.code}</b> — ${t.title}.</p>
     <div class="kpi-row">
-      <div class="kpi"><div class="k-label">Всего по теме</div><div class="k-value">${t.hours.total} ч</div></div>
+      <div class="kpi"><div class="k-label">Всего</div><div class="k-value">${t.hours.total} ч</div></div>
       <div class="kpi"><div class="k-label">Теория</div><div class="k-value">${t.hours.theory} ч</div></div>
-      <div class="kpi"><div class="k-label">Практическая подготовка</div><div class="k-value">${t.hours.practice} ч</div></div>
+      <div class="kpi"><div class="k-label">Практика</div><div class="k-value">${t.hours.practice} ч</div></div>
     </div>
-    <h3>Содержание по рабочей программе</h3>
+    <h3>Содержание по программе</h3>
     <ul>${t.lectures.map(l=>`<li><b>${l.code}</b> ${l.title}</li>`).join("")}</ul>
     <h3>Практические занятия</h3>
-    <ul>${t.practicals.map(p=>`<li><b>${p.code}</b> ${p.title}</li>`).join("")}</ul>
-  `;
+    <ul>${t.practicals.map(p=>`<li><b>${p.code}</b> ${p.title}</li>`).join("")}</ul>`;
 }
 function renderLecture(panel, t){
   panel.innerHTML = `<h2>Лекция</h2><p class="accent">Теория, схема, вопросы для самопроверки.</p>`;
@@ -774,27 +771,24 @@ function renderLecture(panel, t){
   });
 }
 function renderPractice(panel, t){
-  panel.innerHTML = `<h2>Практические работы с примером выполнения</h2><p class="accent">${t.hours.practice} ч практической подготовки.</p>`;
+  panel.innerHTML = `<h2>Практические работы</h2><p class="accent">${t.hours.practice} ч практической подготовки.</p>`;
   t.practicals.forEach(p=>{
-    const box = el(`
-      <div class="practice">
-        <div class="p-code">${p.code}</div>
-        <div class="p-title">${p.title}</div>
-        ${p.goal ? `<div class="p-goal">Цель: ${p.goal}</div>` : ""}
-        ${p.task ? `<div class="p-task"><b>Задание:</b> ${p.task}</div>` : ""}
-        ${p.example ? `<div class="p-example"><b>Пример выполнения:</b> ${p.example}</div>` : ""}
-        ${p.solution && p.solution.length ? `
-          <div class="p-solution">
-            <h4>Ход решения по этапам</h4>
-            <ol>${p.solution.map(s=>`<li>${s}</li>`).join("")}</ol>
-          </div>` : ""}
+    const box = el(`<div class="practice">
+      <div class="p-code">${p.code}</div>
+      <div class="p-title">${p.title}</div>
+      ${p.goal ? `<div class="p-goal">Цель: ${p.goal}</div>` : ""}
+      ${p.task ? `<div class="p-task"><b>Задание:</b> ${p.task}</div>` : ""}
+      ${p.example ? `<div class="p-example"><b>Пример:</b> ${p.example}</div>` : ""}
+      ${p.solution?.length ? `<div class="p-solution"><h4>Ход решения</h4><ol>${p.solution.map(s=>`<li>${s}</li>`).join("")}</ol></div>` : ""}
+      <div class="test-actions">
+        <button class="btn ghost work-upload-btn" data-code="${p.code}" data-title="${p.title}">📎 Прикрепить работу</button>
+        <button class="btn ghost gcode-btn" data-code="${p.code}">👨‍💻 Открыть в G-code просмотрщике</button>
       </div>
-    `);
-    if (p.variants && p.variants.rows && p.variants.rows.length){
-      const v = el(`<div class="variants">
-        <div class="v-title">Варианты (1–${p.variants.rows.length})</div>
-        <div class="v-scroll"></div>
-      </div>`);
+    </div>`);
+    box.querySelector(".work-upload-btn")?.addEventListener("click", ()=>window.openUploadModal?.(t.id, p.code, p.title));
+    box.querySelector(".gcode-btn")?.addEventListener("click", ()=>window.openGCodeModal?.(p.code));
+    if (p.variants?.rows?.length){
+      const v = el(`<div class="variants"><div class="v-title">Варианты (1–${p.variants.rows.length})</div><div class="v-scroll"></div></div>`);
       const tbl = el(`<table class="v-table"></table>`);
       if (p.variants.header){
         const thead = el(`<thead><tr></tr></thead>`);
@@ -804,7 +798,7 @@ function renderPractice(panel, t){
       const tbody = el(`<tbody></tbody>`);
       p.variants.rows.forEach(row=>{
         const tr = el(`<tr></tr>`);
-        row.forEach(cell => tr.appendChild(el(`<td>${cell}</td>`)));
+        row.forEach(c => tr.appendChild(el(`<td>${c}</td>`)));
         tbody.appendChild(tr);
       });
       tbl.appendChild(tbody);
@@ -815,14 +809,10 @@ function renderPractice(panel, t){
   });
 }
 function renderSelf(panel, t){
-  panel.innerHTML = `
-    <h2>Самостоятельная работа</h2>
+  panel.innerHTML = `<h2>Самостоятельная работа</h2>
     <p>Закрепление материала темы <b>${t.code}</b> «${t.title}».</p>
-    <p class="accent">Введите ответ в поле и нажмите «Проверить». Регистр и лишние пробелы не важны.</p>
-  `;
-  const tasks = (t.selfChecks && t.selfChecks.length) ? t.selfChecks : [
-    { q: "Как называется главное движение при точении?", a: "вращение заготовки", accept: ["вращение детали"] }
-  ];
+    <p class="accent">Введите ответ. Регистр и лишние пробелы не важны.</p>`;
+  const tasks = (t.selfChecks?.length) ? t.selfChecks : [{ q:"Как называется главное движение при точении?", a:"вращение заготовки", accept:["вращение детали"] }];
   const form = el(`<form class="self-form"></form>`);
   tasks.forEach((task, i)=>{
     const block = el(`<div class="question self-q">
@@ -830,1055 +820,356 @@ function renderSelf(panel, t){
       <div class="self-row">
         <input type="text" class="self-input" placeholder="Ваш ответ">
         <button type="button" class="btn ghost self-check">Проверить</button>
-      </div>
-      <div class="self-feedback"></div>
-    </div>`);
-    const input = block.querySelector(".self-input");
-    const btn   = block.querySelector(".self-check");
-    const fb    = block.querySelector(".self-feedback");
+      </div><div class="self-feedback"></div></div>`);
+    const input = block.querySelector(".self-input"), btn = block.querySelector(".self-check"), fb = block.querySelector(".self-feedback");
     btn.addEventListener("click", ()=>{
-      const userAns  = (input.value || "").trim().toLowerCase();
-      const correct  = task.a.trim().toLowerCase();
+      const userAns = (input.value || "").trim().toLowerCase();
+      const correct = task.a.trim().toLowerCase();
       const accepted = Array.isArray(task.accept) ? task.accept.map(x=>x.trim().toLowerCase()) : [];
       const ok = userAns === correct || accepted.includes(userAns);
-      fb.textContent = ok ? "✔ Верно" : ("✘ Неверно. Правильный ответ: " + task.a);
+      fb.textContent = ok ? "✔ Верно" : ("✘ Правильно: " + task.a);
       fb.className = "self-feedback " + (ok ? "ok" : "bad");
     });
-    input.addEventListener("keydown", (e)=>{ if (e.key === "Enter"){ e.preventDefault(); btn.click(); } });
+    input.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); btn.click(); } });
     form.appendChild(block);
   });
   const result = el(`<div class="test-result"></div>`);
-  const actions = el(`<div class="test-actions">
-    <button type="button" class="btn" id="selfCount">Подвести итог</button>
-    <button type="button" class="btn ghost" id="selfReset">Сбросить</button>
-  </div>`);
-  form.appendChild(actions);
-  form.appendChild(result);
+  const actions = el(`<div class="test-actions"><button type="button" class="btn" id="selfCount">Подвести итог</button>
+    <button type="button" class="btn ghost" id="selfReset">Сбросить</button></div>`);
+  form.appendChild(actions); form.appendChild(result);
   form.querySelector("#selfCount").addEventListener("click", ()=>{
     let ok = 0;
-    form.querySelectorAll(".self-q").forEach((q)=>{
-      if (q.querySelector(".self-feedback").classList.contains("ok")) ok++;
-    });
-    const total = tasks.length;
-    const pct   = Math.round(ok / total * 100);
+    form.querySelectorAll(".self-q").forEach(q => { if (q.querySelector(".self-feedback").classList.contains("ok")) ok++; });
+    const total = tasks.length, pct = Math.round(ok/total*100);
     const grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
     result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${grade}.`;
     result.className = "test-result " + (grade >= 3 ? "ok" : "bad");
     state.selfResults[t.id] = { ok, total, pct, grade, date: new Date().toISOString() };
     saveSelfResults();
     logActivity("self", `Самостоятельная ${t.code}: ${ok}/${total} (оценка ${grade})`);
+    if (grade === 5 && window.celebrate) window.celebrate();
   });
   form.querySelector("#selfReset").addEventListener("click", ()=>{
-    form.querySelectorAll(".self-input").forEach(i=>i.value="");
-    form.querySelectorAll(".self-feedback").forEach(f=>{ f.textContent=""; f.className="self-feedback"; });
+    form.querySelectorAll(".self-input").forEach(i => i.value = "");
+    form.querySelectorAll(".self-feedback").forEach(f => { f.textContent = ""; f.className = "self-feedback"; });
     result.textContent = ""; result.className = "test-result";
   });
   panel.appendChild(form);
 }
 
-/* ============================================================
-   ТЕСТ: РЕЖИМЫ «КОНТРОЛЬ» И «ТРЕНИРОВКА»
-   ============================================================ */
+let testTimerId = null;
+function clearTestTimer(){ if (testTimerId){ clearInterval(testTimerId); testTimerId = null; } }
+function startTestTimer(sec, display, onEnd){
+  clearTestTimer();
+  let r = sec;
+  const tick = ()=>{
+    const m = Math.floor(r/60), s = r%60;
+    display.textContent = `⏱ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    display.classList.toggle("warn", r <= 60);
+    if (r <= 0){ clearTestTimer(); onEnd(); return; }
+    r--;
+  };
+  tick(); testTimerId = setInterval(tick, 1000);
+}
 function renderTest(panel, t, mode = "control"){
   panel.innerHTML = "";
   panel.appendChild(el(`<h2>Контроль темы</h2>
-    <p class="accent">Выберите режим: <b>🎯 Контроль</b> — с таймером, перемешиванием и разбором ошибок, идёт в отчёт.
-    <b>🎓 Тренировка</b> — мгновенная проверка, без оценки.</p>
+    <p class="accent">🎯 <b>Контроль</b> — с таймером, перемешиванием и разбором ошибок, идёт в отчёт.
+    🎓 <b>Тренировка</b> — мгновенная проверка, без оценки.</p>
     <div class="test-mode-tabs">
       <button class="test-mode-tab ${mode==='control'?'active':''}" data-mode="control">🎯 Контроль</button>
       <button class="test-mode-tab ${mode==='training'?'active':''}" data-mode="training">🎓 Тренировка</button>
-    </div>
-  `));
-  panel.querySelectorAll(".test-mode-tab").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      location.hash = `#/topic/${t.id}/test/${btn.dataset.mode}`;
-    });
-  });
-
+    </div>`));
+  panel.querySelectorAll(".test-mode-tab").forEach(b => b.addEventListener("click", ()=>{
+    location.hash = `#/topic/${t.id}/test/${b.dataset.mode}`;
+  }));
   const body = el(`<div class="test-body"></div>`);
   panel.appendChild(body);
-
-  if (!t.test || !t.test.length){
-    body.appendChild(el(`<p><i>Тест по теме готовится.</i></p>`));
-    return;
-  }
+  if (!t.test?.length){ body.appendChild(el(`<p><i>Тест готовится.</i></p>`)); return; }
   if (mode === "training") renderTestTraining(body, t);
   else                     renderTestControl(body, t);
 }
-
-/* --- ТРЕНИРОВКА --- */
 function renderTestTraining(body, t){
   body.innerHTML = "";
-  body.appendChild(el(`<p class="accent">Отвечайте в любом порядке. После выбора сразу увидите правильный ответ. Оценка не сохраняется.</p>`));
-
+  body.appendChild(el(`<p class="accent">Отвечайте в любом порядке. После выбора увидите правильный ответ. Оценка не сохраняется.</p>`));
   const items = shuffled(t.test.map(q => ({ q })));
-  items.forEach(item=>{
-    const opts = item.q.options.map((opt, oi) => ({ opt, oi }));
-    item.shuffledOpts = shuffled(opts);
-    item.newCorrect   = item.shuffledOpts.findIndex(o => o.oi === item.q.correct);
+  items.forEach(it => {
+    const opts = it.q.options.map((opt, oi) => ({ opt, oi }));
+    it.shuffledOpts = shuffled(opts);
+    it.newCorrect = it.shuffledOpts.findIndex(o => o.oi === it.q.correct);
   });
-
   const form = el(`<form class="train-form"></form>`);
   items.forEach((item, qi)=>{
-    const qBox = el(`<div class="question">
-      <div class="q-text">${qi+1}. ${item.q.q}</div>
-    </div>`);
+    const qBox = el(`<div class="question"><div class="q-text">${qi+1}. ${item.q.q}</div></div>`);
     item.shuffledOpts.forEach((o, oi)=>{
-      const optEl = el(`<label class="option">
-        <input type="radio" name="t${qi}" value="${oi}">
-        <span>${o.opt}</span>
-      </label>`);
-      qBox.appendChild(optEl);
+      qBox.appendChild(el(`<label class="option"><input type="radio" name="t${qi}" value="${oi}"><span>${o.opt}</span></label>`));
     });
     const fb = el(`<div class="train-feedback"></div>`);
     qBox.appendChild(fb);
-    qBox.querySelectorAll('input[type=radio]').forEach(inp=>{
-      inp.addEventListener("change", ()=>{
-        const idx = Number(inp.value);
-        const allOpts = qBox.querySelectorAll(".option");
-        allOpts.forEach(o => o.classList.remove("correct","wrong"));
-        if (idx === item.newCorrect){
-          allOpts[idx].classList.add("correct");
-          fb.textContent = "✔ Верно!";
-          fb.className = "train-feedback ok";
-        } else {
-          allOpts[idx].classList.add("wrong");
-          allOpts[item.newCorrect].classList.add("correct");
-          fb.textContent = "✘ Неверно. Правильный ответ выделен зелёным.";
-          fb.className = "train-feedback bad";
-        }
-      });
-    });
+    qBox.querySelectorAll('input[type=radio]').forEach(inp => inp.addEventListener("change", ()=>{
+      const idx = Number(inp.value), all = qBox.querySelectorAll(".option");
+      all.forEach(o => o.classList.remove("correct","wrong"));
+      if (idx === item.newCorrect){
+        all[idx].classList.add("correct");
+        fb.textContent = "✔ Верно!"; fb.className = "train-feedback ok";
+        if (window.playSound) window.playSound("ok");
+      } else {
+        all[idx].classList.add("wrong");
+        all[item.newCorrect].classList.add("correct");
+        fb.textContent = "✘ Неверно. Правильный выделен зелёным."; fb.className = "train-feedback bad";
+      }
+    }));
     form.appendChild(qBox);
   });
-
-  const actions = el(`<div class="test-actions">
-    <button type="button" class="btn ghost" id="trainReset">🔄 Начать заново</button>
-  </div>`);
-  form.appendChild(actions);
-  form.querySelector("#trainReset").addEventListener("click", ()=>{ renderTestTraining(body, t); });
+  const reset = el(`<div class="test-actions"><button type="button" class="btn ghost">🔄 Начать заново</button></div>`);
+  reset.querySelector("button").addEventListener("click", ()=>renderTestTraining(body, t));
+  form.appendChild(reset);
   body.appendChild(form);
 }
-
-/* --- КОНТРОЛЬ (с таймером, shuffle, разбором) --- */
-let testTimerId = null;
-function clearTestTimer(){
-  if (testTimerId){ clearInterval(testTimerId); testTimerId = null; }
-}
-function startTestTimer(seconds, displayEl, onEnd){
-  clearTestTimer();
-  let remaining = seconds;
-  function tick(){
-    const m = Math.floor(remaining / 60);
-    const s = remaining % 60;
-    displayEl.textContent = `⏱ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-    displayEl.classList.toggle("warn", remaining <= 60);
-    if (remaining <= 0){ clearTestTimer(); onEnd(); return; }
-    remaining--;
-  }
-  tick();
-  testTimerId = setInterval(tick, 1000);
-}
-
 function renderTestControl(body, t){
   body.innerHTML = "";
-
   const items = shuffled(t.test.map(q => ({ q })));
-  items.forEach(item=>{
-    const opts = item.q.options.map((opt, oi) => ({ opt, oi }));
-    item.shuffledOpts = shuffled(opts);
-    item.newCorrect   = item.shuffledOpts.findIndex(o => o.oi === item.q.correct);
+  items.forEach(it => {
+    const opts = it.q.options.map((opt, oi) => ({ opt, oi }));
+    it.shuffledOpts = shuffled(opts);
+    it.newCorrect = it.shuffledOpts.findIndex(o => o.oi === it.q.correct);
   });
-
-  const timerBox = el(`<div class="test-timer" id="testTimer">⏱ --:--</div>`);
+  const timerBox = el(`<div class="test-timer">⏱ --:--</div>`);
   body.appendChild(timerBox);
-  body.appendChild(el(`<p class="accent">Вопросы и варианты перемешаны. На весь тест — 15 минут. По истечении время выйдет, и тест будет сдан автоматически.</p>`));
-
+  body.appendChild(el(`<p class="accent">Вопросы перемешаны. Время — 15 минут. По истечении сдаётся автоматически.</p>`));
   const form = el(`<form class="control-form"></form>`);
   items.forEach((item, qi)=>{
-    const qBox = el(`<div class="question">
-      <div class="q-text">${qi+1}. ${item.q.q}</div>
-    </div>`);
-    item.shuffledOpts.forEach((o, oi)=>{
-      const optEl = el(`<label class="option">
-        <input type="radio" name="q${qi}" value="${oi}">
-        <span>${o.opt}</span>
-      </label>`);
-      qBox.appendChild(optEl);
-    });
+    const qBox = el(`<div class="question"><div class="q-text">${qi+1}. ${item.q.q}</div></div>`);
+    item.shuffledOpts.forEach((o, oi) =>
+      qBox.appendChild(el(`<label class="option"><input type="radio" name="q${qi}" value="${oi}"><span>${o.opt}</span></label>`)));
     form.appendChild(qBox);
   });
-
   const result = el(`<div class="test-result"></div>`);
   const report = el(`<div class="test-report"></div>`);
-  const actions = el(`<div class="test-actions">
-    <button type="button" class="btn" id="gradeBtn">Подвести итог</button>
-    <button type="button" class="btn ghost" id="resetTest">Сбросить</button>
-  </div>`);
-  form.appendChild(actions);
-  form.appendChild(result);
-  form.appendChild(report);
+  const actions = el(`<div class="test-actions"><button type="button" class="btn" id="gradeBtn">Подвести итог</button>
+    <button type="button" class="btn ghost" id="resetTest">Сбросить</button></div>`);
+  form.appendChild(actions); form.appendChild(result); form.appendChild(report);
   body.appendChild(form);
-
   let graded = false;
-  function grade(){
+  const grade = () => {
     if (graded) return;
-    graded = true;
-    clearTestTimer();
-
-    let ok = 0;
-    const wrongItems = [];
+    graded = true; clearTestTimer();
+    let ok = 0; const wrong = [];
     items.forEach((item, qi)=>{
       const chosen = form.querySelector(`input[name="q${qi}"]:checked`);
-      const qBox   = form.querySelectorAll(".question")[qi];
+      const qBox = form.querySelectorAll(".question")[qi];
       qBox.querySelectorAll(".option").forEach(o => o.classList.remove("correct","wrong"));
       if (chosen){
-        const idx = Number(chosen.value);
-        const opt = qBox.querySelectorAll(".option")[idx];
+        const idx = Number(chosen.value), opt = qBox.querySelectorAll(".option")[idx];
         if (idx === item.newCorrect){ ok++; opt.classList.add("correct"); }
         else {
           opt.classList.add("wrong");
           qBox.querySelectorAll(".option")[item.newCorrect].classList.add("correct");
-          wrongItems.push({
-            q: item.q.q,
-            userAnswer: item.shuffledOpts[idx].opt,
-            correct: item.q.options[item.q.correct]
-          });
+          wrong.push({ q: item.q.q, user: item.shuffledOpts[idx].opt, correct: item.q.options[item.q.correct] });
         }
       } else {
         qBox.querySelectorAll(".option")[item.newCorrect].classList.add("correct");
-        wrongItems.push({
-          q: item.q.q,
-          userAnswer: "(нет ответа)",
-          correct: item.q.options[item.q.correct]
-        });
+        wrong.push({ q: item.q.q, user: "(нет ответа)", correct: item.q.options[item.q.correct] });
       }
     });
-
-    const total = items.length;
-    const pct   = Math.round(ok / total * 100);
-    let grade5 = 2;
-    if (pct >= 90) grade5 = 5; else if (pct >= 75) grade5 = 4; else if (pct >= 60) grade5 = 3;
-
-    result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${grade5}.`;
-    result.className = "test-result " + (grade5 >= 3 ? "ok" : "bad");
-
-    state.results[t.id] = { ok, total, pct, grade: grade5, date: new Date().toISOString() };
+    const total = items.length, pct = Math.round(ok/total*100);
+    let g = 2; if (pct >= 90) g = 5; else if (pct >= 75) g = 4; else if (pct >= 60) g = 3;
+    result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${g}.`;
+    result.className = "test-result " + (g >= 3 ? "ok" : "bad");
+    state.results[t.id] = { ok, total, pct, grade: g, date: new Date().toISOString() };
     saveResults();
-    logActivity("test", `Тест ${t.code}: ${ok}/${total} (оценка ${grade5})`);
-
-    if (wrongItems.length){
+    logActivity("test", `Тест ${t.code}: ${ok}/${total} (оценка ${g})`);
+    if (g === 5 && window.celebrate){ window.celebrate(); if (window.playSound) window.playSound("win"); }
+    if (wrong.length){
       report.appendChild(el(`<h3>Разбор ошибок</h3>`));
-      wrongItems.forEach(w=>{
-        report.appendChild(el(`<div class="error-item">
-          <div class="error-q">${escapeHtml(w.q)}</div>
-          <div class="error-line error-bad">Ваш ответ: ${escapeHtml(w.userAnswer)}</div>
-          <div class="error-line error-ok">Верно: ${escapeHtml(w.correct)}</div>
-        </div>`));
-      });
-      const link = el(`<a class="backlink" href="#/topic/${t.id}/lecture">📖 Перечитать лекцию →</a>`);
-      report.appendChild(link);
-    } else {
-      report.appendChild(el(`<p class="test-perfect">🎉 Все ответы верные!</p>`));
-    }
+      wrong.forEach(w => report.appendChild(el(`<div class="error-item">
+        <div class="error-q">${escapeHtml(w.q)}</div>
+        <div class="error-line error-bad">Ваш ответ: ${escapeHtml(w.user)}</div>
+        <div class="error-line error-ok">Верно: ${escapeHtml(w.correct)}</div></div>`)));
+      report.appendChild(el(`<a class="backlink" href="#/topic/${t.id}/lecture">📖 Перечитать лекцию →</a>`));
+    } else report.appendChild(el(`<p class="test-perfect">🎉 Все ответы верные!</p>`));
     actions.querySelector("#gradeBtn").disabled = true;
-  }
-
+  };
   form.querySelector("#gradeBtn").addEventListener("click", grade);
   form.querySelector("#resetTest").addEventListener("click", ()=>{
     clearTestTimer();
     form.querySelectorAll("input[type=radio]").forEach(i => i.checked = false);
     form.querySelectorAll(".option").forEach(o => o.classList.remove("correct","wrong"));
-    result.textContent = ""; result.className = "test-result";
-    report.innerHTML = "";
-    graded = false;
-    actions.querySelector("#gradeBtn").disabled = false;
+    result.textContent = ""; result.className = "test-result"; report.innerHTML = "";
+    graded = false; actions.querySelector("#gradeBtn").disabled = false;
     startTestTimer(TEST_TIME_LIMIT_SEC, timerBox, grade);
   });
-
   startTestTimer(TEST_TIME_LIMIT_SEC, timerBox, grade);
 }
 
 /* ============================================================
-   ПРОСМОТР PDF
+   PDF + G-CODE + UPLOAD (лёгкие модалки)
    ============================================================ */
 function openPdfModal(file, title){
-  document.querySelectorAll(".pdf-overlay").forEach(x=>x.remove());
-  const modal = el(`
-    <div class="pdf-overlay">
-      <div class="pdf-modal">
-        <div class="pdf-head">
-          <div class="pdf-title">${title}</div>
-          <div class="pdf-actions">
-            <a class="btn ghost" href="${file}" download>⬇ Скачать</a>
-            <a class="btn ghost" href="${file}" target="_blank" rel="noopener">↗ В новой вкладке</a>
-            <button class="btn" id="pdfClose">✕ Закрыть</button>
-          </div>
-        </div>
-        <div class="pdf-body">
-          <iframe src="${file}#view=FitH" title="${title}" loading="lazy"></iframe>
-        </div>
-      </div>
-    </div>
-  `);
+  document.querySelectorAll(".pdf-overlay").forEach(x => x.remove());
+  const modal = el(`<div class="pdf-overlay">
+    <div class="pdf-modal">
+      <div class="pdf-head"><div class="pdf-title">${title}</div>
+      <div class="pdf-actions">
+        <button class="btn ghost" id="pdfDark">🌙 Тема</button>
+        <a class="btn ghost" href="${file}" download>⬇ Скачать</a>
+        <a class="btn ghost" href="${file}" target="_blank" rel="noopener">↗ В новой вкладке</a>
+        <button class="btn" id="pdfClose">✕ Закрыть</button>
+      </div></div>
+      <div class="pdf-body"><iframe src="${file}#view=FitH" title="${title}" loading="lazy"></iframe></div>
+    </div></div>`);
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
-  modal.querySelector("#pdfClose").addEventListener("click", closePdf);
-  modal.addEventListener("click", (e)=>{ if (e.target === modal) closePdf(); });
-  function closePdf(){ modal.remove(); document.body.style.overflow = ""; }
-}
-
-/* ============================================================
-   КОММЕНТАРИИ
-   ============================================================ */
-async function loadComments(){
-  try {
-    const res = await fetch(APPS_SCRIPT_URL + "?action=loadcomments");
-    const data = await res.json();
-    if (data && data.ok && Array.isArray(data.comments)) return data.comments;
-  } catch (err){}
-  return null;
-}
-async function saveComment(name, group, rating, text, avatar){
-  const params = new URLSearchParams();
-  params.append("action", "savecomment");
-  params.append("name",   name);
-  params.append("group",  group);
-  params.append("rating", String(rating));
-  params.append("text",   text);
-  params.append("avatar", avatar || DEFAULT_AVATAR);
-  try {
-    const res = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
-    const data = await res.json();
-    return data && data.ok;
-  } catch (err){ return false; }
-}
-function renderCommentsBlock(){
-  const block = el(`
-    <section class="module comments-module">
-      <div class="meta">Отзывы выпускников</div>
-      <h2>Комментарии прошедших курс</h2>
-      <p class="sub">Оставить отзыв может любой студент после прохождения курса.
-        Комментарии старше 5 лет удаляются автоматически.</p>
-
-      <form class="comment-form" id="commentForm">
-        <div class="cf-row">
-          <label>Оценка курса</label>
-          <div class="star-rating" id="starRating">
-            <input type="radio" name="rating" value="5" id="r5" checked><label for="r5">★</label>
-            <input type="radio" name="rating" value="4" id="r4"><label for="r4">★</label>
-            <input type="radio" name="rating" value="3" id="r3"><label for="r3">★</label>
-            <input type="radio" name="rating" value="2" id="r2"><label for="r2">★</label>
-            <input type="radio" name="rating" value="1" id="r1"><label for="r1">★</label>
-          </div>
-        </div>
-        <textarea id="commentText" class="comment-text" maxlength="600"
-          placeholder="Что помогло, что запомнилось, что стоит улучшить… (до 600 символов)"></textarea>
-        <div class="cf-footer">
-          <div class="cf-counter"><span id="commentCounter">0</span> / 600</div>
-          <button type="submit" class="btn">Оставить отзыв</button>
-        </div>
-        <div class="comment-status" id="commentStatus"></div>
-      </form>
-
-      <div class="comments-list" id="commentsList">
-        <div class="comment-empty">Загружаем отзывы…</div>
-      </div>
-    </section>
-  `);
-
-  const ta = block.querySelector("#commentText");
-  const counter = block.querySelector("#commentCounter");
-  ta.addEventListener("input", ()=>{ counter.textContent = ta.value.length; });
-
-  block.querySelector("#commentForm").addEventListener("submit", async (e)=>{
-    e.preventDefault();
-    const status = block.querySelector("#commentStatus");
-    const text = ta.value.trim();
-    if (text.length < 10){
-      status.textContent = "Слишком короткий отзыв (мин. 10 символов).";
-      status.className = "comment-status bad";
-      return;
-    }
-    const rating = Number((block.querySelector('input[name="rating"]:checked') || {}).value || 5);
-    status.textContent = "Отправляем…";
-    status.className = "comment-status";
-
-    const ok = await saveComment(
-      state.student ? state.student.name  : "Гость",
-      state.student ? state.student.group : "—",
-      rating, text, getAvatar()
-    );
-    if (ok){
-      status.textContent = "✔ Спасибо! Отзыв опубликован.";
-      status.className = "comment-status ok";
-      ta.value = ""; counter.textContent = "0";
-      logActivity("comment", "Оставлен отзыв о курсе");
-      await refreshComments(block.querySelector("#commentsList"));
-    } else {
-      status.textContent = "Не удалось отправить. Проверьте интернет.";
-      status.className = "comment-status bad";
-    }
-  });
-
-  setTimeout(()=>refreshComments(block.querySelector("#commentsList")), 50);
-  return block;
-}
-async function refreshComments(container){
-  const list = await loadComments();
-  container.innerHTML = "";
-  if (list === null){
-    container.appendChild(el(`<div class="comment-empty">Не удалось загрузить отзывы. Проверьте интернет.</div>`));
-    return;
-  }
-  if (list.length === 0){
-    container.appendChild(el(`<div class="comment-empty">Пока нет отзывов. Будьте первым!</div>`));
-    return;
-  }
-  list.forEach(c=>{
-    const date    = new Date(c.date);
-    const dateStr = date.toLocaleDateString("ru-RU", { day:"2-digit", month:"long", year:"numeric" });
-    const r = Math.max(1, Math.min(5, c.rating));
-    const stars = "★".repeat(r) + "☆".repeat(5 - r);
-    const avatar = c.avatar || DEFAULT_AVATAR;
-    container.appendChild(el(`
-      <div class="comment-card">
-        <div class="comment-head">
-          <div class="comment-author">
-            <span class="comment-avatar">${escapeHtml(avatar)}</span>
-            <div class="comment-author-text">
-              <span class="comment-name">${escapeHtml(c.name)}</span>
-              <span class="comment-group">гр. ${escapeHtml(c.group)}</span>
-            </div>
-          </div>
-          <div class="comment-meta">
-            <span class="comment-stars">${stars}</span>
-            <span class="comment-date">${dateStr}</span>
-          </div>
-        </div>
-        <div class="comment-text-body">${escapeHtml(c.text)}</div>
-      </div>
-    `));
-  });
-}
-
-/* ============================================================
-   ОТЧЁТ
-   ============================================================ */
-function buildReport(){
-  const now = new Date();
-  const fmt = d => d.toLocaleString("ru-RU", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
-  const s = state.student || { name: "—", group: "—" };
-
-  let totalTopics = 0, topicsDone = 0;
-  COURSE.sections.forEach(sec=>sec.topics.forEach(t=>{
-    totalTopics++;
-    if ((state.progress[t.id]?.done || 0) >= 5) topicsDone++;
-  }));
-
-  const lines = [];
-  lines.push("ОТЧЁТ О ПРОХОЖДЕНИИ МДК 07.01");
-  lines.push("Технология обработки деталей на станках с ПУ");
-  lines.push("");
-  lines.push("Студент: " + s.name);
-  lines.push("Группа:  " + s.group);
-  if (s.avatar) lines.push("Аватар:  " + s.avatar);
-  lines.push("Дата:    " + fmt(now));
-  lines.push("");
-  lines.push("ОБЩИЙ ПРОГРЕСС");
-  lines.push("Пройдено тем полностью: " + topicsDone + " из " + totalTopics);
-  lines.push("");
-  lines.push("ПРОГРЕСС ПО ТЕМАМ");
-  COURSE.sections.forEach(sec=>{
-    lines.push("— " + sec.code + ". " + sec.title);
-    sec.topics.forEach(t=>{
-      const p = state.progress[t.id];
-      const done = p?.done || 0;
-      const mark = done >= 5 ? "✓" : (done > 0 ? "…" : "·");
-      lines.push("  " + mark + " " + t.code + " " + t.title + " — " + done + "/5 вкладок");
-    });
-  });
-  lines.push("");
-
-  const testKeys = Object.keys(state.results);
-  lines.push("РЕЗУЛЬТАТЫ КОНТРОЛЬНЫХ ТЕСТОВ");
-  if (!testKeys.length) lines.push("  (нет пройденных тестов)");
-  else testKeys.forEach(id=>{
-    const t = findTopic(id)?.topic;
-    const r = state.results[id];
-    lines.push("  " + (t ? t.code + " " + t.title : id) + " — " + r.ok + "/" + r.total + " (" + r.pct + "%), оценка " + r.grade + " — " + fmt(new Date(r.date)));
-  });
-  lines.push("");
-
-  const selfKeys = Object.keys(state.selfResults);
-  lines.push("РЕЗУЛЬТАТЫ САМОСТОЯТЕЛЬНЫХ РАБОТ");
-  if (!selfKeys.length) lines.push("  (нет пройденных самостоятельных)");
-  else selfKeys.forEach(id=>{
-    const t = findTopic(id)?.topic;
-    const r = state.selfResults[id];
-    lines.push("  " + (t ? t.code + " " + t.title : id) + " — " + r.ok + "/" + r.total + " (" + r.pct + "%), оценка " + r.grade + " — " + fmt(new Date(r.date)));
-  });
-
-  lines.push("");
-  lines.push("— Конец отчёта —");
-  return lines.join("\n");
-}
-
-function openReportModal(){
-  document.querySelectorAll(".report-overlay").forEach(x=>x.remove());
-  setActiveTopBtn("report");
-  const modal = el(`
-    <div class="report-overlay">
-      <div class="report-modal">
-        <h2>Отправка отчёта</h2>
-        <p class="report-sub">Проверьте данные ниже и нажмите «Отправить». Отчёт уйдёт на <b>${REPORT_EMAIL}</b>.</p>
-        <pre></pre>
-        <div class="report-actions">
-          <button class="btn ghost" id="reportCancel">Отмена</button>
-          <button class="btn" id="reportSend">Отправить</button>
-        </div>
-        <div class="report-status"></div>
-      </div>
-    </div>
-  `);
-  modal.querySelector("pre").textContent = buildReport();
-  document.body.appendChild(modal);
-  const close = ()=>{ modal.remove(); setActiveTopBtn(""); };
-  modal.querySelector("#reportCancel").addEventListener("click", close);
-  modal.addEventListener("click", (e)=>{ if (e.target === modal) close(); });
-
-  modal.querySelector("#reportSend").addEventListener("click", async ()=>{
-    const status = modal.querySelector(".report-status");
-    const btn = modal.querySelector("#reportSend");
-    btn.disabled = true;
-    status.textContent = "Отправляем…";
-    status.className = "report-status";
-    const s = state.student || { name: "—", group: "—" };
-    const params = new URLSearchParams();
-    params.append("action",  "report");
-    params.append("student", s.name);
-    params.append("group",   s.group);
-    params.append("avatar",  s.avatar || DEFAULT_AVATAR);
-    params.append("report",  buildReport());
-    try {
-      await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
-      status.textContent = "✔ Отчёт отправлен на camelia.2110@yandex.ru и anna.shirockix@gmail.com";
-      status.className = "report-status ok";
-      btn.textContent = "Отправлено";
-      logActivity("report", "Отправлен отчёт преподавателю");
-    } catch (err){
-      const subject = encodeURIComponent("МДК 07.01 — отчёт " + s.name + " (гр. " + s.group + ")");
-      const body    = encodeURIComponent(buildReport());
-      const mailto  = "mailto:" + REPORT_EMAIL + "?subject=" + subject + "&body=" + body;
-      status.innerHTML = "Не удалось отправить автоматически. " +
-        '<a href="' + mailto + '" style="color:var(--accent);text-decoration:underline">Открыть письмо в почтовом клиенте →</a>';
-      status.className = "report-status bad";
-      btn.disabled = false;
-    }
-  });
-}
-
-/* ============================================================
-   CSV-ЭКСПОРТ
-   ============================================================ */
-function exportResultsCsv(){
-  const rows = [];
-  rows.push(["Тип","Код","Название","Верных","Всего","Процент","Оценка","Дата"]);
-  Object.keys(state.results).forEach(id=>{
-    const t = findTopic(id)?.topic;
-    const r = state.results[id];
-    rows.push(["Тест", t?t.code:id, t?t.title:"", r.ok, r.total, r.pct, r.grade, new Date(r.date).toLocaleString("ru-RU")]);
-  });
-  Object.keys(state.selfResults).forEach(id=>{
-    const t = findTopic(id)?.topic;
-    const r = state.selfResults[id];
-    rows.push(["Самостоятельная", t?t.code:id, t?t.title:"", r.ok, r.total, r.pct, r.grade, new Date(r.date).toLocaleString("ru-RU")]);
-  });
-  COURSE.sections.forEach(sec=>{
-    sec.topics.forEach(t=>{
-      const p = state.progress[t.id];
-      const done = p?.done || 0;
-      rows.push(["Прогресс", t.code, t.title, done, 5, Math.round(done/5*100), "", ""]);
-    });
-  });
-
-  const csv = rows.map(r => r.map(cell => {
-    const s = String(cell ?? "");
-    if (s.includes(",") || s.includes('"') || s.includes("\n")){
-      return '"' + s.replace(/"/g,'""') + '"';
-    }
-    return s;
-  }).join(",")).join("\n");
-
-  const blob = new Blob(["\uFEFF" + csv], { type:"text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const s = state.student || { name:"student", group:"" };
-  const safe = (s.name + "_" + s.group).replace(/[^\wа-яё\-]+/gi, "_");
-  a.href = url;
-  a.download = "mdk0701_" + safe + "_results.csv";
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
-function computeStats(){
-  let topicsTotal = 0, topicsDone = 0;
-  let theoryTotal = 0, theoryDone = 0;
-  let practiceTotal = 0, practiceDone = 0;
-  COURSE.sections.forEach(sec=>sec.topics.forEach(t=>{
-    topicsTotal++;
-    const p = state.progress[t.id];
-    if ((p?.done || 0) >= 5) topicsDone++;
-    theoryTotal += 2; practiceTotal += 2;
-    if (p?.tabs?.passport) theoryDone++;
-    if (p?.tabs?.lecture)  theoryDone++;
-    if (p?.tabs?.practice) practiceDone++;
-    if (p?.tabs?.self)     practiceDone++;
-  }));
-  const testsTaken = Object.keys(state.results).length;
-  const testsTotal = COURSE.sections.reduce((s,sec) => s + sec.topics.filter(t => t.test && t.test.length).length, 0);
-  const selfTaken  = Object.keys(state.selfResults).length;
-  const grades = [
-    ...Object.values(state.results).map(r => r.grade),
-    ...Object.values(state.selfResults).map(r => r.grade)
-  ];
-  const avgGrade = grades.length ? grades.reduce((a,b)=>a+b,0) / grades.length : 0;
-  return { topicsTotal, topicsDone, theoryTotal, theoryDone, practiceTotal, practiceDone, testsTotal, testsTaken, selfTaken, avgGrade };
-}
-
-function svgPie(slices){
-  const total = slices.reduce((s,x) => s + Math.max(0, x.value), 0);
-  if (total <= 0){
-    return `<svg viewBox="0 0 140 140" class="pie-svg"><circle cx="70" cy="70" r="60" fill="var(--border)"/></svg>`;
-  }
-  const R = 60, cx = 70, cy = 70, ir = 35;
-  let acc = 0;
-  const paths = slices.map(s=>{
-    if (s.value <= 0) return "";
-    const a0 = acc / total * Math.PI * 2 - Math.PI/2;
-    acc += s.value;
-    const a1 = acc / total * Math.PI * 2 - Math.PI/2;
-    const large = (a1 - a0) > Math.PI ? 1 : 0;
-    const x0o = cx + R*Math.cos(a0), y0o = cy + R*Math.sin(a0);
-    const x1o = cx + R*Math.cos(a1), y1o = cy + R*Math.sin(a1);
-    const x0i = cx + ir*Math.cos(a1), y0i = cy + ir*Math.sin(a1);
-    const x1i = cx + ir*Math.cos(a0), y1i = cy + ir*Math.sin(a0);
-    return `<path d="M${x0o} ${y0o} A${R} ${R} 0 ${large} 1 ${x1o} ${y1o} L${x0i} ${y0i} A${ir} ${ir} 0 ${large} 0 ${x1i} ${y1i} Z" fill="${s.color}"/>`;
-  }).join("");
-  return `<svg viewBox="0 0 140 140" class="pie-svg">${paths}</svg>`;
-}
-
-function activityByWeek(){
-  const weeks = [];
-  const now = new Date();
-  const day = now.getDay() || 7;
-  for (let i = 7; i >= 0; i--){
-    const start = new Date(now);
-    start.setDate(now.getDate() - i*7 - (day - 1));
-    start.setHours(0,0,0,0);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 7);
-    weeks.push({ start, end, count: 0 });
-  }
-  (state.activity || []).forEach(a=>{
-    const d = new Date(a.date);
-    for (const w of weeks){
-      if (d >= w.start && d < w.end){ w.count++; break; }
-    }
-  });
-  return weeks;
-}
-
-function getHardestTopics(){
-  const items = [];
-  Object.keys(state.results).forEach(id=>{
-    const t = findTopic(id)?.topic;
-    if (!t) return;
-    items.push({ code: t.code, title: t.title, avg: state.results[id].grade });
-  });
-  items.sort((a,b) => a.avg - b.avg);
-  return items.slice(0, 3);
-}
-
-async function loadGroupStats(container){
-  const params = new URLSearchParams();
-  params.append("action", "groupstats");
-  params.append("group", state.student.group);
-  try {
-    const res = await fetch(APPS_SCRIPT_URL + "?" + params.toString());
-    const data = await res.json();
-    if (data && data.ok && data.stats){
-      container.innerHTML = "";
-      const s = data.stats;
-      if (s.rank || s.total){
-        container.appendChild(el(`<div class="group-stat-row">
-          <div class="gs-value">${s.rank || "—"}</div>
-          <div class="gs-label">Ваше место в группе ${s.total ? "из " + s.total : ""}</div>
-        </div>`));
-      }
-      if (s.avgGroup){
-        const v = typeof s.avgGroup === "number" ? s.avgGroup.toFixed(2) : s.avgGroup;
-        container.appendChild(el(`<div class="group-stat-row">
-          <div class="gs-value">${v}</div>
-          <div class="gs-label">Средний балл группы</div>
-        </div>`));
-      }
-      if (s.avgTests && Array.isArray(s.avgTests)){
-        s.avgTests.forEach(t=>{
-          container.appendChild(el(`<div class="group-stat-row">
-            <div class="gs-value">${t.avg ? t.avg.toFixed(1) : "—"}</div>
-            <div class="gs-label">${escapeHtml(t.code || "")} ${escapeHtml(t.title || "")}</div>
-          </div>`));
-        });
-      }
-      return;
-    }
-  } catch (err){}
-  container.innerHTML = "";
-  container.appendChild(el(`<p class="sub">Данные группы пока недоступны. Преподаватель может включить эту функцию в Apps Script (действие <code>groupstats</code>).</p>`));
-}
-
-function renderDashboard(){
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Статистика";
-  setActiveTopBtn("dashboard");
-
-  app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
-  app.appendChild(el(`
-    <section class="hero">
-      <div class="meta">Аналитика</div>
-      <h1>Мой прогресс</h1>
-      <p>Здесь видно, что уже пройдено, что даётся сложнее, и как выглядит ваша динамика за последние недели.</p>
-    </section>
-  `));
-
-  /* KPI */
-  const stats = computeStats();
-  const kpi = el(`<section class="module"><h2>Общие показатели</h2><div class="kpis"></div></section>`);
-  const kgrid = kpi.querySelector(".kpis");
-  kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Пройдено тем</div><div class="k-value">${stats.topicsDone} / ${stats.topicsTotal}</div></div>`));
-  kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Средняя оценка</div><div class="k-value">${stats.avgGrade ? stats.avgGrade.toFixed(2) : "—"}</div></div>`));
-  kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Сдано тестов</div><div class="k-value">${stats.testsTaken} / ${stats.testsTotal}</div></div>`));
-  kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Сдано сам. работ</div><div class="k-value">${stats.selfTaken}</div></div>`));
-  app.appendChild(kpi);
-
-  /* Pie */
-  const pieSection = el(`<section class="module"><h2>Структура прогресса</h2>
-    <p class="sub">Сколько пройдено в каждой части курса.</p>
-    <div class="pie-wrap"></div></section>`);
-  const pw = pieSection.querySelector(".pie-wrap");
-  const slices = [
-    { value: stats.theoryDone,   color: "var(--accent)", label: `Теория (${stats.theoryDone}/${stats.theoryTotal})` },
-    { value: stats.practiceDone, color: "var(--blue)",   label: `Практика (${stats.practiceDone}/${stats.practiceTotal})` },
-    { value: stats.testsTaken,   color: "var(--ok)",     label: `Тесты (${stats.testsTaken}/${stats.testsTotal})` }
-  ];
-  pw.appendChild(el(`<div class="pie-chart">${svgPie(slices)}</div>`));
-  const legend = el(`<div class="pie-legend"></div>`);
-  slices.forEach(s=>{
-    legend.appendChild(el(`<div class="legend-row"><span class="legend-dot" style="background:${s.color}"></span><span>${s.label}</span></div>`));
-  });
-  pw.appendChild(legend);
-  app.appendChild(pieSection);
-
-  /* Bar by weeks */
-  const weeks = activityByWeek();
-  const chartSection = el(`<section class="module"><h2>Активность по неделям</h2>
-    <p class="sub">Количество действий за последние 8 недель.</p>
-    <div class="week-chart"></div></section>`);
-  const bars = chartSection.querySelector(".week-chart");
-  const maxC = Math.max(1, ...weeks.map(w => w.count));
-  weeks.forEach((w, i)=>{
-    const h = Math.round(w.count / maxC * 100);
-    bars.appendChild(el(`<div class="week-bar">
-      <div class="wb-count">${w.count}</div>
-      <div class="wb-bar" style="height:${h}%"></div>
-      <div class="wb-label">${i === weeks.length - 1 ? "сейчас" : "−" + (weeks.length - i - 1) + "н"}</div>
-    </div>`));
-  });
-  app.appendChild(chartSection);
-
-  /* Top-3 difficult */
-  const difficult = getHardestTopics();
-  const dSection = el(`<section class="module"><h2>Самые сложные темы</h2>
-    <p class="sub">Топ-3 темы по средней оценке теста (от меньшей к большей).</p>
-    <div class="diff-list"></div></section>`);
-  const dlist = dSection.querySelector(".diff-list");
-  if (!difficult.length){
-    dlist.appendChild(el(`<p class="sub">Пока недостаточно данных — пройдите хотя бы один тест.</p>`));
-  } else {
-    difficult.forEach((d, i)=>{
-      dlist.appendChild(el(`<div class="diff-item">
-        <span class="diff-num">${i+1}</span>
-        <span class="diff-title">${d.code} · ${d.title}</span>
-        <span class="diff-grade">Оценка: <b>${d.avg}</b></span>
-      </div>`));
-    });
-  }
-  app.appendChild(dSection);
-
-  /* Group stats */
-  const groupSection = el(`<section class="module"><h2>Сравнение с группой</h2>
-    <p class="sub">Данные анонимны и обновляются автоматически.</p>
-    <div id="groupStats"><p class="sub">Загружаем данные…</p></div></section>`);
-  app.appendChild(groupSection);
-  loadGroupStats(groupSection.querySelector("#groupStats"));
-
-  /* Export buttons */
-  const exportSection = el(`<section class="module">
-    <h2>Экспорт результатов</h2>
-    <p class="sub">Скачайте свой прогресс в удобном формате.</p>
-    <div class="test-actions">
-      <button class="btn" id="exportCsvBtn">⬇ Скачать CSV</button>
-      <button class="btn ghost" id="exportJsonBtn">⬇ Скачать профиль (.json)</button>
-    </div>
-  </section>`);
-  app.appendChild(exportSection);
-  exportSection.querySelector("#exportCsvBtn").addEventListener("click", exportResultsCsv);
-  exportSection.querySelector("#exportJsonBtn").addEventListener("click", exportProfile);
-
-  /* Activity */
-  const actSection = el(`<section class="module"><h2>Последние действия</h2>
-    <div class="activity-list"></div></section>`);
-  const alist = actSection.querySelector(".activity-list");
-  const recent = (state.activity || []).slice(-10).reverse();
-  if (!recent.length){
-    alist.appendChild(el(`<p class="sub">Пока пусто.</p>`));
-  } else {
-    recent.forEach(a=>{
-      alist.appendChild(el(`<div class="activity-item">
-        <span class="act-icon">${activityIcon(a.type)}</span>
-        <span class="act-text">${escapeHtml(a.text)}</span>
-        <span class="act-date">${formatRelDate(a.date)}</span>
-      </div>`));
-    });
-  }
-  app.appendChild(actSection);
-}
-
-/* ============================================================
-   ГЛОБАЛЬНЫЙ ПОИСК
-   ============================================================ */
-function makeSnippet(text, query){
-  const lower = text.toLowerCase();
-  const q = query.toLowerCase();
-  const idx = lower.indexOf(q);
-  if (idx < 0) return escapeHtml(text.slice(0, 120)) + "…";
-  const start = Math.max(0, idx - 40);
-  const end   = Math.min(text.length, idx + q.length + 60);
-  const before = text.slice(start, idx);
-  const match  = text.slice(idx, idx + q.length);
-  const after  = text.slice(idx + q.length, end);
-  return (start > 0 ? "…" : "") + escapeHtml(before) + "<mark>" + escapeHtml(match) + "</mark>" + escapeHtml(after) + (end < text.length ? "…" : "");
-}
-
-function searchCourse(query){
-  query = (query || "").trim().toLowerCase();
-  if (query.length < 2) return [];
-  const out = [];
-  COURSE.sections.forEach(sec=>{
-    const secLabel = sec.code + " · " + sec.title;
-    sec.topics.forEach(t=>{
-      if ((t.title + " " + t.code).toLowerCase().includes(query)){
-        out.push({ icon:"📚", title: t.code + " · " + t.title, topicId: t.id, tab:"passport", section: secLabel });
-      }
-      t.lectures.forEach(l=>{
-        const text = stripHtml(l.content || "");
-        if (l.title.toLowerCase().includes(query)){
-          out.push({ icon:"📖", title: l.code + ". " + l.title, topicId: t.id, tab:"lecture", section: secLabel });
-        } else if (text.toLowerCase().includes(query)){
-          out.push({ icon:"📖", title: l.code + ". " + l.title, snippet: makeSnippet(text, query), topicId: t.id, tab:"lecture", section: secLabel });
-        }
-      });
-      t.practicals.forEach(p=>{
-        const hay = (p.code + " " + p.title + " " + (p.goal || "") + " " + (p.task || "")).toLowerCase();
-        if (hay.includes(query)){
-          out.push({ icon:"🛠️", title: p.code + ". " + p.title, topicId: t.id, tab:"practice", section: secLabel });
-        }
-      });
-    });
-  });
-  return out.slice(0, 40);
-}
-
-function openSearch(){
-  document.querySelectorAll(".search-overlay").forEach(x=>x.remove());
-  const modal = el(`
-    <div class="search-overlay">
-      <div class="search-modal">
-        <div class="search-head">
-          <input type="text" id="searchInput" class="search-input" placeholder="Поиск по темам, лекциям, практикам… (Ctrl+K)" autocomplete="off">
-          <button class="btn ghost" id="searchClose">Esc</button>
-        </div>
-        <div class="search-results" id="searchResults">
-          <div class="search-hint">Начните вводить запрос — покажем до 40 совпадений.</div>
-        </div>
-      </div>
-    </div>
-  `);
-  document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
-
-  const input   = modal.querySelector("#searchInput");
-  const results = modal.querySelector("#searchResults");
-  setTimeout(()=>input.focus(), 0);
-
-  input.addEventListener("input", ()=>{
-    const q = input.value.trim();
-    results.innerHTML = "";
-    if (q.length < 2){
-      results.appendChild(el(`<div class="search-hint">Введите хотя бы 2 символа.</div>`));
-      return;
-    }
-    const found = searchCourse(q);
-    if (!found.length){
-      results.appendChild(el(`<div class="search-hint">Ничего не найдено.</div>`));
-      return;
-    }
-    found.forEach(r=>{
-      const item = el(`<div class="search-item">
-        <div class="search-item-title">${r.icon || "📄"} ${escapeHtml(r.title)}</div>
-        ${r.snippet ? `<div class="search-item-snippet">${r.snippet}</div>` : ""}
-        <div class="search-item-meta">${escapeHtml(r.section || "")}</div>
-      </div>`);
-      item.addEventListener("click", ()=>{
-        closeSearch();
-        location.hash = `#/topic/${r.topicId}/${r.tab}`;
-      });
-      results.appendChild(item);
-    });
-  });
-  input.addEventListener("keydown", (e)=>{
-    if (e.key === "Escape") closeSearch();
-    if (e.key === "Enter"){
-      const first = results.querySelector(".search-item");
-      if (first) first.click();
-    }
-  });
-  modal.addEventListener("click", (e)=>{ if (e.target === modal) closeSearch(); });
-  modal.querySelector("#searchClose").addEventListener("click", closeSearch);
-}
-function closeSearch(){
-  document.querySelectorAll(".search-overlay").forEach(x=>x.remove());
-  document.body.style.overflow = "";
-}
-function closeAllModals(){
-  document.querySelectorAll(".pdf-overlay, .report-overlay, .avatar-overlay, .search-overlay").forEach(x=>x.remove());
-  document.querySelectorAll(".user-menu").forEach(x=>x.remove());
-  if (!document.getElementById("loginOverlay").hidden){
-    // оставляем экран входа
-    return;
-  }
-  document.body.style.overflow = "";
-}
-
-/* ============================================================
-   ГОРЯЧИЕ КЛАВИШИ
-   ============================================================ */
-function initHotkeys(){
-  document.addEventListener("keydown", (e)=>{
-    const tag = (document.activeElement?.tagName || "").toLowerCase();
-    const inField = tag === "input" || tag === "textarea";
-
-    /* Ctrl+K / Cmd+K — поиск */
-    if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")){
-      e.preventDefault();
-      openSearch();
-      return;
-    }
-
-    /* Esc — закрыть модалки */
-    if (e.key === "Escape"){
-      if (document.querySelector(".search-overlay, .pdf-overlay, .report-overlay, .avatar-overlay, .user-menu")){
-        closeAllModals();
-        return;
-      }
-    }
-
-    /* ← / → — переключение вкладок темы (только не в полях) */
-    if (inField) return;
-    const hash = location.hash.replace(/^#/, "");
-    const parts = hash.split("/").filter(Boolean);
-    if (parts[0] === "topic" && parts[1]){
-      const order = ["passport","lecture","practice","self","test"];
-      const cur   = parts[2] || "passport";
-      const idx   = order.indexOf(cur);
-      if (e.key === "ArrowLeft" && idx > 0){
-        location.hash = `#/topic/${parts[1]}/${order[idx-1]}`;
-      } else if (e.key === "ArrowRight" && idx < order.length - 1){
-        location.hash = `#/topic/${parts[1]}/${order[idx+1]}`;
-      }
-    }
-  });
-}
-
-/* ============================================================
-   ВЕРХНЕЕ МЕНЮ
-   ============================================================ */
-function initComments(){
-  const btn = document.getElementById("commentsBtn");
-  if (btn) btn.addEventListener("click", ()=>{ location.hash = "#/comments"; });
-}
-function initDashboard(){
-  const btn = document.getElementById("dashboardBtn");
-  if (btn) btn.addEventListener("click", ()=>{ location.hash = "#/dashboard"; });
-}
-function initSearchBtn(){
-  const btn = document.getElementById("searchBtn");
-  if (btn) btn.addEventListener("click", openSearch);
-}
-function initReport(){
-  const btn = document.getElementById("reportBtn");
-  if (btn) btn.addEventListener("click", openReportModal);
-}
-function setActiveTopBtn(which){
-  const ids = { comments:"commentsBtn", dashboard:"dashboardBtn", report:"reportBtn" };
-  Object.keys(ids).forEach(k=>{
-    const el_ = document.getElementById(ids[k]);
-    if (el_) el_.classList.toggle("active", which === k);
-  });
+  const close = ()=>{ modal.remove(); document.body.style.overflow = ""; };
+  modal.querySelector("#pdfClose").addEventListener("click", close);
+  modal.addEventListener("click", e => { if (e.target === modal) close(); });
+  modal.querySelector("#pdfDark").addEventListener("click", ()=>modal.classList.toggle("dark"));
 }
 
 /* ============================================================
    ROUTER
    ============================================================ */
 function goHome(e){ if (e) e.preventDefault(); location.hash = "#/"; }
-
 function route(){
   clearTestTimer();
-  closeAllModals();
-  if (!state.student){
-    document.getElementById("app").innerHTML = "";
-    return;
-  }
-  const hash  = location.hash.replace(/^#/, "") || "/";
+  document.querySelectorAll(".pdf-overlay, .report-overlay, .avatar-overlay, .search-overlay, .user-menu, .more-menu").forEach(x => x.remove());
+  if (!state.student){ document.getElementById("app").innerHTML = ""; return; }
+  const hash = location.hash.replace(/^#/, "") || "/";
   const parts = hash.split("/").filter(Boolean);
 
-  if (parts[0] === "comments"){
-    renderCommentsPage();
-  } else if (parts[0] === "dashboard"){
-    renderDashboard();
-  } else if (parts[0] === "topic" && parts[1]){
-    renderTopic(parts[1], parts[2] || "passport", parts[3] || "");
-  } else {
-    renderHome();
-  }
-  window.scrollTo(0,0);
+  const pages = {
+    comments:  ()=>window.renderCommentsPage?.(),
+    dashboard: ()=>window.renderDashboard?.(),
+    chat:      ()=>window.renderChatPage?.(),
+    questions: ()=>window.renderQuestionsPage?.(),
+    gallery:   ()=>window.renderGalleryPage?.(),
+    teacher:   ()=>window.renderTeacherPage?.(),
+    calendar:  ()=>window.renderCalendarPage?.(),
+    gosts:     ()=>window.renderGostsPage?.(),
+    qr:        ()=>window.renderQrPage?.(),
+    backup:    ()=>{ renderHome(); setTimeout(showBackupModal, 0); }
+  };
+
+  if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2] || "passport", parts[3] || "");
+  else if (pages[parts[0]])             pages[parts[0]]();
+  else                                   renderHome();
+  window.scrollTo(0, 0);
 }
 
+/* ============================================================
+   Верхнее меню
+   ============================================================ */
+function setActiveTopBtn(which){
+  const map = { comments:"commentsBtn", dashboard:"dashboardBtn", chat:"chatBtn", questions:"questionsBtn", teacher:"moreBtn" };
+  Object.keys(map).forEach(k => {
+    const btn = document.getElementById(map[k]);
+    if (btn) btn.classList.toggle("active", which === k);
+  });
+}
+function initTopMenus(){
+  document.getElementById("searchBtn").addEventListener("click", ()=>window.openSearch?.());
+  document.getElementById("chatBtn").addEventListener("click", ()=>location.hash = "#/chat");
+  document.getElementById("questionsBtn").addEventListener("click", ()=>location.hash = "#/questions");
+  document.getElementById("dashboardBtn").addEventListener("click", ()=>location.hash = "#/dashboard");
+  document.getElementById("moreBtn").addEventListener("click", openMoreMenu);
+}
+function openMoreMenu(){
+  document.querySelectorAll(".more-menu, .user-menu").forEach(m => m.remove());
+  const btn = document.getElementById("moreBtn");
+  const rect = btn.getBoundingClientRect();
+  const menu = el(`<div class="more-menu">
+    <button class="more-menu-item" data-go="#/comments">💬 Отзывы о курсе</button>
+    <button class="more-menu-item" data-go="#/gallery">🖼 Галерея работ</button>
+    <button class="more-menu-item" data-go="#/calendar">📅 Календарь</button>
+    <button class="more-menu-item" data-go="#/gosts">📐 ГОСТы</button>
+    <button class="more-menu-item" data-go="#/qr">📱 QR-код</button>
+    <button class="more-menu-item" data-go="#/teacher">👨‍🏫 Панель преподавателя</button>
+    <button class="more-menu-item" data-act="report">📧 Отправить отчёт</button>
+  </div>`);
+  document.body.appendChild(menu);
+  menu.style.position = "fixed";
+  menu.style.top = (rect.bottom + 8) + "px";
+  menu.style.right = Math.max(8, window.innerWidth - rect.right) + "px";
+  const close = e => {
+    if (!menu.contains(e.target) && e.target !== btn){ menu.remove(); document.removeEventListener("click", close); }
+  };
+  setTimeout(()=>document.addEventListener("click", close), 0);
+  menu.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", ()=>{ menu.remove(); location.hash = b.dataset.go; }));
+  menu.querySelector('[data-act="report"]').addEventListener("click", ()=>{ menu.remove(); window.openReportModal?.(); });
+}
+
+/* ============================================================
+   Объявления
+   ============================================================ */
+async function loadAnnouncement(){
+  const bar = document.getElementById("announceBar");
+  const dismissed = localStorage.getItem("mdk0701.announceDismissed") || "";
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + "?action=announcement");
+    const data = await res.json();
+    if (data && data.ok && data.text){
+      const id = data.id || String(data.text).slice(0, 40);
+      if (dismissed === id) return;
+      document.getElementById("announceText").textContent = data.text;
+      bar.hidden = false;
+      document.getElementById("announceClose").addEventListener("click", ()=>{
+        localStorage.setItem("mdk0701.announceDismissed", id);
+        bar.hidden = true;
+      });
+    }
+  } catch (err){}
+}
+
+/* ============================================================
+   Онлайн-счётчик
+   ============================================================ */
+let heartbeatTimer = null;
+async function sendHeartbeat(){
+  if (!state.student) return;
+  const params = new URLSearchParams();
+  params.append("action", "heartbeat");
+  params.append("key", studentKey());
+  try { await fetch(APPS_SCRIPT_URL, { method:"POST", body: params }); } catch (err){}
+}
+async function refreshOnline(){
+  const node = document.getElementById("onlineCount");
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + "?action=online&window=" + ONLINE_TIMEOUT_SEC);
+    const data = await res.json();
+    if (data && data.ok) node.textContent = `🌐 ${data.count}`;
+  } catch (err){}
+}
+function startHeartbeat(){
+  sendHeartbeat();
+  refreshOnline();
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(()=>{ sendHeartbeat(); refreshOnline(); }, 60000);
+}
+
+/* ============================================================
+   Сеть
+   ============================================================ */
+function updateNetStatus(){
+  const n = document.getElementById("netStatus");
+  if (!navigator.onLine){ n.textContent = "📶 Офлайн"; n.classList.add("offline"); }
+  else { n.textContent = "📶 Онлайн"; n.classList.remove("offline"); }
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
 window.addEventListener("hashchange", route);
 window.addEventListener("DOMContentLoaded", ()=>{
   initTheme();
   initNav();
   initAuth();
-  initReport();
-  initComments();
-  initDashboard();
-  initSearchBtn();
-  initHotkeys();
+  initTopMenus();
+  updateNetStatus();
   renderUserChip();
   route();
+  loadAnnouncement();
+  startHeartbeat();
+  if (state.student) startAutoBackup();
 });
+window.addEventListener("online",  ()=>{ updateNetStatus(); window.OfflineQueue?.flush(); });
+window.addEventListener("offline", updateNetStatus);
