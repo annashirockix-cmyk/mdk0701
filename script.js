@@ -2,6 +2,7 @@
    SPA-роутер и рендер МДК 07.01
    + авторизация с хранением прогресса по каждому студенту
    + экспорт/импорт профиля (.json)
+   + просмотр PDF в модалке
    + отправка отчёта через Google Apps Script
    ============================================================ */
 
@@ -34,8 +35,8 @@ function loadStudentData(){
     state.selfResults = {};
     return;
   }
-  state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress." + k)    || "{}");
-  state.results     = JSON.parse(localStorage.getItem("mdk0701.results." + k)     || "{}");
+  state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress."    + k) || "{}");
+  state.results     = JSON.parse(localStorage.getItem("mdk0701.results."     + k) || "{}");
   state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + k) || "{}");
 }
 
@@ -99,7 +100,6 @@ function initAuth(){
       return;
     }
 
-    // был другой студент → сохранить его данные
     if (state.student) saveStudentData();
 
     const isReturning = localStorage.getItem(
@@ -136,7 +136,6 @@ function initAuth(){
     inp.addEventListener("input", ()=>{ inp.style.borderColor = ""; });
   });
 
-  // Клик по чипу — меню профиля
   const chip = document.getElementById("userChip");
   if (chip){
     chip.addEventListener("click", openUserMenu);
@@ -156,7 +155,6 @@ function renderUserChip(){
 
 /* ---------- меню профиля ---------- */
 function openUserMenu(){
-  // закрыть старое, если открыто
   document.querySelectorAll(".user-menu").forEach(m=>m.remove());
 
   const chip = document.getElementById("userChip");
@@ -176,12 +174,10 @@ function openUserMenu(){
   `);
   document.body.appendChild(menu);
 
-  // позиционирование
   menu.style.position = "fixed";
   menu.style.top = (rect.bottom + 8) + "px";
   menu.style.right = (window.innerWidth - rect.right) + "px";
 
-  // закрытие по клику вне
   const close = (e)=>{
     if (!menu.contains(e.target) && e.target !== chip) {
       menu.remove();
@@ -190,7 +186,6 @@ function openUserMenu(){
   };
   setTimeout(()=>document.addEventListener("click", close), 0);
 
-  // обработчики
   menu.querySelector('[data-act="switch"]').addEventListener("click", ()=>{
     menu.remove();
     if (!confirm("Сменить пользователя? Ваш прогресс сохранён и будет доступен при следующем входе с теми же ФИО и группой.")) return;
@@ -413,24 +408,33 @@ function renderHome(){
     app.appendChild(list);
   });
 
+  /* Паспорта станков — с просмотром PDF в модалке */
   if (COURSE.passports && COURSE.passports.length){
     app.appendChild(el(`<div class="steps-title">Паспорта станков</div>`));
     const block = el(`<section class="module">
       <div class="meta">Справочные материалы</div>
       <h2>Паспорта станков</h2>
-      <p class="sub">PDF-файлы из папки <code>passport/</code>. Открываются в новой вкладке.</p>
+      <p class="sub">PDF-файлы из папки <code>passport/</code>. Открываются прямо на странице.</p>
       <div class="doc-grid"></div>
     </section>`);
     const grid = block.querySelector(".doc-grid");
     COURSE.passports.forEach(p=>{
-      grid.appendChild(el(`
-        <a class="doc-card" href="${p.file}" target="_blank" rel="noopener">
+      const card = el(`
+        <div class="doc-card" role="button" tabindex="0">
           <div class="doc-code">${p.code}</div>
           <div class="doc-title">${p.title}</div>
           <div class="doc-summary">${p.summary}</div>
           <div class="doc-action">Открыть PDF →</div>
-        </a>
-      `));
+        </div>
+      `);
+      card.addEventListener("click", ()=>openPdfModal(p.file, p.title));
+      card.addEventListener("keydown", (e)=>{
+        if (e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          openPdfModal(p.file, p.title);
+        }
+      });
+      grid.appendChild(card);
     });
     app.appendChild(block);
   }
@@ -739,6 +743,45 @@ function renderTest(panel, t){
     result.textContent = ""; result.className = "test-result";
   });
   panel.appendChild(form);
+}
+
+/* ============================================================
+   ПРОСМОТР PDF В МОДАЛКЕ
+   ============================================================ */
+function openPdfModal(file, title){
+  document.querySelectorAll(".pdf-overlay").forEach(x=>x.remove());
+
+  const modal = el(`
+    <div class="pdf-overlay">
+      <div class="pdf-modal">
+        <div class="pdf-head">
+          <div class="pdf-title">${title}</div>
+          <div class="pdf-actions">
+            <a class="btn ghost" href="${file}" download>⬇ Скачать</a>
+            <a class="btn ghost" href="${file}" target="_blank" rel="noopener">↗ В новой вкладке</a>
+            <button class="btn" id="pdfClose">✕ Закрыть</button>
+          </div>
+        </div>
+        <div class="pdf-body">
+          <iframe src="${file}#view=FitH" title="${title}" loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+  `);
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+
+  modal.querySelector("#pdfClose").addEventListener("click", closePdf);
+  modal.addEventListener("click", (e)=>{ if (e.target === modal) closePdf(); });
+
+  function closePdf(){
+    modal.remove();
+    document.body.style.overflow = "";
+    document.removeEventListener("keydown", onEsc);
+  }
+  function onEsc(e){ if (e.key === "Escape") closePdf(); }
+  document.addEventListener("keydown", onEsc);
 }
 
 /* ============================================================
