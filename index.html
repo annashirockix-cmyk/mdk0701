@@ -11,7 +11,6 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjYzE0YTJhIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI5NiIgcj0iNTIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI5NiIgY3k9Ijk2IiByPSIyOCIgZmlsbD0iI2MxNGEyYSIvPjwvc3ZnPg==">
 
-<!-- Применяем тему ДО отрисовки, чтобы не было вспышки светлым -->
 <script>
   (function(){
     try {
@@ -29,12 +28,12 @@
 </head>
 <body>
 
-<!-- ЭКРАН ВХОДА -->
+<!-- ЭКРАН ВХОДА СТУДЕНТА -->
 <div class="login-overlay" id="loginOverlay" hidden>
   <div class="login-card">
     <div class="login-brand">
       <span class="brand-badge">МДК 07.01</span>
-      <h1>Вход в систему</h1>
+      <h1>Вход студента</h1>
     </div>
     <p class="login-sub">Введите свои данные, чтобы начать работу. Прогресс сохранится в браузере и в облаке.</p>
 
@@ -55,6 +54,9 @@
 
     <button id="loginBtn" class="btn login-btn">Войти</button>
     <p class="login-hint">Если вы уже заходили с другого устройства — введите те же ФИО и группу.</p>
+    <p class="login-hint">
+      <a href="#/staff" style="color:var(--accent);text-decoration:underline">Служебный вход для сотрудников →</a>
+    </p>
   </div>
 </div>
 
@@ -88,6 +90,7 @@
   <button class="topbar-btn" id="chatBtn" title="Чат группы" aria-label="Чат">💭</button>
   <button class="topbar-btn" id="questionsBtn" title="Вопросы преподавателю" aria-label="Вопросы">❓</button>
   <button class="topbar-btn" id="dashboardBtn" title="Статистика" aria-label="Статистика">📊</button>
+  <button class="topbar-btn" id="staffBtn" title="Служебный вход" aria-label="Служебный вход">👤</button>
   <button class="topbar-btn" id="moreBtn" title="Ещё" aria-label="Ещё">⋯</button>
   <button class="theme-toggle" id="themeToggle" title="Сменить тему" aria-label="Сменить тему">
     <span class="theme-icon" id="themeIcon">🎨</span>
@@ -104,7 +107,7 @@
 <main id="app"></main>
 
 <footer class="footer">
-  ГБПОУ МО «Луховицкий авиационный техникум» · Профессионалитет · 2024
+  ГБПОУ МО «Луховицкий авиационный технический техникум» · Профессионалитет · 2024
 </footer>
 
 <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
