@@ -60,16 +60,16 @@
   </div>
 </div>
 
-<!-- ШАПКА -->
+<!-- ТОНКАЯ ВЕРХНЯЯ ПОЛОСА -->
 <header class="topbar">
-  <div class="nav-group">
-    <button class="nav-btn" id="navBack" title="Назад" aria-label="Назад">←</button>
-    <button class="nav-btn" id="navForward" title="Вперёд" aria-label="Вперёд">→</button>
-    <a class="brand" href="#/" onclick="goHome(event)">
-      <span class="brand-badge">МДК 07.01</span>
-      <span class="brand-title">Оператор станков с ПУ</span>
-    </a>
-  </div>
+  <button class="burger-btn" id="burgerBtn" title="Меню" aria-label="Меню">
+    <span></span><span></span><span></span>
+  </button>
+
+  <a class="brand" href="#/" onclick="goHome(event)">
+    <span class="brand-badge">МДК 07.01</span>
+    <span class="brand-title">Оператор станков с ПУ</span>
+  </a>
 
   <div class="crumbs" id="crumbs"></div>
 
@@ -78,24 +78,58 @@
     <span class="status-pill" id="netStatus" title="Соединение">📶</span>
   </div>
 
-  <div class="user-chip" id="userChip" title="Меню профиля" hidden>
-    <span class="user-chip-avatar" id="userChipAvatar">👨‍🎓</span>
-    <span class="user-chip-info">
-      <span class="user-chip-name" id="userChipName"></span>
-      <span class="user-chip-group" id="userChipGroup"></span>
-    </span>
-  </div>
-
-  <button class="topbar-btn" id="searchBtn" title="Поиск (Ctrl+K)" aria-label="Поиск">🔍</button>
-  <button class="topbar-btn" id="chatBtn" title="Чат группы" aria-label="Чат">💭</button>
-  <button class="topbar-btn" id="questionsBtn" title="Вопросы преподавателю" aria-label="Вопросы">❓</button>
-  <button class="topbar-btn" id="dashboardBtn" title="Статистика" aria-label="Статистика">📊</button>
-  <button class="topbar-btn" id="roleBtn" title="Сменить роль / Служебный вход" aria-label="Сменить роль">🎭</button>
-  <button class="topbar-btn" id="moreBtn" title="Ещё" aria-label="Ещё">⋯</button>
   <button class="theme-toggle" id="themeToggle" title="Сменить тему" aria-label="Сменить тему">
     <span class="theme-icon" id="themeIcon">🎨</span>
   </button>
 </header>
+
+<!-- ЗАТЕМНЕНИЕ ПОД ШТОРКОЙ -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+
+<!-- БОКОВАЯ ШТОРКА -->
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div class="drawer-user">
+      <span class="drawer-user-avatar" id="userChipAvatar">👨‍🎓</span>
+      <div class="drawer-user-info">
+        <div class="drawer-user-name" id="userChipName">Гость</div>
+        <div class="drawer-user-group" id="userChipGroup">—</div>
+      </div>
+    </div>
+    <button class="drawer-close" id="drawerClose" title="Закрыть" aria-label="Закрыть">✕</button>
+  </div>
+
+  <nav class="drawer-nav" id="drawerNav">
+    <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
+
+    <div class="drawer-section">Итоговые блоки</div>
+    <a class="drawer-item" data-go="#/final-training">🏋️ <span>Итоговая тренировка</span></a>
+    <a class="drawer-item" data-go="#/final-exam">🎓 <span>Итоговый экзамен</span></a>
+    <a class="drawer-item" data-go="#/gcode-reference">📖 <span>G- и M-коды</span></a>
+    <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
+
+    <div class="drawer-section">Учёба и общение</div>
+    <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
+    <a class="drawer-item" data-go="#/comments">💬 <span>Отзывы о курсе</span></a>
+    <a class="drawer-item" data-go="#/chat">💭 <span>Чат группы</span></a>
+    <a class="drawer-item" data-go="#/questions">❓ <span>Вопросы преподавателю</span></a>
+    <a class="drawer-item" data-go="#/gallery">🖼 <span>Галерея работ</span></a>
+
+    <div class="drawer-section">Справочно</div>
+    <a class="drawer-item" data-go="#/calendar">📅 <span>Календарь</span></a>
+    <a class="drawer-item" data-go="#/gosts">📐 <span>ГОСТы</span></a>
+    <a class="drawer-item" data-go="#/qr">📱 <span>QR-код</span></a>
+  </nav>
+
+  <div class="drawer-foot">
+    <button class="drawer-item drawer-item-btn" id="drawerSearch">🔍 <span>Поиск (Ctrl+K)</span></button>
+    <button class="drawer-item drawer-item-btn" data-act="role">🎭 <span>Сменить роль</span></button>
+    <button class="drawer-item drawer-item-btn" data-act="theme">🌈 <span>Сменить тему</span></button>
+    <button class="drawer-item drawer-item-btn" data-act="staffcab" hidden id="drawerCabinetBtn">🛠 <span>Открыть кабинет</span></button>
+    <button class="drawer-item drawer-item-btn" data-act="sync" hidden id="drawerSyncBtn">☁ <span>Синхронизировать</span></button>
+    <button class="drawer-item drawer-item-btn danger" data-act="logout">🚪 <span>Выйти</span></button>
+  </div>
+</aside>
 
 <!-- БАННЕР ОБЪЯВЛЕНИЙ -->
 <div class="announce-bar" id="announceBar" hidden>

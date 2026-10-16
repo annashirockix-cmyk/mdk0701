@@ -1,7 +1,7 @@
 /* ============================================================
    МДК 07.01 — script.js
    Ядро: темы, видео, аватары, авторизация студента, смена роли,
-   облако, страницы тем, тесты, отчёты, роутер.
+   облако, страницы тем, тесты, отчёты, роутер, боковая шторка.
    ============================================================ */
 
 "use strict";
@@ -377,6 +377,99 @@ function validateGroup(v){
 }
 
 /* ============================================================
+   Боковая шторка
+   ============================================================ */
+function openDrawer(){
+  var d = $("drawer");
+  var ov = $("drawerOverlay");
+  if (d){ d.classList.add("open"); d.setAttribute("aria-hidden", "false"); }
+  if (ov) ov.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeDrawer(){
+  var d = $("drawer");
+  var ov = $("drawerOverlay");
+  if (d){ d.classList.remove("open"); d.setAttribute("aria-hidden", "true"); }
+  if (ov) ov.classList.remove("open");
+  document.body.style.overflow = "";
+}
+function toggleDrawer(){
+  var d = $("drawer");
+  if (d && d.classList.contains("open")) closeDrawer();
+  else openDrawer();
+}
+
+function initDrawer(){
+  var burger = $("burgerBtn");
+  var overlay = $("drawerOverlay");
+  var close = $("drawerClose");
+  if (burger) burger.addEventListener("click", toggleDrawer);
+  if (overlay) overlay.addEventListener("click", closeDrawer);
+  if (close) close.addEventListener("click", closeDrawer);
+
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape" && $("drawer") && $("drawer").classList.contains("open")) closeDrawer();
+  });
+
+  // Навигация — закрываем шторку при клике по ссылке
+  document.querySelectorAll("#drawerNav [data-go]").forEach(function(item){
+    item.addEventListener("click", function(e){
+      e.preventDefault();
+      var go = item.dataset.go;
+      closeDrawer();
+      setTimeout(function(){ location.hash = go; }, 120);
+    });
+  });
+
+  // Действия в подвале шторки
+  var search = $("drawerSearch");
+  if (search) search.addEventListener("click", function(){ closeDrawer(); if (window.openSearch) window.openSearch(); });
+
+  var role = document.querySelector('#drawer [data-act="role"]');
+  if (role) role.addEventListener("click", function(){ closeDrawer(); openRoleModal(); });
+
+  var theme = document.querySelector('#drawer [data-act="theme"]');
+  if (theme) theme.addEventListener("click", function(){ closeDrawer(); openThemeModal(); });
+
+  var sync = $("drawerSyncBtn");
+  if (sync) sync.addEventListener("click", function(){
+    closeDrawer();
+    cloudSave(false).then(function(ok){ if (ok) alert("Прогресс отправлен в облако."); });
+  });
+
+  var cab = $("drawerCabinetBtn");
+  if (cab) cab.addEventListener("click", function(){ closeDrawer(); location.hash = "#/staff"; });
+
+  var logout = document.querySelector('#drawer [data-act="logout"]');
+  if (logout) logout.addEventListener("click", function(){ closeDrawer(); handleLogout(); });
+}
+
+function handleLogout(){
+  if (state.staff){
+    state.staff = null;
+    saveStaffSession();
+    renderUserChip();
+    location.hash = "#/";
+    route();
+    return;
+  }
+  if (state.student){
+    if (!confirm("Выйти из аккаунта студента? Прогресс останется сохранён.")) return;
+    saveStudentData();
+    state.student = null;
+    saveStudent();
+    renderUserChip();
+    var ov = $("loginOverlay");
+    if (ov) ov.hidden = false;
+    document.body.style.overflow = "hidden";
+    var li = $("loginName"); if (li) li.value = "";
+    var lg = $("loginGroup"); if (lg) lg.value = "";
+    if (li) setTimeout(function(){ li.focus(); }, 60);
+    route();
+  }
+}
+
+/* ============================================================
    Авторизация студента
    ============================================================ */
 function initAuth(){
@@ -485,12 +578,6 @@ function initAuth(){
       openRoleModal();
     });
   }
-
-  var chip = $("userChip");
-  if (chip) chip.addEventListener("click", openUserMenu);
-
-  var roleBtn = $("roleBtn");
-  if (roleBtn) roleBtn.addEventListener("click", openRoleModal);
 }
 
 /* ============================================================
@@ -638,121 +725,37 @@ function openRoleModal(){
 }
 
 /* ============================================================
-   Чип и меню пользователя
+   Чип (в шторке)
    ============================================================ */
 function renderUserChip(){
-  var chip = $("userChip");
-  if (!chip) return;
+  var nameEl  = $("userChipName");
+  var groupEl = $("userChipGroup");
+  var avEl    = $("userChipAvatar");
+  var cab = $("drawerCabinetBtn");
+  var sync = $("drawerSyncBtn");
+
   if (state.staff){
-    chip.hidden = false;
-    $("userChipAvatar").textContent = "👤";
-    $("userChipName").textContent = state.staff.name;
-    $("userChipGroup").textContent = "[" + (state.staff.role || "staff") + "]";
+    if (avEl)    avEl.textContent = "👤";
+    if (nameEl)  nameEl.textContent = state.staff.name;
+    if (groupEl) groupEl.textContent = "[" + (state.staff.role || "staff") +
+      (state.staff.group ? " · " + state.staff.group : "") + "]";
+    if (cab)  cab.hidden = false;
+    if (sync) sync.hidden = true;
     return;
   }
   if (state.student){
-    chip.hidden = false;
-    $("userChipAvatar").textContent = getAvatar();
-    $("userChipName").textContent = state.student.name;
-    $("userChipGroup").textContent = "Гр. " + state.student.group;
+    if (avEl)    avEl.textContent = getAvatar();
+    if (nameEl)  nameEl.textContent = state.student.name;
+    if (groupEl) groupEl.textContent = "Гр. " + state.student.group;
+    if (cab)  cab.hidden = true;
+    if (sync) sync.hidden = false;
     return;
   }
-  chip.hidden = true;
-}
-
-function openUserMenu(){
-  document.querySelectorAll(".user-menu, .more-menu").forEach(function(m){ m.remove(); });
-  var chip = $("userChip");
-  if (!chip) return;
-  var rect = chip.getBoundingClientRect();
-
-  var isStaff = !!state.staff;
-  var headerInfo = "";
-  if (isStaff){
-    headerInfo =
-      '<div class="user-menu-name">' + escapeHtml(state.staff.name) + '</div>' +
-      '<div class="user-menu-group">Роль: ' + escapeHtml(state.staff.role) +
-      (state.staff.group ? " · " + escapeHtml(state.staff.group) : "") + '</div>';
-  } else {
-    headerInfo =
-      '<div class="user-menu-name">' + escapeHtml(state.student ? state.student.name : "—") + '</div>' +
-      '<div class="user-menu-group">Группа ' + escapeHtml(state.student ? state.student.group : "—") + '</div>';
-  }
-
-  var avatar = isStaff ? "👤" : getAvatar();
-
-  var html =
-    '<div class="user-menu">' +
-      '<div class="user-menu-head">' +
-        '<span class="user-menu-avatar">' + avatar + '</span>' +
-        '<div class="user-menu-headtext">' + headerInfo + '</div>' +
-      '</div>' +
-      '<button class="user-menu-item" data-act="role">🎭 Сменить роль</button>' +
-      '<button class="user-menu-item" data-act="theme">🌈 Сменить тему</button>';
-
-  if (!isStaff){
-    html +=
-      '<button class="user-menu-item" data-act="dashboard">📊 Статистика</button>' +
-      '<button class="user-menu-item" data-act="sync">☁ Синхронизировать</button>';
-  } else {
-    html += '<button class="user-menu-item" data-act="staffcab">🛠 Открыть кабинет</button>';
-  }
-  html += '<button class="user-menu-item danger" data-act="logout">🚪 Выйти</button></div>';
-
-  var menu = el(html);
-  document.body.appendChild(menu);
-  menu.style.position = "fixed";
-  menu.style.top = (rect.bottom + 8) + "px";
-  menu.style.right = Math.max(8, window.innerWidth - rect.right) + "px";
-
-  function close(e){
-    if (!menu.contains(e.target) && e.target !== chip){
-      menu.remove();
-      document.removeEventListener("click", close);
-    }
-  }
-  setTimeout(function(){ document.addEventListener("click", close); }, 0);
-
-  menu.querySelector('[data-act="role"]').addEventListener("click", function(){ menu.remove(); openRoleModal(); });
-  menu.querySelector('[data-act="theme"]').addEventListener("click", function(){ menu.remove(); openThemeModal(); });
-
-  var dash = menu.querySelector('[data-act="dashboard"]');
-  if (dash) dash.addEventListener("click", function(){ menu.remove(); location.hash = "#/dashboard"; });
-
-  var sync = menu.querySelector('[data-act="sync"]');
-  if (sync) sync.addEventListener("click", function(){
-    menu.remove();
-    cloudSave(false).then(function(ok){ if (ok) alert("Прогресс отправлен в облако."); });
-  });
-
-  var cab = menu.querySelector('[data-act="staffcab"]');
-  if (cab) cab.addEventListener("click", function(){ menu.remove(); location.hash = "#/staff"; });
-
-  menu.querySelector('[data-act="logout"]').addEventListener("click", function(){
-    menu.remove();
-    if (state.staff){
-      state.staff = null;
-      saveStaffSession();
-      renderUserChip();
-      location.hash = "#/";
-      route();
-      return;
-    }
-    if (state.student){
-      if (!confirm("Выйти из аккаунта студента? Прогресс останется сохранён.")) return;
-      saveStudentData();
-      state.student = null;
-      saveStudent();
-      renderUserChip();
-      var ov = $("loginOverlay");
-      if (ov) ov.hidden = false;
-      document.body.style.overflow = "hidden";
-      var li = $("loginName"); if (li) li.value = "";
-      var lg = $("loginGroup"); if (lg) lg.value = "";
-      if (li) setTimeout(function(){ li.focus(); }, 60);
-      route();
-    }
-  });
+  if (avEl)    avEl.textContent = "👨‍🎓";
+  if (nameEl)  nameEl.textContent = "Гость";
+  if (groupEl) groupEl.textContent = "—";
+  if (cab)  cab.hidden = true;
+  if (sync) sync.hidden = true;
 }
 
 /* ============================================================
@@ -804,7 +807,6 @@ function renderHome(){
     heroHtml += '<div class="hero-quote">' + quoteOfDay() + '</div></section>';
     app.appendChild(el(heroHtml));
 
-    // ----- Быстрые ссылки -----
     app.appendChild(el('<div class="steps-title">Итоговые блоки</div>'));
     var finals = el('<div class="steps"></div>');
     [["🏋️","Итоговая тренировка","#/final-training"],
@@ -824,7 +826,6 @@ function renderHome(){
       });
     app.appendChild(finals);
 
-    // ----- Как устроена тема -----
     app.appendChild(el('<div class="steps-title">Как устроена тема</div>'));
     var stepsWrap = el('<div class="steps"></div>');
     [["01","Паспорт часов"],["02","Лекция"],["03","Практические"],["04","Самостоятельная"],["05","Контроль темы"]]
@@ -835,7 +836,6 @@ function renderHome(){
       });
     app.appendChild(stepsWrap);
 
-    // ----- Темы -----
     c.sections.forEach(function(sec){
       app.appendChild(el(
         '<div class="steps-title">' + escapeHtml(sec.code) + ' · ' + escapeHtml(sec.title) +
@@ -861,7 +861,6 @@ function renderHome(){
       app.appendChild(list);
     });
 
-    // ----- Паспорта станков -----
     if (c.passports && c.passports.length){
       app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
       var block = el(
@@ -887,7 +886,6 @@ function renderHome(){
       app.appendChild(block);
     }
 
-    // ----- Охрана труда -----
     if (c.safety && c.safety.length){
       app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
       var block2 = el(
@@ -911,7 +909,6 @@ function renderHome(){
       app.appendChild(block2);
     }
 
-    // ----- ВИДЕО (из COURSE.videos) -----
     if (c.videos && c.videos.length){
       app.appendChild(el('<div class="steps-title">История робототехники СССР</div>'));
       var vidsBlock = el(
@@ -936,7 +933,6 @@ function renderHome(){
       app.appendChild(vidsBlock);
     }
 
-    // ----- Комментарии -----
     if (window.renderCommentsBlock && state.student){
       app.appendChild(window.renderCommentsBlock());
     }
@@ -1430,77 +1426,13 @@ function openPdfModal(file, title){
 }
 
 /* ============================================================
-   Верхнее меню
+   Подсветка активного пункта в шторке
    ============================================================ */
 function setActiveTopBtn(which){
-  var map = { dashboard:"dashboardBtn", chat:"chatBtn", questions:"questionsBtn", role:"roleBtn" };
-  Object.keys(map).forEach(function(k){
-    var b = $(map[k]);
-    if (b) b.classList.toggle("active", which === k);
-  });
-}
-
-function initTopMenus(){
-  var s = $("searchBtn");
-  if (s) s.addEventListener("click", function(){ if (window.openSearch) window.openSearch(); });
-
-  var c = $("chatBtn");
-  if (c) c.addEventListener("click", function(){
-    if (!state.student){ alert("Чат доступен после входа как студент."); return; }
-    location.hash = "#/chat";
-  });
-
-  var q = $("questionsBtn");
-  if (q) q.addEventListener("click", function(){ location.hash = "#/questions"; });
-
-  var d = $("dashboardBtn");
-  if (d) d.addEventListener("click", function(){
-    if (!state.student){ alert("Статистика доступна после входа как студент."); return; }
-    location.hash = "#/dashboard";
-  });
-
-  var r = $("roleBtn");
-  if (r) r.addEventListener("click", openRoleModal);
-
-  var m = $("moreBtn");
-  if (m) m.addEventListener("click", openMoreMenu);
-}
-
-function openMoreMenu(){
-  document.querySelectorAll(".more-menu, .user-menu").forEach(function(x){ x.remove(); });
-  var btn = $("moreBtn");
-  if (!btn) return;
-  var rect = btn.getBoundingClientRect();
-
-  var menu = el(
-    '<div class="more-menu">' +
-      '<button class="more-menu-item" data-go="#/final-training">🏋️ Итоговая тренировка (все вопросы)</button>' +
-      '<button class="more-menu-item" data-go="#/links">📚 Полезные материалы (статьи, видео, книги)</button>' +
-      '<button class="more-menu-item" data-go="#/final-exam">🎓 Итоговый экзамен (25 вопросов)</button>' +
-      '<button class="more-menu-item" data-go="#/gcode-reference">📖 G- и M-коды (справочник)</button>' +
-      '<button class="more-menu-item" data-go="#/dashboard">📊 Статистика и работы</button>' +
-      '<button class="more-menu-item" data-go="#/comments">💬 Отзывы о курсе</button>' +
-      '<button class="more-menu-item" data-go="#/gallery">🖼 Галерея работ</button>' +
-      '<button class="more-menu-item" data-go="#/calendar">📅 Календарь</button>' +
-      '<button class="more-menu-item" data-go="#/gosts">📐 ГОСТы</button>' +
-      '<button class="more-menu-item" data-go="#/qr">📱 QR-код</button>' +
-      '<button class="more-menu-item" data-act="role">🎭 Сменить роль</button>' +
-    '</div>'
-  );
-  document.body.appendChild(menu);
-  menu.style.position = "fixed";
-  menu.style.top = (rect.bottom + 8) + "px";
-  menu.style.right = Math.max(8, window.innerWidth - rect.right) + "px";
-  function close(e){
-    if (!menu.contains(e.target) && e.target !== btn){ menu.remove(); document.removeEventListener("click", close); }
-  }
-  setTimeout(function(){ document.addEventListener("click", close); }, 0);
-  menu.querySelectorAll("[data-go]").forEach(function(b){
-    b.addEventListener("click", function(){ menu.remove(); location.hash = b.dataset.go; });
-  });
-  menu.querySelector('[data-act="role"]').addEventListener("click", function(){
-    menu.remove();
-    openRoleModal();
+  document.querySelectorAll(".drawer-item[data-go]").forEach(function(item){
+    var go = item.dataset.go;
+    var active = which && go === "#/" + which;
+    item.classList.toggle("active", !!active);
   });
 }
 
@@ -1626,7 +1558,10 @@ function updateNetStatus(){
 window.goHome = goHome;
 window.openRoleModal = openRoleModal;
 
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", function(){
+  closeDrawer();
+  route();
+});
 window.addEventListener("online",  function(){ updateNetStatus(); if (window.OfflineQueue) window.OfflineQueue.flush(); });
 window.addEventListener("offline", updateNetStatus);
 
@@ -1634,7 +1569,7 @@ window.addEventListener("DOMContentLoaded", function(){
   try {
     initTheme();
     initAuth();
-    initTopMenus();
+    initDrawer();
     renderUserChip();
     updateNetStatus();
 
