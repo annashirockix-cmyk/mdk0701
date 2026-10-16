@@ -449,3 +449,10 @@ html[data-theme="dark"] .user-menu-item.danger:hover{background:rgba(255,110,94,
   .module{padding:20px 18px}
   .topbar-btn, .theme-toggle, .nav-btn{width:32px;height:32px;font-size:14px}
 }
+.sync-status{
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 12px;
+  color: var(--ok);
+  min-height: 14px;
+}

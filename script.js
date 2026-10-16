@@ -1,59 +1,133 @@
 /* ============================================================
    SPA-роутер и рендер МДК 07.01
-   + авторизация с хранением прогресса по каждому студенту
-   + экспорт/импорт профиля (.json)
+   + авторизация
+   + синхронизация прогресса через Google Apps Script
    + просмотр PDF в модалке
-   + отправка отчёта через Google Apps Script
+   + отправка отчёта
    ============================================================ */
 
-const REPORT_EMAIL = "camelia.2110@yandex.ru";
+const REPORT_EMAIL   = "camelia.2110@yandex.ru";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 
 const state = {
   student: JSON.parse(localStorage.getItem("mdk0701.student") || "null"),
   progress: {},
   results: {},
-  selfResults: {}
+  selfResults: {},
+  lastSync: localStorage.getItem("mdk0701.lastSync") || ""
 };
 
+/* ---------- ключ студента ---------- */
 function studentKey(s){
   s = s || state.student;
   if (!s || !s.name || !s.group) return null;
-  return encodeURIComponent(s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase());
+  return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase());
 }
 
+/* ---------- локальное хранилище ---------- */
 function loadStudentData(){
   const k = studentKey();
   if (!k){
-    state.progress = {};
-    state.results = {};
-    state.selfResults = {};
+    state.progress = {}; state.results = {}; state.selfResults = {};
     return;
   }
-  state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress."    + k) || "{}");
-  state.results     = JSON.parse(localStorage.getItem("mdk0701.results."     + k) || "{}");
-  state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + k) || "{}");
+  const ek = encodeURIComponent(k);
+  state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress."    + ek) || "{}");
+  state.results     = JSON.parse(localStorage.getItem("mdk0701.results."     + ek) || "{}");
+  state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
+  state.lastSync    = localStorage.getItem("mdk0701.lastSync." + ek) || "";
 }
 
 function saveStudentData(){
   const k = studentKey();
   if (!k) return;
-  localStorage.setItem("mdk0701.progress."    + k, JSON.stringify(state.progress));
-  localStorage.setItem("mdk0701.results."     + k, JSON.stringify(state.results));
-  localStorage.setItem("mdk0701.selfResults." + k, JSON.stringify(state.selfResults));
+  const ek = encodeURIComponent(k);
+  localStorage.setItem("mdk0701.progress."    + ek, JSON.stringify(state.progress));
+  localStorage.setItem("mdk0701.results."     + ek, JSON.stringify(state.results));
+  localStorage.setItem("mdk0701.selfResults." + ek, JSON.stringify(state.selfResults));
+  if (state.lastSync){
+    localStorage.setItem("mdk0701.lastSync." + ek, state.lastSync);
+  }
+}
+function saveStudent(){ localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); }
+function saveProgress(){ saveStudentData(); scheduleCloudSave(); }
+function saveResults(){ saveStudentData(); scheduleCloudSave(); }
+function saveSelfResults(){ saveStudentData(); scheduleCloudSave(); }
+
+/* ---------- синхронизация с облаком ---------- */
+let cloudTimer = null;
+let cloudBusy = false;
+
+function scheduleCloudSave(){
+  if (cloudTimer) clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(()=>{ cloudSave(); }, 3000);
 }
 
-function saveStudent(){ localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); }
-function saveProgress(){ saveStudentData(); }
-function saveResults(){ saveStudentData(); }
-function saveSelfResults(){ saveStudentData(); }
+async function cloudSave(silent){
+  if (!state.student || cloudBusy) return false;
+  cloudBusy = true;
+  if (!silent) setSyncStatus("Отправляем…");
 
+  const params = new URLSearchParams();
+  params.append("action", "save");
+  params.append("key",    studentKey());
+  params.append("name",   state.student.name);
+  params.append("group",  state.student.group);
+  params.append("payload", JSON.stringify({
+    progress: state.progress,
+    results: state.results,
+    selfResults: state.selfResults
+  }));
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
+    const data = await res.json();
+    if (data && data.ok){
+      state.lastSync = data.savedAt || new Date().toISOString();
+      const k = studentKey();
+      if (k) localStorage.setItem("mdk0701.lastSync." + encodeURIComponent(k), state.lastSync);
+      if (!silent) setSyncStatus("✔ Синхронизировано");
+      cloudBusy = false;
+      return true;
+    }
+    if (!silent) setSyncStatus("Ошибка сервера");
+  } catch (err){
+    if (!silent) setSyncStatus("Нет связи с облаком");
+  }
+  cloudBusy = false;
+  return false;
+}
+
+async function cloudLoad(){
+  if (!state.student) return null;
+  const params = new URLSearchParams();
+  params.append("action", "load");
+  params.append("key",    studentKey());
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + "?" + params.toString(), { method:"GET" });
+    const data = await res.json();
+    if (data && data.ok && data.payload){
+      return { payload: JSON.parse(data.payload), savedAt: data.savedAt || "" };
+    }
+  } catch (err){ /* тихо игнорируем — оффлайн */ }
+  return null;
+}
+
+function setSyncStatus(text){
+  const el = document.getElementById("syncStatus");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "sync-status";
+  setTimeout(()=>{ if (el.textContent === text) el.textContent = ""; }, 3000);
+}
+
+/* ---------- утилиты ---------- */
 function el(html){
   const t = document.createElement("template");
   t.innerHTML = html.trim();
   return t.content.firstChild;
 }
-
 function findTopic(id){
   for (const s of COURSE.sections)
     for (const t of s.topics) if (t.id === id) return { section: s, topic: t };
@@ -77,27 +151,31 @@ function initAuth(){
     loadStudentData();
     overlay.hidden = true;
     document.body.style.overflow = "";
+    // тихая догрузка из облака при старте
+    setTimeout(async ()=>{
+      const cloud = await cloudLoad();
+      if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
+        state.progress    = cloud.payload.progress    || {};
+        state.results     = cloud.payload.results     || {};
+        state.selfResults = cloud.payload.selfResults || {};
+        state.lastSync    = cloud.savedAt;
+        saveStudentData();
+        renderHome();
+      }
+    }, 500);
   }
 
-  btn.addEventListener("click", ()=>{
+  btn.addEventListener("click", async ()=>{
     const name = (nameInput.value || "").trim();
     const group = (groupInput.value || "").trim();
     if (!name || name.length < 3){
-      nameInput.focus();
-      nameInput.style.borderColor = "var(--err)";
-      return;
+      nameInput.focus(); nameInput.style.borderColor = "var(--err)"; return;
     }
     if (!group || group.length < 2){
-      groupInput.focus();
-      groupInput.style.borderColor = "var(--err)";
-      return;
+      groupInput.focus(); groupInput.style.borderColor = "var(--err)"; return;
     }
 
     if (state.student) saveStudentData();
-
-    const isReturning = localStorage.getItem(
-      "mdk0701.progress." + encodeURIComponent(name.toLowerCase() + "|" + group.toLowerCase())
-    ) !== null;
 
     state.student = { name, group, loginAt: new Date().toISOString() };
     saveStudent();
@@ -106,18 +184,22 @@ function initAuth(){
     overlay.hidden = true;
     document.body.style.overflow = "";
     renderUserChip();
-    renderHome();
 
-    if (!isReturning){
-      setTimeout(()=>{
-        alert(
-          "Добро пожаловать!\n\n" +
-          "Ваш прогресс сохраняется в этом браузере.\n" +
-          "Чтобы перенести его на другое устройство —\n" +
-          "нажмите на свой профиль в правом верхнем углу\n" +
-          "и выберите «Скачать профиль»."
-        );
-      }, 300);
+    // пробуем достать облако
+    const cloud = await cloudLoad();
+    let restored = false;
+    if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
+      state.progress    = cloud.payload.progress    || {};
+      state.results     = cloud.payload.results     || {};
+      state.selfResults = cloud.payload.selfResults || {};
+      state.lastSync    = cloud.savedAt;
+      saveStudentData();
+      restored = true;
+    }
+
+    renderHome();
+    if (restored){
+      alert("Прогресс восстановлен из облака.");
     }
   });
 
@@ -141,6 +223,7 @@ function renderUserChip(){
   groupEl.textContent = "Гр. " + state.student.group;
 }
 
+/* ---------- меню профиля ---------- */
 function openUserMenu(){
   document.querySelectorAll(".user-menu").forEach(m=>m.remove());
   const chip = document.getElementById("userChip");
@@ -152,6 +235,7 @@ function openUserMenu(){
         <div class="user-menu-name">${state.student.name}</div>
         <div class="user-menu-group">Группа ${state.student.group}</div>
       </div>
+      <button class="user-menu-item" data-act="sync">☁ Синхронизировать сейчас</button>
       <button class="user-menu-item" data-act="switch">🔄 Сменить пользователя</button>
       <button class="user-menu-item" data-act="export">⬇️ Скачать профиль (.json)</button>
       <button class="user-menu-item" data-act="import">⬆️ Загрузить профиль (.json)</button>
@@ -159,7 +243,6 @@ function openUserMenu(){
     </div>
   `);
   document.body.appendChild(menu);
-
   menu.style.position = "fixed";
   menu.style.top = (rect.bottom + 8) + "px";
   menu.style.right = (window.innerWidth - rect.right) + "px";
@@ -172,9 +255,15 @@ function openUserMenu(){
   };
   setTimeout(()=>document.addEventListener("click", close), 0);
 
+  menu.querySelector('[data-act="sync"]').addEventListener("click", async ()=>{
+    menu.remove();
+    const ok = await cloudSave(false);
+    if (ok) alert("Прогресс отправлен в облако.");
+  });
+
   menu.querySelector('[data-act="switch"]').addEventListener("click", ()=>{
     menu.remove();
-    if (!confirm("Сменить пользователя? Ваш прогресс сохранён и будет доступен при следующем входе с теми же ФИО и группой.")) return;
+    if (!confirm("Сменить пользователя? Ваш прогресс сохранён в этом браузере и в облаке.")) return;
     saveStudentData();
     state.student = null;
     state.progress = {};
@@ -191,30 +280,20 @@ function openUserMenu(){
   });
 
   menu.querySelector('[data-act="export"]').addEventListener("click", ()=>{
-    menu.remove();
-    exportProfile();
+    menu.remove(); exportProfile();
   });
-
   menu.querySelector('[data-act="import"]').addEventListener("click", ()=>{
     menu.remove();
     const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json,application/json";
-    input.addEventListener("change", (e)=>{
-      const file = e.target.files[0];
-      if (file) importProfile(file);
-    });
+    input.type = "file"; input.accept = ".json,application/json";
+    input.addEventListener("change", (e)=>{ const f = e.target.files[0]; if (f) importProfile(f); });
     input.click();
   });
-
   menu.querySelector('[data-act="clear"]').addEventListener("click", ()=>{
     menu.remove();
     if (!confirm("Очистить ВЕСЬ прогресс (тесты, самостоятельные, открытые вкладки)?")) return;
-    state.progress = {};
-    state.results = {};
-    state.selfResults = {};
-    saveStudentData();
-    renderHome();
+    state.progress = {}; state.results = {}; state.selfResults = {};
+    saveStudentData(); renderHome(); cloudSave(true);
   });
 }
 
@@ -236,9 +315,7 @@ function exportProfile(){
   const safeGroup = s.group.replace(/[^\wа-яё\-]+/gi, "_");
   a.href = url;
   a.download = "mdk0701_" + safeName + "_" + safeGroup + ".json";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
@@ -249,23 +326,16 @@ function importProfile(file){
     try { data = JSON.parse(e.target.result); }
     catch (err){ alert("Не удалось прочитать файл: " + err.message); return; }
     if (!data || !data.student || !data.student.name){
-      alert("Это не файл профиля МДК 07.01.");
-      return;
+      alert("Это не файл профиля МДК 07.01."); return;
     }
-    if (!confirm(
-      "Загрузить профиль:\n" +
-      data.student.name + " (гр. " + data.student.group + ")\n\n" +
-      "Текущий прогресс в этом браузере будет заменён."
-    )) return;
-
+    if (!confirm("Загрузить профиль:\n" + data.student.name + " (гр. " + data.student.group + ")\n\nТекущий прогресс будет заменён.")) return;
     state.student = data.student;
     state.progress = data.progress || {};
     state.results = data.results || {};
     state.selfResults = data.selfResults || {};
-    saveStudent();
-    saveStudentData();
-    renderUserChip();
-    renderHome();
+    saveStudent(); saveStudentData();
+    renderUserChip(); renderHome();
+    cloudSave(true);
     alert("✔ Профиль загружен.");
   };
   reader.readAsText(file);
@@ -312,7 +382,8 @@ function renderHome(){
       <div class="meta">${COURSE.specialty} · набор 2024</div>
       <h1>${COURSE.title}</h1>
       <p>${COURSE.module}</p>
-      ${state.student ? `<div class="hello">Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.</div>` : ""}
+      ${state.student ? `<div class="hello">Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.
+        <span class="sync-status" id="syncStatus"></span></div>` : ""}
     </section>
   `));
 
@@ -642,7 +713,6 @@ function renderSelf(panel, t){
     const grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
     result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${grade}.`;
     result.className = "test-result " + (grade >= 3 ? "ok" : "bad");
-
     state.selfResults[t.id] = { ok, total, pct, grade, date: new Date().toISOString() };
     saveSelfResults();
   });
@@ -706,7 +776,6 @@ function renderTest(panel, t){
     if (pct >= 90) grade = 5; else if (pct >= 75) grade = 4; else if (pct >= 60) grade = 3;
     result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${grade}.`;
     result.className = "test-result " + (grade >= 3 ? "ok" : "bad");
-
     state.results[t.id] = { ok, total, pct, grade, date: new Date().toISOString() };
     saveResults();
   });
@@ -723,7 +792,6 @@ function renderTest(panel, t){
    ============================================================ */
 function openPdfModal(file, title){
   document.querySelectorAll(".pdf-overlay").forEach(x=>x.remove());
-
   const modal = el(`
     <div class="pdf-overlay">
       <div class="pdf-modal">
@@ -743,10 +811,8 @@ function openPdfModal(file, title){
   `);
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
-
   modal.querySelector("#pdfClose").addEventListener("click", closePdf);
   modal.addEventListener("click", (e)=>{ if (e.target === modal) closePdf(); });
-
   function closePdf(){
     modal.remove();
     document.body.style.overflow = "";
@@ -781,7 +847,6 @@ function buildReport(){
   lines.push("ОБЩИЙ ПРОГРЕСС");
   lines.push("Пройдено тем полностью: " + topicsDone + " из " + totalTopics);
   lines.push("");
-
   lines.push("ПРОГРЕСС ПО ТЕМАМ");
   COURSE.sections.forEach(sec=>{
     lines.push("— " + sec.code + ". " + sec.title);
@@ -826,7 +891,6 @@ function buildReport(){
 
 function openReportModal(){
   document.querySelectorAll(".report-overlay").forEach(x=>x.remove());
-
   const modal = el(`
     <div class="report-overlay">
       <div class="report-modal">
@@ -854,8 +918,8 @@ function openReportModal(){
     status.className = "report-status";
 
     const s = state.student || { name: "—", group: "—" };
-
     const params = new URLSearchParams();
+    params.append("action",  "report");
     params.append("student", s.name);
     params.append("group",   s.group);
     params.append("report",  buildReport());
