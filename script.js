@@ -1,6 +1,6 @@
 /* ============================================================
    МДК 07.01 — script.js
-   Ядро: темы, аватары, авторизация студента, смена роли,
+   Ядро: темы, видео, аватары, авторизация студента, смена роли,
    облако, страницы тем, тесты, отчёты, роутер.
    ============================================================ */
 
@@ -71,7 +71,7 @@ try {
 } catch (e){}
 
 /* ============================================================
-   Доступ к COURSE (безопасно для const/var)
+   Доступ к COURSE
    ============================================================ */
 function getCourse(){
   try { if (typeof COURSE !== "undefined" && COURSE && COURSE.sections) return COURSE; } catch (e){}
@@ -494,7 +494,7 @@ function initAuth(){
 }
 
 /* ============================================================
-   Смена роли (логин/пароль)
+   Смена роли
    ============================================================ */
 function openRoleModal(){
   document.querySelectorAll(".avatar-overlay").forEach(function(x){ x.remove(); });
@@ -804,12 +804,13 @@ function renderHome(){
     heroHtml += '<div class="hero-quote">' + quoteOfDay() + '</div></section>';
     app.appendChild(el(heroHtml));
 
-    // Быстрые ссылки на итоговые блоки
+    // ----- Быстрые ссылки -----
     app.appendChild(el('<div class="steps-title">Итоговые блоки</div>'));
     var finals = el('<div class="steps"></div>');
     [["🏋️","Итоговая тренировка","#/final-training"],
      ["🎓","Итоговый экзамен","#/final-exam"],
      ["📖","G- и M-коды","#/gcode-reference"],
+     ["📚","Полезные материалы","#/links"],
      ["📊","Статистика","#/dashboard"]]
       .forEach(function(item){
         var card = el(
@@ -823,6 +824,7 @@ function renderHome(){
       });
     app.appendChild(finals);
 
+    // ----- Как устроена тема -----
     app.appendChild(el('<div class="steps-title">Как устроена тема</div>'));
     var stepsWrap = el('<div class="steps"></div>');
     [["01","Паспорт часов"],["02","Лекция"],["03","Практические"],["04","Самостоятельная"],["05","Контроль темы"]]
@@ -833,6 +835,7 @@ function renderHome(){
       });
     app.appendChild(stepsWrap);
 
+    // ----- Темы -----
     c.sections.forEach(function(sec){
       app.appendChild(el(
         '<div class="steps-title">' + escapeHtml(sec.code) + ' · ' + escapeHtml(sec.title) +
@@ -858,6 +861,7 @@ function renderHome(){
       app.appendChild(list);
     });
 
+    // ----- Паспорта станков -----
     if (c.passports && c.passports.length){
       app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
       var block = el(
@@ -883,6 +887,7 @@ function renderHome(){
       app.appendChild(block);
     }
 
+    // ----- Охрана труда -----
     if (c.safety && c.safety.length){
       app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
       var block2 = el(
@@ -906,6 +911,32 @@ function renderHome(){
       app.appendChild(block2);
     }
 
+    // ----- ВИДЕО (из COURSE.videos) -----
+    if (c.videos && c.videos.length){
+      app.appendChild(el('<div class="steps-title">История робототехники СССР</div>'));
+      var vidsBlock = el(
+        '<section class="module">' +
+          '<div class="meta">Модуль 4 · Видеоматериалы</div>' +
+          '<h2>История робототехники СССР</h2>' +
+          '<p class="sub">Видеоматериалы к разделу. Просмотр — прямо на странице.</p>' +
+          '<div class="videos"></div>' +
+        '</section>'
+      );
+      var vwrap = vidsBlock.querySelector(".videos");
+      c.videos.forEach(function(v){
+        vwrap.appendChild(el(
+          '<div class="video-card">' +
+            '<video controls preload="metadata">' +
+              '<source src="' + v.src + '" type="video/mp4">' +
+            '</video>' +
+            '<div class="v-cap">' + escapeHtml(v.title) + '</div>' +
+          '</div>'
+        ));
+      });
+      app.appendChild(vidsBlock);
+    }
+
+    // ----- Комментарии -----
     if (window.renderCommentsBlock && state.student){
       app.appendChild(window.renderCommentsBlock());
     }
@@ -1156,7 +1187,7 @@ function renderSelf(panel, t){
 }
 
 /* ============================================================
-   Тесты (обычные, по теме)
+   Тесты по теме
    ============================================================ */
 var testTimerId = null;
 
@@ -1444,6 +1475,7 @@ function openMoreMenu(){
   var menu = el(
     '<div class="more-menu">' +
       '<button class="more-menu-item" data-go="#/final-training">🏋️ Итоговая тренировка (все вопросы)</button>' +
+      '<button class="more-menu-item" data-go="#/links">📚 Полезные материалы (статьи, видео, книги)</button>' +
       '<button class="more-menu-item" data-go="#/final-exam">🎓 Итоговый экзамен (25 вопросов)</button>' +
       '<button class="more-menu-item" data-go="#/gcode-reference">📖 G- и M-коды (справочник)</button>' +
       '<button class="more-menu-item" data-go="#/dashboard">📊 Статистика и работы</button>' +
@@ -1515,7 +1547,8 @@ function route(){
     qr:        function(){ if (window.renderQrPage)        window.renderQrPage();        },
     "final-training":  function(){ if (window.renderFinalTrainingPage) window.renderFinalTrainingPage(); },
     "final-exam":      function(){ if (window.renderFinalExamPage)     window.renderFinalExamPage();     },
-    "gcode-reference": function(){ if (window.renderGCodeReferencePage) window.renderGCodeReferencePage(); }
+    "gcode-reference": function(){ if (window.renderGCodeReferencePage) window.renderGCodeReferencePage(); },
+    links:             function(){ if (window.renderLinksPage)         window.renderLinksPage();         }
   };
 
   if (parts[0] === "topic" && parts[1]){
