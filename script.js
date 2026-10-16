@@ -1,5 +1,7 @@
 /* ============================================================
-   МДК 07.01 — script.js (исправлена загрузка COURSE)
+   МДК 07.01 — script.js
+   Ядро: темы, аватары, авторизация студента, смена роли,
+   облако, страницы тем, тесты, отчёты, роутер.
    ============================================================ */
 
 "use strict";
@@ -72,14 +74,8 @@ try {
    Доступ к COURSE (безопасно для const/var)
    ============================================================ */
 function getCourse(){
-  // data.js объявляет `const COURSE = {...}`, поэтому window.COURSE не создаётся.
-  // Проверяем разные варианты.
-  try {
-    if (typeof COURSE !== "undefined" && COURSE && COURSE.sections) return COURSE;
-  } catch (e){}
-  try {
-    if (typeof window !== "undefined" && window.COURSE && window.COURSE.sections) return window.COURSE;
-  } catch (e){}
+  try { if (typeof COURSE !== "undefined" && COURSE && COURSE.sections) return COURSE; } catch (e){}
+  try { if (typeof window !== "undefined" && window.COURSE && window.COURSE.sections) return window.COURSE; } catch (e){}
   return null;
 }
 
@@ -808,6 +804,24 @@ function renderHome(){
     heroHtml += '<div class="hero-quote">' + quoteOfDay() + '</div></section>';
     app.appendChild(el(heroHtml));
 
+    // Быстрые ссылки на итоговые блоки
+    app.appendChild(el('<div class="steps-title">Итоговые блоки</div>'));
+    var finals = el('<div class="steps"></div>');
+    [["🏋️","Итоговая тренировка","#/final-training"],
+     ["🎓","Итоговый экзамен","#/final-exam"],
+     ["📊","Статистика","#/dashboard"]]
+      .forEach(function(item){
+        var card = el(
+          '<div class="step" style="cursor:pointer">' +
+            '<div class="num">' + item[0] + '</div>' +
+            '<div class="name">' + item[1] + '</div>' +
+          '</div>'
+        );
+        card.addEventListener("click", function(){ location.hash = item[2]; });
+        finals.appendChild(card);
+      });
+    app.appendChild(finals);
+
     app.appendChild(el('<div class="steps-title">Как устроена тема</div>'));
     var stepsWrap = el('<div class="steps"></div>');
     [["01","Паспорт часов"],["02","Лекция"],["03","Практические"],["04","Самостоятельная"],["05","Контроль темы"]]
@@ -1026,9 +1040,18 @@ function renderPractice(panel, t){
       p.solution.forEach(function(s){ html += '<li>' + s + '</li>'; });
       html += '</ol></div>';
     }
+
+    html +=
+      '<div class="test-actions">' +
+        '<button class="btn ghost work-upload-btn">📎 Прикрепить работу</button>' +
+      '</div>';
+
     html += '</div>';
 
     var box = el(html);
+    box.querySelector(".work-upload-btn").addEventListener("click", function(){
+      if (window.openUploadModal) window.openUploadModal(t.id, p.code, p.title);
+    });
 
     if (p.variants && p.variants.rows && p.variants.rows.length){
       var v = el(
@@ -1132,7 +1155,7 @@ function renderSelf(panel, t){
 }
 
 /* ============================================================
-   Тесты
+   Тесты (обычные, по теме)
    ============================================================ */
 var testTimerId = null;
 
@@ -1419,6 +1442,9 @@ function openMoreMenu(){
 
   var menu = el(
     '<div class="more-menu">' +
+      '<button class="more-menu-item" data-go="#/final-training">🏋️ Итоговая тренировка (все вопросы)</button>' +
+      '<button class="more-menu-item" data-go="#/final-exam">🎓 Итоговый экзамен (25 вопросов)</button>' +
+      '<button class="more-menu-item" data-go="#/dashboard">📊 Статистика и работы</button>' +
       '<button class="more-menu-item" data-go="#/comments">💬 Отзывы о курсе</button>' +
       '<button class="more-menu-item" data-go="#/gallery">🖼 Галерея работ</button>' +
       '<button class="more-menu-item" data-go="#/calendar">📅 Календарь</button>' +
@@ -1484,7 +1510,9 @@ function route(){
     gallery:   function(){ if (window.renderGalleryPage)   window.renderGalleryPage();   },
     calendar:  function(){ if (window.renderCalendarPage)  window.renderCalendarPage();  },
     gosts:     function(){ if (window.renderGostsPage)     window.renderGostsPage();     },
-    qr:        function(){ if (window.renderQrPage)        window.renderQrPage();        }
+    qr:        function(){ if (window.renderQrPage)        window.renderQrPage();        },
+    "final-training": function(){ if (window.renderFinalTrainingPage) window.renderFinalTrainingPage(); },
+    "final-exam":     function(){ if (window.renderFinalExamPage)     window.renderFinalExamPage();     }
   };
 
   if (parts[0] === "topic" && parts[1]){
