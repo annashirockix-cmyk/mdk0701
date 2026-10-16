@@ -45,12 +45,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   display:flex;align-items:center;justify-content:center;
   padding:20px;background:rgba(0,0,0,.55);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  overflow-y:auto;
 }
 .login-overlay[hidden]{display:none}
 .login-card{
   background:var(--card);border:1px solid var(--border);border-radius:18px;
-  padding:32px 34px 28px;max-width:420px;width:100%;
+  padding:32px 34px 28px;max-width:460px;width:100%;
   box-shadow:0 20px 60px -20px rgba(0,0,0,.5);
+  max-height: calc(100vh - 40px);overflow-y:auto;
 }
 .login-brand{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .login-brand .brand-badge{
@@ -71,6 +73,25 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .login-card input:focus{border-color:var(--accent);background:var(--card);}
 .login-btn{width:100%;margin-top:22px;padding:14px;font-size:15px;font-weight:600;}
 .login-hint{margin:14px 0 0;color:var(--muted);font-size:12.5px;text-align:center;}
+
+/* ---------- Инлайн-выбор аватара на входе ---------- */
+.avatar-picker-inline{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:6px;
+  margin-top:2px;
+}
+.avatar-picker-inline .avatar-option{
+  aspect-ratio:1;border:2px solid var(--border);border-radius:10px;
+  background:var(--card-soft);font-size:18px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .15s, transform .12s, background .12s;
+  padding:0;
+}
+.avatar-picker-inline .avatar-option:hover{
+  border-color:var(--accent);transform:translateY(-1px);
+}
+.avatar-picker-inline .avatar-option.selected{
+  border-color:var(--accent);background:var(--accent-soft);
+}
 
 /* ---------- Шапка ---------- */
 .topbar{
@@ -94,14 +115,23 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .brand-title{font-size:14px;color:var(--text)}
 .crumbs{margin-left:auto;color:var(--muted);font-size:13px}
+
 .user-chip{
-  display:inline-flex;flex-direction:column;align-items:flex-end;
-  padding:4px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent);
-  font-size:12px;line-height:1.2;cursor:pointer;transition:background .15s;max-width:220px;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:4px 12px 4px 5px;border-radius:12px;
+  background:var(--accent-soft);color:var(--accent);
+  font-size:12px;line-height:1.2;cursor:pointer;transition:background .15s;max-width:240px;
 }
 .user-chip:hover{background:var(--accent);color:#fff}
-.user-chip-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.user-chip-avatar{
+  width:30px;height:30px;border-radius:9px;
+  background:var(--card);display:inline-flex;align-items:center;justify-content:center;
+  font-size:19px;line-height:1;flex-shrink:0;
+}
+.user-chip-info{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+.user-chip-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
 .user-chip-group{font-size:11px;opacity:.85}
+
 .topbar-btn{
   width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
   background:var(--card-soft);display:inline-flex;align-items:center;justify-content:center;
@@ -129,9 +159,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .hero p{margin:0;color:var(--text-soft)}
 .hero .hello{
   margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);
-  color:var(--text-soft);font-size:14px;
+  color:var(--text-soft);font-size:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
 }
 .hero .hello b{color:var(--accent)}
+.hero .hello .hello-avatar{
+  width:36px;height:36px;border-radius:10px;background:var(--accent-soft);
+  display:inline-flex;align-items:center;justify-content:center;font-size:22px;line-height:1;
+}
 
 /* ---------- Шаги ---------- */
 .steps-title{margin:32px 4px 12px;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
@@ -402,11 +436,20 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
 /* ---------- Меню профиля ---------- */
 .user-menu{
   z-index:200;background:var(--card);border:1px solid var(--border);border-radius:12px;
-  box-shadow:0 20px 50px -18px rgba(0,0,0,.45);min-width:260px;overflow:hidden;
+  box-shadow:0 20px 50px -18px rgba(0,0,0,.45);min-width:280px;overflow:hidden;
   animation:menuFade .12s ease-out;
 }
 @keyframes menuFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-.user-menu-head{padding:14px 16px;border-bottom:1px solid var(--border);background:var(--card-soft);}
+.user-menu-head{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;border-bottom:1px solid var(--border);background:var(--card-soft);
+}
+.user-menu-avatar{
+  width:44px;height:44px;border-radius:12px;
+  background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;
+  font-size:26px;line-height:1;flex-shrink:0;
+}
+.user-menu-headtext{min-width:0}
 .user-menu-name{font-weight:600;color:var(--text);font-size:14px;margin-bottom:2px;}
 .user-menu-group{font-size:12px;color:var(--muted);}
 .user-menu-item{
@@ -418,6 +461,35 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
 .user-menu-item:hover{background:var(--accent-soft);color:var(--accent);}
 .user-menu-item.danger:hover{background:rgba(192,57,43,.12);color:var(--err);}
 html[data-theme="dark"] .user-menu-item.danger:hover{background:rgba(255,110,94,.15);color:var(--err);}
+
+/* ---------- Модалка выбора аватара ---------- */
+.avatar-overlay{
+  position:fixed;inset:0;z-index:210;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(0,0,0,.55);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.avatar-modal{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:22px 24px;max-width:460px;width:100%;
+  box-shadow:0 20px 60px -20px rgba(0,0,0,.5);
+}
+.avatar-modal h3{margin:0 0 4px;font-size:18px;letter-spacing:-.01em}
+.avatar-modal .avatar-sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+.avatar-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px;
+  max-height:60vh;overflow-y:auto;
+}
+.avatar-grid .avatar-option{
+  aspect-ratio:1;border:2px solid var(--border);border-radius:12px;
+  background:var(--card-soft);font-size:22px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .15s, transform .12s, background .12s;
+  padding:0;
+}
+.avatar-grid .avatar-option:hover{border-color:var(--accent);transform:translateY(-1px);}
+.avatar-grid .avatar-option.selected{border-color:var(--accent);background:var(--accent-soft);}
+.avatar-modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 
 /* ---------- Комментарии ---------- */
 .comments-module .comment-form{
@@ -462,7 +534,13 @@ html[data-theme="dark"] .user-menu-item.danger:hover{background:rgba(255,110,94,
   display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
   margin-bottom:8px;flex-wrap:wrap;
 }
-.comment-author{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.comment-author{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.comment-avatar{
+  width:36px;height:36px;border-radius:10px;flex-shrink:0;
+  background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;
+  font-size:22px;line-height:1;
+}
+.comment-author-text{display:flex;flex-direction:column;line-height:1.25;min-width:0}
 .comment-name{font-weight:600;font-size:14px}
 .comment-group{font-size:12px;color:var(--muted)}
 .comment-meta{display:flex;align-items:center;gap:10px}
@@ -493,6 +571,8 @@ html[data-theme="dark"] .user-menu-item.danger:hover{background:rgba(255,110,94,
   .pdf-head{padding:10px 12px;gap:6px}
   .pdf-title{font-size:13px}
   .pdf-actions .btn{padding:6px 10px;font-size:12px}
+  .avatar-grid{grid-template-columns:repeat(5,1fr)}
+  .avatar-picker-inline{grid-template-columns:repeat(6,1fr)}
 }
 @media (max-width:520px){
   .steps,.tabs{grid-template-columns:1fr}
@@ -500,11 +580,13 @@ html[data-theme="dark"] .user-menu-item.danger:hover{background:rgba(255,110,94,
   #app{padding:20px 14px 60px}
   .login-card{padding:24px 20px 20px}
   .hero h1{font-size:22px}
-  .user-chip{max-width:110px}
-  .user-chip-name{max-width:100px}
+  .user-chip{max-width:180px}
+  .user-chip-name{max-width:120px}
   .panel{padding:20px 18px}
   .module{padding:20px 18px}
   .topbar-btn, .theme-toggle, .nav-btn{width:32px;height:32px;font-size:14px}
+  .avatar-grid{grid-template-columns:repeat(4,1fr)}
+  .avatar-picker-inline{grid-template-columns:repeat(4,1fr)}
 }
 .sync-status{
   display: inline-block;

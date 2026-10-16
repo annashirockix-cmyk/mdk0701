@@ -5,11 +5,22 @@
    + просмотр PDF в модалке
    + отправка отчёта
    + отдельная страница «Комментарии» (#/comments)
+   + аватарки пользователя (эмодзи-набор)
    + комментарии с автоудалением через 5 лет
    ============================================================ */
 
 const REPORT_EMAIL    = "camelia.2110@yandex.ru";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
+
+/* Набор аватарок. Первый — аватар по умолчанию. */
+const AVATARS = [
+  "👨‍🎓","👩‍🎓","🧑‍🎓","👨‍🔧","👩‍🔧","🧑‍🔧",
+  "👷","👨‍🏭","👩‍🏭","🧑‍🏭","🦾","🤖",
+  "⚙️","🔧","🛠️","🔩","🧰","📐",
+  "📏","✈️","🚀","🛰️","⚡","🔥",
+  "💡","🎓","🏆","🎯","🧠","🧑‍💻"
+];
+const DEFAULT_AVATAR = AVATARS[0];
 
 const state = {
   student: JSON.parse(localStorage.getItem("mdk0701.student") || "null"),
@@ -24,6 +35,10 @@ function studentKey(s){
   s = s || state.student;
   if (!s || !s.name || !s.group) return null;
   return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase());
+}
+
+function getAvatar(){
+  return (state.student && state.student.avatar) || DEFAULT_AVATAR;
 }
 
 /* ---------- локальное хранилище ---------- */
@@ -76,6 +91,7 @@ async function cloudSave(silent){
   params.append("name",    state.student.name);
   params.append("group",   state.student.group);
   params.append("payload", JSON.stringify({
+    avatar:      state.student.avatar || DEFAULT_AVATAR,
     progress:    state.progress,
     results:     state.results,
     selfResults: state.selfResults
@@ -139,6 +155,71 @@ function escapeHtml(s){
 }
 
 /* ============================================================
+   АВАТАРКИ
+   ============================================================ */
+function buildAvatarPicker(selected, onPick, extraClass){
+  const wrap = el(`<div class="avatar-picker-inline ${extraClass || ""}"></div>`);
+  AVATARS.forEach(a=>{
+    const b = el(`<button type="button" class="avatar-option ${a===selected?"selected":""}" data-av="${a}" aria-label="Аватар ${a}">${a}</button>`);
+    b.addEventListener("click", ()=>{
+      wrap.querySelectorAll(".avatar-option").forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
+      if (onPick) onPick(a);
+    });
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+
+function openAvatarModal(){
+  if (!state.student) return;
+  document.querySelectorAll(".avatar-overlay").forEach(x=>x.remove());
+
+  let picked = getAvatar();
+  const modal = el(`
+    <div class="avatar-overlay">
+      <div class="avatar-modal">
+        <h3>Выберите аватар</h3>
+        <p class="avatar-sub">Отображается в шапке профиля и рядом с вашими отзывами.</p>
+        <div class="avatar-grid"></div>
+        <div class="avatar-modal-actions">
+          <button class="btn ghost" id="avatarCancel">Отмена</button>
+          <button class="btn" id="avatarSave">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const grid = modal.querySelector(".avatar-grid");
+  AVATARS.forEach(a=>{
+    const b = el(`<button type="button" class="avatar-option ${a===picked?"selected":""}" data-av="${a}">${a}</button>`);
+    b.addEventListener("click", ()=>{
+      grid.querySelectorAll(".avatar-option").forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
+      picked = a;
+    });
+    grid.appendChild(b);
+  });
+
+  document.body.appendChild(modal);
+
+  const close = ()=> modal.remove();
+  modal.querySelector("#avatarCancel").addEventListener("click", close);
+  modal.addEventListener("click", (e)=>{ if (e.target === modal) close(); });
+  modal.querySelector("#avatarSave").addEventListener("click", ()=>{
+    state.student.avatar = picked;
+    saveStudent();
+    saveStudentData();
+    renderUserChip();
+    cloudSave(true);
+    close();
+  });
+
+  function onEsc(e){ if (e.key === "Escape"){ close(); document.removeEventListener("keydown", onEsc); } }
+  document.addEventListener("keydown", onEsc);
+}
+
+/* ============================================================
    АВТОРИЗАЦИЯ
    ============================================================ */
 function initAuth(){
@@ -146,6 +227,13 @@ function initAuth(){
   const nameInput  = document.getElementById("loginName");
   const groupInput = document.getElementById("loginGroup");
   const btn        = document.getElementById("loginBtn");
+
+  /* инлайн-пикер аватара на экране входа */
+  let loginAvatar = DEFAULT_AVATAR;
+  const loginPicker = document.getElementById("loginAvatarPicker");
+  if (loginPicker){
+    loginPicker.appendChild(buildAvatarPicker(loginAvatar, (a)=>{ loginAvatar = a; }));
+  }
 
   if (!state.student){
     overlay.hidden = false;
@@ -158,6 +246,10 @@ function initAuth(){
     setTimeout(async ()=>{
       const cloud = await cloudLoad();
       if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
+        if (cloud.payload.avatar && !state.student.avatar){
+          state.student.avatar = cloud.payload.avatar;
+          saveStudent();
+        }
         state.progress    = cloud.payload.progress    || {};
         state.results     = cloud.payload.results     || {};
         state.selfResults = cloud.payload.selfResults || {};
@@ -176,7 +268,7 @@ function initAuth(){
 
     if (state.student) saveStudentData();
 
-    state.student = { name, group, loginAt: new Date().toISOString() };
+    state.student = { name, group, avatar: loginAvatar, loginAt: new Date().toISOString() };
     saveStudent();
     loadStudentData();
 
@@ -187,6 +279,12 @@ function initAuth(){
     const cloud = await cloudLoad();
     let restored = false;
     if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
+      /* Если у пользователя в облаке уже был аватар — берём его вместо выбранного */
+      if (cloud.payload.avatar){
+        state.student.avatar = cloud.payload.avatar;
+        saveStudent();
+        renderUserChip();
+      }
       state.progress    = cloud.payload.progress    || {};
       state.results     = cloud.payload.results     || {};
       state.selfResults = cloud.payload.selfResults || {};
@@ -195,7 +293,7 @@ function initAuth(){
       restored = true;
     }
 
-    renderHome();
+    route();
     if (restored){
       setTimeout(()=>alert("Прогресс восстановлен из облака."), 200);
     }
@@ -213,10 +311,12 @@ function initAuth(){
 
 function renderUserChip(){
   const chip    = document.getElementById("userChip");
+  const avEl    = document.getElementById("userChipAvatar");
   const nameEl  = document.getElementById("userChipName");
   const groupEl = document.getElementById("userChipGroup");
   if (!chip || !state.student) return;
   chip.hidden = false;
+  if (avEl)    avEl.textContent    = getAvatar();
   nameEl.textContent  = state.student.name;
   groupEl.textContent = "Гр. " + state.student.group;
 }
@@ -230,9 +330,13 @@ function openUserMenu(){
   const menu = el(`
     <div class="user-menu">
       <div class="user-menu-head">
-        <div class="user-menu-name">${state.student.name}</div>
-        <div class="user-menu-group">Группа ${state.student.group}</div>
+        <span class="user-menu-avatar">${getAvatar()}</span>
+        <div class="user-menu-headtext">
+          <div class="user-menu-name">${state.student.name}</div>
+          <div class="user-menu-group">Группа ${state.student.group}</div>
+        </div>
       </div>
+      <button class="user-menu-item" data-act="avatar">🎨 Сменить аватар</button>
       <button class="user-menu-item" data-act="comments">💬 Комментарии</button>
       <button class="user-menu-item" data-act="sync">☁ Синхронизировать сейчас</button>
       <button class="user-menu-item" data-act="switch">🔄 Сменить пользователя</button>
@@ -254,17 +358,17 @@ function openUserMenu(){
   };
   setTimeout(()=>document.addEventListener("click", close), 0);
 
-  menu.querySelector('[data-act="comments"]').addEventListener("click", ()=>{
-    menu.remove();
-    location.hash = "#/comments";
+  menu.querySelector('[data-act="avatar"]').addEventListener("click", ()=>{
+    menu.remove(); openAvatarModal();
   });
-
+  menu.querySelector('[data-act="comments"]').addEventListener("click", ()=>{
+    menu.remove(); location.hash = "#/comments";
+  });
   menu.querySelector('[data-act="sync"]').addEventListener("click", async ()=>{
     menu.remove();
     const ok = await cloudSave(false);
     if (ok) alert("Прогресс отправлен в облако.");
   });
-
   menu.querySelector('[data-act="switch"]').addEventListener("click", ()=>{
     menu.remove();
     if (!confirm("Сменить пользователя? Ваш прогресс сохранён локально и в облаке.")) return;
@@ -281,8 +385,8 @@ function openUserMenu(){
     document.getElementById("loginGroup").value = "";
     document.getElementById("loginName").focus();
     document.getElementById("userChip").hidden = true;
+    if (loginPicker) loginPicker.remove();
   });
-
   menu.querySelector('[data-act="export"]').addEventListener("click", ()=>{
     menu.remove(); exportProfile();
   });
@@ -334,6 +438,7 @@ function importProfile(file){
     }
     if (!confirm("Загрузить профиль:\n" + data.student.name + " (гр. " + data.student.group + ")\n\nТекущий прогресс будет заменён.")) return;
     state.student = data.student;
+    if (!state.student.avatar) state.student.avatar = DEFAULT_AVATAR;
     state.progress = data.progress || {};
     state.results = data.results || {};
     state.selfResults = data.selfResults || {};
@@ -386,8 +491,11 @@ function renderHome(){
       <div class="meta">${COURSE.specialty} · набор 2024</div>
       <h1>${COURSE.title}</h1>
       <p>${COURSE.module}</p>
-      ${state.student ? `<div class="hello">Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.
-        <span class="sync-status" id="syncStatus"></span></div>` : ""}
+      ${state.student ? `<div class="hello">
+        <span class="hello-avatar">${getAvatar()}</span>
+        <span>Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.
+        <span class="sync-status" id="syncStatus"></span></span>
+      </div>` : ""}
     </section>
   `));
 
@@ -869,13 +977,14 @@ async function loadComments(){
   return null;
 }
 
-async function saveComment(name, group, rating, text){
+async function saveComment(name, group, rating, text, avatar){
   const params = new URLSearchParams();
   params.append("action", "savecomment");
   params.append("name",   name);
   params.append("group",  group);
   params.append("rating", String(rating));
   params.append("text",   text);
+  params.append("avatar", avatar || DEFAULT_AVATAR);
   try {
     const res = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
     const data = await res.json();
@@ -937,7 +1046,7 @@ function renderCommentsBlock(){
     const ok = await saveComment(
       state.student ? state.student.name  : "Гость",
       state.student ? state.student.group : "—",
-      rating, text
+      rating, text, getAvatar()
     );
 
     if (ok){
@@ -972,12 +1081,16 @@ async function refreshComments(container){
     const dateStr = date.toLocaleDateString("ru-RU", { day:"2-digit", month:"long", year:"numeric" });
     const stars   = "★".repeat(Math.max(1, Math.min(5, c.rating))) +
                     "☆".repeat(5 - Math.max(1, Math.min(5, c.rating)));
+    const avatar  = c.avatar || DEFAULT_AVATAR;
     container.appendChild(el(`
       <div class="comment-card">
         <div class="comment-head">
           <div class="comment-author">
-            <span class="comment-name">${escapeHtml(c.name)}</span>
-            <span class="comment-group">гр. ${escapeHtml(c.group)}</span>
+            <span class="comment-avatar">${escapeHtml(avatar)}</span>
+            <div class="comment-author-text">
+              <span class="comment-name">${escapeHtml(c.name)}</span>
+              <span class="comment-group">гр. ${escapeHtml(c.group)}</span>
+            </div>
           </div>
           <div class="comment-meta">
             <span class="comment-stars">${stars}</span>
@@ -1010,6 +1123,7 @@ function buildReport(){
   lines.push("");
   lines.push("Студент: " + s.name);
   lines.push("Группа:  " + s.group);
+  if (s.avatar) lines.push("Аватар:  " + s.avatar);
   lines.push("Дата:    " + fmt(now));
   lines.push("");
   lines.push("ОБЩИЙ ПРОГРЕСС");
@@ -1093,6 +1207,7 @@ function openReportModal(){
     params.append("action",  "report");
     params.append("student", s.name);
     params.append("group",   s.group);
+    params.append("avatar",  s.avatar || DEFAULT_AVATAR);
     params.append("report",  buildReport());
 
     try {
