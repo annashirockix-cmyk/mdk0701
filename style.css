@@ -1,16 +1,17 @@
 /* ============================================================
    МДК 07.01 — Полный style.css
    Разделы:
-   1.  Темы (light / dark)
+   1.  Темы (light / dark / sepia / ocean / forest / contrast)
+   1a. Выбор темы
    2.  Общие стили
    3.  Экран входа
    4.  Пикер аватара (инлайн)
    5.  Шапка
    6.  Статусы в шапке, баннер объявлений
-   7.  Главная (hero, шаги, модуль)
+   7.  Главная
    8.  Информационный блок
    9.  Список тем
-   10. Детали темы (topic-head, tabs, panel)
+   10. Детали темы
    11. Практические работы
    12. Тесты и самостоятельные
    13. Тренировка, разбор ошибок
@@ -18,10 +19,10 @@
    15. Документы
    16. Иллюстрации, таблицы, код
    17. Отчёт
-   18. PDF-просмотрщик
+   18. PDF
    19. Меню профиля и меню "..."
    20. Модалка выбора аватара
-   21. Комментарии (ветки, лайки)
+   21. Комментарии
    22. Страница комментариев
    23. Дашборд
    24. Поиск
@@ -33,67 +34,159 @@
    30. Календарь
    31. ГОСТы
    32. QR-код
-   33. Погода, цитата дня
+   33. Погода, цитата
    34. Тёмный PDF
    35. Конфетти, офлайн-флаг, sync-status
    36. Адаптивность
    ============================================================ */
 
 /* ============================================================
-   1. ТЕМЫ
+   1. ТЕМЫ (6 схем)
    ============================================================ */
 :root,
 html[data-theme="light"]{
-  --bg:#f5f2ec;
-  --card:#ffffff;
-  --card-soft:#fcfaf7;
-  --border:#e8e2d8;
-  --border-soft:#f0eae0;
-  --text:#222222;
-  --text-soft:#4a4a4a;
-  --muted:#8a8578;
-  --accent:#c14a2a;
-  --accent-soft:#f7e8e1;
-  --ok:#2d7a4f;
-  --err:#c0392b;
-  --blue:#4a90d9;
-  --gold:#f0b400;
-  --code-bg:#2b2b2b;
-  --code-text:#f5f5f5;
-  --inline-code-bg:#f3ece2;
-  --inline-code-text:#833c1a;
+  --bg:#f5f2ec; --card:#ffffff; --card-soft:#fcfaf7;
+  --border:#e8e2d8; --border-soft:#f0eae0;
+  --text:#222222; --text-soft:#4a4a4a; --muted:#8a8578;
+  --accent:#c14a2a; --accent-soft:#f7e8e1;
+  --ok:#2d7a4f; --err:#c0392b;
+  --blue:#4a90d9; --gold:#f0b400;
+  --code-bg:#2b2b2b; --code-text:#f5f5f5;
+  --inline-code-bg:#f3ece2; --inline-code-text:#833c1a;
   --table-head:#f7f2ea;
-  --info-bg:#fff8ec;
-  --info-border:#f0c896;
+  --info-bg:#fff8ec; --info-border:#f0c896;
   --shadow:0 1px 0 rgba(0,0,0,.02), 0 6px 20px -12px rgba(0,0,0,.12);
+  color-scheme: light;
 }
 html[data-theme="dark"]{
-  --bg:#0e0e10;
-  --card:#171719;
-  --card-soft:#1c1c1f;
-  --border:#2a2a2e;
-  --border-soft:#232327;
-  --text:#e8e6e1;
-  --text-soft:#c8c5bd;
-  --muted:#8f8b80;
-  --accent:#ff6b3d;
-  --accent-soft:#2a1c15;
-  --ok:#58c98a;
-  --err:#ff6e5e;
-  --blue:#5ca8e8;
-  --gold:#f0b400;
-  --code-bg:#0a0a0b;
-  --code-text:#f0eee8;
-  --inline-code-bg:#2a1f18;
-  --inline-code-text:#ffb28a;
+  --bg:#0e0e10; --card:#171719; --card-soft:#1c1c1f;
+  --border:#2a2a2e; --border-soft:#232327;
+  --text:#e8e6e1; --text-soft:#c8c5bd; --muted:#8f8b80;
+  --accent:#ff6b3d; --accent-soft:#2a1c15;
+  --ok:#58c98a; --err:#ff6e5e;
+  --blue:#5ca8e8; --gold:#f0b400;
+  --code-bg:#0a0a0b; --code-text:#f0eee8;
+  --inline-code-bg:#2a1f18; --inline-code-text:#ffb28a;
   --table-head:#202024;
-  --info-bg:#231a10;
-  --info-border:#5a3a15;
+  --info-bg:#231a10; --info-border:#5a3a15;
   --shadow:0 1px 0 rgba(0,0,0,.4), 0 6px 20px -12px rgba(0,0,0,.6);
+  color-scheme: dark;
 }
-:root{
-  --radius:14px;
+html[data-theme="sepia"]{
+  --bg:#f4ecd8; --card:#fbf5e6; --card-soft:#f8f0dc;
+  --border:#e0d3b8; --border-soft:#ebe0c8;
+  --text:#3a2e1f; --text-soft:#5c4a32; --muted:#8b7a5c;
+  --accent:#a0522d; --accent-soft:#f0e0c8;
+  --ok:#4a7a4a; --err:#a83232;
+  --blue:#5b7fa3; --gold:#c8920a;
+  --code-bg:#2f2618; --code-text:#f5e9c8;
+  --inline-code-bg:#ecdcb8; --inline-code-text:#7a3d12;
+  --table-head:#ecdcc2;
+  --info-bg:#f8ecc8; --info-border:#dcb878;
+  --shadow:0 1px 0 rgba(90,70,40,.08), 0 6px 20px -12px rgba(90,70,40,.25);
+  color-scheme: light;
 }
+html[data-theme="ocean"]{
+  --bg:#eef4f8; --card:#ffffff; --card-soft:#f4f9fc;
+  --border:#d3e2ec; --border-soft:#e3edf4;
+  --text:#16242e; --text-soft:#3c5361; --muted:#7189a0;
+  --accent:#1a6da8; --accent-soft:#d8ebf8;
+  --ok:#1e7a5a; --err:#c0392b;
+  --blue:#1a6da8; --gold:#e8a820;
+  --code-bg:#0e2230; --code-text:#d8ecf8;
+  --inline-code-bg:#dceaf4; --inline-code-text:#134f7a;
+  --table-head:#e4eef5;
+  --info-bg:#e2f0f8; --info-border:#a0c8e0;
+  --shadow:0 1px 0 rgba(20,60,90,.04), 0 6px 20px -12px rgba(20,60,90,.18);
+  color-scheme: light;
+}
+html[data-theme="forest"]{
+  --bg:#eef3ec; --card:#ffffff; --card-soft:#f5f9f3;
+  --border:#d4e0ce; --border-soft:#e3ecde;
+  --text:#1c2a1c; --text-soft:#3f5238; --muted:#728a68;
+  --accent:#3d7a3d; --accent-soft:#dcecd8;
+  --ok:#2d7a4f; --err:#a8342a;
+  --blue:#4a7fa3; --gold:#c8960a;
+  --code-bg:#162018; --code-text:#dcecd0;
+  --inline-code-bg:#dcecd4; --inline-code-text:#2a5e2a;
+  --table-head:#e4ecd8;
+  --info-bg:#e6f0dc; --info-border:#aac898;
+  --shadow:0 1px 0 rgba(40,80,40,.05), 0 6px 20px -12px rgba(40,80,40,.18);
+  color-scheme: light;
+}
+html[data-theme="contrast"]{
+  --bg:#ffffff; --card:#ffffff; --card-soft:#f5f5f5;
+  --border:#000000; --border-soft:#333333;
+  --text:#000000; --text-soft:#111111; --muted:#333333;
+  --accent:#0033cc; --accent-soft:#dde6ff;
+  --ok:#005c1a; --err:#b00000;
+  --blue:#0033cc; --gold:#a06000;
+  --code-bg:#000000; --code-text:#ffffff;
+  --inline-code-bg:#eeeeee; --inline-code-text:#000000;
+  --table-head:#e0e0e0;
+  --info-bg:#fffbe0; --info-border:#000000;
+  --shadow:0 0 0 1px #000;
+  color-scheme: light;
+}
+html[data-theme="contrast"] .btn{ border:2px solid #000 }
+html[data-theme="contrast"] .topbar-btn,
+html[data-theme="contrast"] .nav-btn,
+html[data-theme="contrast"] .theme-toggle{ border-width:2px }
+
+:root{ --radius:14px; }
+
+/* ============================================================
+   1a. ВЫБОР ТЕМЫ
+   ============================================================ */
+.theme-overlay{
+  position:fixed;inset:0;z-index:230;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(0,0,0,.5);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  animation:menuFade .15s ease-out;
+}
+.theme-modal{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;padding:22px 24px;
+  max-width:560px;width:100%;
+  box-shadow:0 20px 60px -20px rgba(0,0,0,.5);
+}
+.theme-modal h3{margin:0 0 4px;font-size:18px;letter-spacing:-.01em}
+.theme-modal .theme-sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+.theme-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:12px;margin-bottom:18px;
+}
+.theme-card{
+  border:2px solid var(--border);border-radius:12px;
+  padding:0;overflow:hidden;cursor:pointer;
+  background:var(--card-soft);
+  transition:border-color .15s, transform .12s;
+  text-align:left;
+}
+.theme-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.theme-card.selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.theme-preview{
+  height:66px;display:flex;overflow:hidden;
+  border-bottom:1px solid var(--border-soft);
+}
+.theme-preview span{flex:1}
+.theme-card .theme-name{
+  padding:8px 12px;font-size:13px;font-weight:600;
+  color:var(--text);display:flex;align-items:center;
+  justify-content:space-between;gap:6px;
+}
+.theme-card .theme-name .check{
+  color:var(--accent);font-weight:700;
+  opacity:0;transition:opacity .12s;
+}
+.theme-card.selected .theme-name .check{opacity:1}
+.theme-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.theme-auto{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--text-soft);cursor:pointer;
+}
+.theme-auto input{accent-color:var(--accent)}
 
 /* ============================================================
    2. ОБЩИЕ СТИЛИ
@@ -102,10 +195,7 @@ html[data-theme="dark"]{
 html,body{margin:0;padding:0}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Inter",Arial,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  line-height:1.65;
-  font-size:15px;
+  background:var(--bg);color:var(--text);line-height:1.65;font-size:15px;
   -webkit-font-smoothing:antialiased;
   transition:background .2s, color .2s;
   padding-top: env(safe-area-inset-top, 0);
@@ -163,7 +253,7 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .field-hint.bad{color:var(--err)}
 
 /* ============================================================
-   4. ИНЛАЙН-ПИКЕР АВАТАРА (на входе)
+   4. ИНЛАЙН-ПИКЕР АВАТАРА
    ============================================================ */
 .avatar-picker-inline{
   display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:2px;
@@ -249,7 +339,7 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .theme-toggle:hover{border-color:var(--accent)}
 
 /* ============================================================
-   6. СТАТУСЫ В ШАПКЕ, БАННЕР ОБЪЯВЛЕНИЙ
+   6. СТАТУСЫ, БАННЕР
    ============================================================ */
 .topbar-status{display:flex;gap:6px;align-items:center;margin-left:auto}
 .status-pill{
@@ -257,7 +347,6 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
   background:var(--card-soft);border:1px solid var(--border);white-space:nowrap;
 }
 #netStatus.offline{color:var(--err);border-color:var(--err)}
-
 .announce-bar{
   display:flex;align-items:center;gap:10px;
   padding:10px 20px;background:var(--info-bg);
@@ -274,7 +363,7 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .announce-close:hover{color:var(--accent);border-color:var(--accent)}
 
 /* ============================================================
-   7. ГЛАВНАЯ (hero, шаги, модуль)
+   7. ГЛАВНАЯ
    ============================================================ */
 .hero{
   background:var(--card);border:1px solid var(--border);
@@ -338,7 +427,7 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .kpi .k-value{font-size:18px;font-weight:600}
 
 /* ============================================================
-   8. ИНФОРМАЦИОННЫЙ БЛОК
+   8. ИНФОБЛОК
    ============================================================ */
 .info-block{
   background:var(--info-bg);border:2px solid var(--info-border);
@@ -398,7 +487,6 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 }
 .topic-head h1{margin:6px 0 8px;font-size:30px;letter-spacing:-.02em}
 .topic-head .meta{color:var(--muted);font-size:13px}
-
 .tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
 .tab{
   background:var(--card);border:1px solid var(--border);
@@ -410,7 +498,6 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 }
 .tab .t-name{font-weight:600}
 .tab.active{border-color:var(--accent);background:var(--accent-soft)}
-
 .panel{
   background:var(--card);border:1px solid var(--border);
   border-radius:var(--radius);padding:28px 32px;
@@ -423,12 +510,11 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .panel ul,.panel ol{margin:6px 0 14px;padding-left:22px}
 .panel li{margin:4px 0}
 .panel .accent{color:var(--accent)}
-
 .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 20px}
 .kpi-row .kpi{padding:16px}
 
 /* ============================================================
-   11. ПРАКТИЧЕСКИЕ РАБОТЫ
+   11. ПРАКТИЧЕСКИЕ
    ============================================================ */
 .practice{
   border:1px solid var(--border);border-radius:12px;
@@ -453,7 +539,6 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .practice .p-solution ol{margin:0;padding-left:22px}
 .practice .p-solution li{margin:6px 0;font-size:14px;color:var(--text-soft)}
 .practice .p-solution li b{color:var(--text)}
-
 .variants{margin-top:14px;border-top:1px dashed var(--border);padding-top:12px}
 .variants .v-title{
   font-size:12px;color:var(--accent);letter-spacing:.06em;
@@ -465,14 +550,13 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 }
 .v-table{width:100%;border-collapse:collapse;font-size:13px}
 .v-table th,.v-table td{
-  border-bottom:1px solid var(--border-soft);
-  padding:6px 10px;text-align:left;
+  border-bottom:1px solid var(--border-soft);padding:6px 10px;text-align:left;
 }
 .v-table th{background:var(--table-head);position:sticky;top:0;font-weight:600}
 .v-table tr:last-child td{border-bottom:none}
 
 /* ============================================================
-   12. ТЕСТЫ И САМОСТОЯТЕЛЬНЫЕ
+   12. ТЕСТЫ
    ============================================================ */
 .question{
   border:1px solid var(--border);border-radius:12px;
@@ -488,7 +572,6 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .option.correct{border-color:var(--ok);background:rgba(45,122,79,.08)}
 .option.wrong{border-color:var(--err);background:rgba(192,57,43,.08)}
 .option input{accent-color:var(--accent)}
-
 .test-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .btn{
   padding:10px 18px;border-radius:10px;font-size:14px;font-weight:500;
@@ -496,11 +579,9 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 }
 .btn.ghost{background:var(--card);border:1px solid var(--border);color:var(--text)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-
 .test-result{margin-top:14px;font-weight:600}
 .test-result.ok{color:var(--ok)}
 .test-result.bad{color:var(--err)}
-
 .self-q .self-row{display:flex;gap:8px;margin-top:8px}
 .self-q .self-input{
   flex:1;padding:10px 12px;border:1px solid var(--border);
@@ -513,7 +594,7 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
 .self-feedback.bad{color:var(--err)}
 
 /* ============================================================
-   13. ТРЕНИРОВКА, РАЗБОР ОШИБОК
+   13. ТРЕНИРОВКА, РАЗБОР
    ============================================================ */
 .test-mode-tabs{
   display:inline-flex;gap:6px;margin:8px 0 14px;
@@ -538,11 +619,9 @@ html[data-theme="dark"] mark{background:rgba(255,190,60,.35)}
   animation:pulse 1s infinite;
 }
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-
 .train-feedback{margin-top:10px;font-size:13px;font-weight:500;min-height:18px}
 .train-feedback.ok{color:var(--ok)}
 .train-feedback.bad{color:var(--err)}
-
 .test-report{margin-top:16px;border-top:1px dashed var(--border);padding-top:14px}
 .test-report h3{margin:0 0 10px;font-size:15px;color:var(--err)}
 .error-item{
@@ -679,7 +758,7 @@ figure figcaption{
 .pdf-body iframe{width:100%;height:100%;border:0;display:block}
 
 /* ============================================================
-   19. МЕНЮ ПРОФИЛЯ И МЕНЮ "..."
+   19. МЕНЮ ПРОФИЛЯ И "..."
    ============================================================ */
 .user-menu,
 .more-menu{
@@ -726,7 +805,7 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 }
 
 /* ============================================================
-   20. МОДАЛКА ВЫБОРА АВАТАРА
+   20. МОДАЛКА АВАТАРА
    ============================================================ */
 .avatar-overlay{
   position:fixed;inset:0;z-index:210;
@@ -761,7 +840,7 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .avatar-modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 
 /* ============================================================
-   21. КОММЕНТАРИИ (ветки, лайки)
+   21. КОММЕНТАРИИ
    ============================================================ */
 .comments-module .comment-form{
   display:flex;flex-direction:column;gap:12px;
@@ -799,7 +878,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .comment-status{font-size:13px;min-height:18px}
 .comment-status.ok{color:var(--ok)}
 .comment-status.bad{color:var(--err)}
-
 .comments-list{display:flex;flex-direction:column;gap:12px}
 .comment-empty{
   border:1px dashed var(--border);border-radius:12px;
@@ -880,7 +958,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .pie-legend{display:flex;flex-direction:column;gap:8px}
 .legend-row{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-soft)}
 .legend-dot{width:14px;height:14px;border-radius:4px;flex-shrink:0}
-
 .week-chart{
   display:flex;align-items:flex-end;gap:10px;
   height:180px;margin-top:16px;padding:0 4px;
@@ -898,7 +975,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .wb-label{
   font-size:11px;color:var(--muted);margin-top:6px;white-space:nowrap;
 }
-
 .diff-list{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .diff-item{
   display:flex;align-items:center;gap:14px;
@@ -914,7 +990,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .diff-title{flex:1;font-weight:600;font-size:14px;min-width:0}
 .diff-grade{color:var(--muted);font-size:13px;white-space:nowrap}
 .diff-grade b{color:var(--accent);font-size:15px}
-
 .group-stat-row{
   display:flex;align-items:baseline;gap:14px;
   padding:14px 16px;border:1px solid var(--border);
@@ -925,7 +1000,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
   min-width:60px;font-variant-numeric:tabular-nums;
 }
 .gs-label{color:var(--text-soft);font-size:14px}
-
 .activity-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .activity-item{
   display:flex;align-items:center;gap:12px;
@@ -983,7 +1057,7 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 }
 
 /* ============================================================
-   25. ЧАТ ГРУППЫ
+   25. ЧАТ
    ============================================================ */
 .chat-wrap{
   display:flex;flex-direction:column;
@@ -1026,7 +1100,7 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .chat-input:focus{border-color:var(--accent);background:var(--card)}
 
 /* ============================================================
-   26. АНОНИМНЫЕ ВОПРОСЫ
+   26. ВОПРОСЫ
    ============================================================ */
 .question-card{
   border:1px solid var(--border);border-radius:12px;
@@ -1054,7 +1128,7 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .question-card .qanswer::before{content:"👨‍🏫 ";font-size:15px}
 
 /* ============================================================
-   27. ГАЛЕРЕЯ И ЗАГРУЗКА РАБОТ
+   27. ГАЛЕРЕЯ
    ============================================================ */
 .upload-zone{
   border:2px dashed var(--border);border-radius:12px;
@@ -1066,7 +1140,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 }
 .upload-zone .uz-title{font-weight:600;font-size:14px;margin-bottom:4px}
 .upload-zone .uz-hint{font-size:12px;color:var(--muted)}
-
 .gallery-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
   gap:14px;margin-top:12px;
@@ -1098,7 +1171,7 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 }
 
 /* ============================================================
-   28. G-CODE ПРОСМОТРЩИК
+   28. G-CODE
    ============================================================ */
 .gcode-view{
   background:var(--code-bg);color:var(--code-text);
@@ -1113,7 +1186,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .gcode-line .f{color:#f0c674}
 .gcode-line .n{color:#8f8b80}
 .gcode-line .comment{color:#8f8b80;font-style:italic}
-
 .gcode-diff-row{
   display:grid;grid-template-columns:60px 1fr 1fr;gap:8px;
   font-family:"Consolas","Menlo",monospace;font-size:12px;
@@ -1223,7 +1295,7 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .qr-wrap .qr-info{flex:1;min-width:200px}
 
 /* ============================================================
-   33. ПОГОДА, ЦИТАТА
+   33. ПОГОДА
    ============================================================ */
 .weather-pill{
   display:inline-flex;align-items:center;gap:6px;
@@ -1242,13 +1314,12 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
 .pdf-overlay.dark .pdf-body iframe{filter:invert(.92) hue-rotate(180deg)}
 
 /* ============================================================
-   35. КОНФЕТТИ, ОФЛАЙН-ФЛАГ, SYNC-STATUS
+   35. КОНФЕТТИ, ОФЛАЙН, SYNC
    ============================================================ */
 .confetti-canvas{
   position:fixed;inset:0;pointer-events:none;z-index:300;display:none;
 }
 .confetti-canvas.active{display:block}
-
 .offline-flag{
   position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
   background:var(--err);color:#fff;padding:8px 16px;
@@ -1256,7 +1327,6 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
   box-shadow:0 6px 20px -6px rgba(0,0,0,.4);
 }
 .offline-flag[hidden]{display:none}
-
 .sync-status{
   display:inline-block;margin-left:10px;
   font-size:12px;color:var(--ok);min-height:14px;
@@ -1310,4 +1380,5 @@ html[data-theme="dark"] .more-menu-item.danger:hover{
   .avatar-picker-inline{grid-template-columns:repeat(4,1fr)}
   .pie-wrap{justify-content:center}
   .week-chart{height:140px}
+  .theme-grid{grid-template-columns:repeat(2,1fr)}
 }

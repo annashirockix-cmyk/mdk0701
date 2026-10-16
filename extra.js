@@ -683,7 +683,6 @@ window.renderGalleryPage = function(){
           <div class="gc-meta">${escapeHtml(w.fileName)}</div>
           <div class="gc-actions">
             <a class="btn ghost" href="${w.fileUrl}" target="_blank" rel="noopener">↗ Открыть</a>
-            ${w.key === studentKey() ? "" : ""}
           </div>
         </div></div>`));
     });
@@ -763,7 +762,6 @@ window.renderTeacherPage = function(){
     return;
   }
 
-  // После входа — панель
   app.appendChild(el(`<section class="module">
     <div class="teacher-bar">
       <div>👨‍🏫 <b>Панель преподавателя</b></div>
@@ -792,7 +790,6 @@ window.renderTeacherPage = function(){
       wrap.appendChild(el(`<div class="comment-empty">Нет сохранённых студентов.</div>`));
       return;
     }
-    // сортировка: «отстающие» — сначала с наименьшим прогрессом
     students.sort((a, b) => (a.topicsDone || 0) - (b.topicsDone || 0));
     const table = el(`<table class="teacher-table"><thead><tr>
       <th>Студент</th><th>Группа</th><th>Тем пройдено</th><th>Тестов</th>
@@ -894,7 +891,7 @@ window.renderCalendarPage = function(){
   const year = now.getFullYear(), month = now.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDate = new Date(year, month + 1, 0).getDate();
-  const startWeekday = (firstDay.getDay() + 6) % 7; // Пн = 0
+  const startWeekday = (firstDay.getDay() + 6) % 7;
   const monthName = firstDay.toLocaleDateString("ru-RU", { month:"long", year:"numeric" });
   const today = now.getDate();
 
@@ -1025,17 +1022,11 @@ N200 M30`
 function highlightGCode(text){
   return text.split("\n").map(line => {
     let safe = escapeHtml(line);
-    // Комментарии в скобках
     safe = safe.replace(/(\([^)]*\))/g, '<span class="comment">$1</span>');
-    // G-коды
     safe = safe.replace(/\b(G\d+(\.\d+)?)/g, '<span class="g">$1</span>');
-    // M-коды
     safe = safe.replace(/\b(M\d+)/g, '<span class="m">$1</span>');
-    // X/Y/Z/I/J/K/R/U/W
     safe = safe.replace(/\b([XYZIJKRUW]-?\d+(\.\d+)?)/g, '<span class="xyz">$1</span>');
-    // F/S/T
     safe = safe.replace(/\b([FSTP]-?\d+(\.\d+)?)/g, '<span class="f">$1</span>');
-    // N-номера
     safe = safe.replace(/\b(N\d+)/g, '<span class="n">$1</span>');
     return '<span class="gcode-line">' + safe + '</span>';
   }).join("\n");
@@ -1090,13 +1081,27 @@ window.openGCodeModal = function(workCode){
 document.addEventListener("keydown", e => {
   const tag = (document.activeElement?.tagName || "").toLowerCase();
   const inField = tag === "input" || tag === "textarea";
-  if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")){ e.preventDefault(); window.openSearch?.(); return; }
+
+  // Ctrl+K / Cmd+K — поиск
+  if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")){
+    e.preventDefault();
+    window.openSearch?.();
+    return;
+  }
+
+  // Esc — закрыть все модалки и меню
   if (e.key === "Escape"){
-    document.querySelectorAll(".search-overlay, .pdf-overlay, .report-overlay, .avatar-overlay, .user-menu, .more-menu").forEach(x => x.remove());
+    document.querySelectorAll(
+      ".search-overlay, .pdf-overlay, .report-overlay, .avatar-overlay, " +
+      ".theme-overlay, .user-menu, .more-menu"
+    ).forEach(x => x.remove());
     document.body.style.overflow = "";
     return;
   }
+
   if (inField) return;
+
+  // ← / → — переключение вкладок темы
   const hash = location.hash.replace(/^#/, "").split("/").filter(Boolean);
   if (hash[0] === "topic" && hash[1]){
     const order = ["passport","lecture","practice","self","test"];
@@ -1107,7 +1112,7 @@ document.addEventListener("keydown", e => {
 });
 
 /* ============================================================
-   ДАШБОРД (перенос из основного модуля — реализация как в предыдущей версии)
+   ДАШБОРД
    ============================================================ */
 window.renderDashboard = function(){
   const app = document.getElementById("app");
@@ -1272,7 +1277,7 @@ function exportResultsCsv(){
 }
 
 /* ============================================================
-   Кнопки в шапке
+   Кнопка "Комментарии" в шапке
    ============================================================ */
 document.addEventListener("DOMContentLoaded", ()=>{
   document.getElementById("commentsBtn")?.addEventListener("click", ()=>location.hash = "#/comments");

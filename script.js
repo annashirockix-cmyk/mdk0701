@@ -1,13 +1,13 @@
 /* ============================================================
-   МДК 07.01 — Основной модуль (ядро + рендер + роутер)
+   МДК 07.01 — Основной модуль
    ============================================================ */
 
 const REPORT_EMAIL    = "camelia.2110@yandex.ru";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 const TEST_TIME_LIMIT_SEC = 15 * 60;
 const ACTIVITY_MAX        = 100;
-const TEACHER_PASS_HASH   = "c3f6e8b7f11c8e1b8a5e2a4d6c9e3f8a2d1b4c7e9f0a3d6b8c1e4f7a0d3b6c9"; // sha256("teacher2024")
-const BACKUP_INTERVAL_MS  = 5 * 60 * 1000;   // 5 минут
+const TEACHER_PASS_HASH   = "c3f6e8b7f11c8e1b8a5e2a4d6c9e3f8a2d1b4c7e9f0a3d6b8c1e4f7a0d3b6c9";
+const BACKUP_INTERVAL_MS  = 5 * 60 * 1000;
 const ONLINE_TIMEOUT_SEC  = 90;
 
 const AVATARS = [
@@ -18,6 +18,7 @@ const AVATARS = [
   "💡","🎓","🏆","🎯","🧠","🧑‍💻"
 ];
 const DEFAULT_AVATAR = AVATARS[0];
+
 const GOSTS = [
   { code:"ГОСТ 18097-93", url:"https://docs.cntd.ru/document/901852946", title:"Станки токарные. Нормы точности" },
   { code:"ГОСТ 8-82",     url:"https://docs.cntd.ru/document/1200007574", title:"Станки металлорежущие. Нормы точности" },
@@ -39,6 +40,16 @@ const QUOTES = [
   "Знание G-кода открывает любые станки."
 ];
 
+/* ---------- Темы ---------- */
+const THEMES = [
+  { id:"light",    name:"Светлая",   colors:["#f5f2ec","#ffffff","#c14a2a","#4a4a4a"] },
+  { id:"dark",     name:"Тёмная",    colors:["#0e0e10","#171719","#ff6b3d","#c8c5bd"] },
+  { id:"sepia",    name:"Сепия",     colors:["#f4ecd8","#fbf5e6","#a0522d","#5c4a32"] },
+  { id:"ocean",    name:"Океан",     colors:["#eef4f8","#ffffff","#1a6da8","#3c5361"] },
+  { id:"forest",   name:"Лес",       colors:["#eef3ec","#ffffff","#3d7a3d","#3f5238"] },
+  { id:"contrast", name:"Контраст",  colors:["#ffffff","#f5f5f5","#0033cc","#000000"] }
+];
+
 /* ---------- Состояние ---------- */
 const state = {
   student: JSON.parse(localStorage.getItem("mdk0701.student") || "null"),
@@ -46,7 +57,7 @@ const state = {
   results: {},
   selfResults: {},
   activity: [],
-  corrections: {},   // ручные корректировки преподавателя
+  corrections: {},
   lastSync: ""
 };
 
@@ -69,7 +80,7 @@ function shuffled(a){
   for (let i = r.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; }
   return r;
 }
-function todayIndex(){ const d = new Date(); return Math.floor(d.getTime() / 86400000); }
+function todayIndex(){ return Math.floor(Date.now() / 86400000); }
 function quoteOfDay(){ return QUOTES[todayIndex() % QUOTES.length]; }
 function fmtDate(d){ return new Date(d).toLocaleString("ru-RU", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }); }
 function fmtRel(iso){
@@ -184,7 +195,7 @@ async function cloudLoad(){
     const res = await fetch(APPS_SCRIPT_URL + "?" + params.toString(), { method:"GET" });
     const data = await res.json();
     if (data && data.ok && data.payload) return { payload: JSON.parse(data.payload), savedAt: data.savedAt || "" };
-  } catch (err) {}
+  } catch (err){}
   return null;
 }
 function setSyncStatus(text){
@@ -215,25 +226,11 @@ function saveBackupSnapshot(){
   const k = studentKey(); if (!k) return;
   const ek = encodeURIComponent(k);
   const snap = { savedAt: new Date().toISOString(), payload: buildCloudPayload() };
-  localStorage.setItem("mdk0701.backup." + ek, JSON.stringify(snap));
-  // оставляем только 3 последних
   const key = "mdk0701.backupList." + ek;
   const list = JSON.parse(localStorage.getItem(key) || "[]");
   list.push(snap);
   while (list.length > 3) list.shift();
   localStorage.setItem(key, JSON.stringify(list));
-}
-function restoreFromBackup(){
-  const k = studentKey(); if (!k) return false;
-  const ek = encodeURIComponent(k);
-  const list = JSON.parse(localStorage.getItem("mdk0701.backupList." + ek) || "[]");
-  if (!list.length) return false;
-  const last = list[list.length - 1];
-  applyCloudPayload(last.payload);
-  saveStudentData();
-  logActivity("login", "Восстановлено из бэкапа");
-  route();
-  return true;
 }
 function showBackupModal(){
   const k = studentKey(); if (!k) return;
@@ -275,7 +272,7 @@ function showBackupModal(){
   modal.querySelector("#bkClose").addEventListener("click", ()=>modal.remove());
 }
 
-/* ---------- Валидация ФИО и группы ---------- */
+/* ---------- Валидация ---------- */
 function normalizeName(v){
   const parts = v.trim().split(/\s+/).map(p => p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "").filter(Boolean);
   return parts.slice(0, 3).join(" ");
@@ -291,6 +288,113 @@ function validateGroup(v){
   if (t.length < 2) return { ok:false, msg:"Слишком короткая группа" };
   if (!/^[А-ЯЁ]{2,4}-?\d{2}$/.test(t)) return { ok:false, msg:"Формат: ТМ-21, ТС-22" };
   return { ok:true, msg:"", normalized: t };
+}
+
+/* ============================================================
+   ТЕМА (6 цветовых схем)
+   ============================================================ */
+function currentTheme(){
+  return document.documentElement.getAttribute("data-theme") || "light";
+}
+function applyTheme(theme){
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("mdk0701.theme", theme);
+  const icon = document.getElementById("themeIcon");
+  if (icon) icon.textContent = "🎨";
+  // Обновляем meta theme-color
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta){
+    const map = {
+      light:"#c14a2a", dark:"#0e0e10", sepia:"#a0522d",
+      ocean:"#1a6da8", forest:"#3d7a3d", contrast:"#0033cc"
+    };
+    meta.setAttribute("content", map[theme] || "#c14a2a");
+  }
+}
+function systemPrefersDark(){
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function initTheme(){
+  const saved = localStorage.getItem("mdk0701.theme");
+  if (saved && THEMES.some(t => t.id === saved)) applyTheme(saved);
+  else applyTheme(systemPrefersDark() ? "dark" : "light");
+
+  if (window.matchMedia){
+    try {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>{
+        if (!localStorage.getItem("mdk0701.theme")) applyTheme(systemPrefersDark() ? "dark" : "light");
+      });
+    } catch(e){}
+  }
+
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.addEventListener("click", openThemeModal);
+}
+function openThemeModal(){
+  document.querySelectorAll(".theme-overlay").forEach(x => x.remove());
+  const current = currentTheme();
+  const isAuto  = !localStorage.getItem("mdk0701.theme");
+
+  const modal = el(`<div class="theme-overlay">
+    <div class="theme-modal">
+      <h3>Цветовая тема</h3>
+      <p class="theme-sub">Выберите оформление — оно сохранится на этом устройстве.</p>
+      <div class="theme-grid"></div>
+      <div class="theme-actions">
+        <label class="theme-auto">
+          <input type="checkbox" id="themeAuto" ${isAuto ? "checked" : ""}>
+          Следовать теме системы
+        </label>
+        <button class="btn ghost" id="themeClose">Закрыть</button>
+      </div>
+    </div>
+  </div>`);
+
+  const grid = modal.querySelector(".theme-grid");
+  THEMES.forEach(t => {
+    const card = el(`<button type="button" class="theme-card ${t.id===current?"selected":""}" data-theme-id="${t.id}">
+      <div class="theme-preview">
+        <span style="background:${t.colors[0]}"></span>
+        <span style="background:${t.colors[1]}"></span>
+        <span style="background:${t.colors[2]}"></span>
+        <span style="background:${t.colors[3]}"></span>
+      </div>
+      <div class="theme-name">
+        <span>${t.name}</span>
+        <span class="check">✓</span>
+      </div>
+    </button>`);
+    card.addEventListener("click", ()=>{
+      grid.querySelectorAll(".theme-card").forEach(x => x.classList.remove("selected"));
+      card.classList.add("selected");
+      const autoBox = modal.querySelector("#themeAuto");
+      if (autoBox) autoBox.checked = false;
+      applyTheme(t.id);
+    });
+    grid.appendChild(card);
+  });
+
+  modal.querySelector("#themeAuto").addEventListener("change", e => {
+    if (e.target.checked){
+      localStorage.removeItem("mdk0701.theme");
+      applyTheme(systemPrefersDark() ? "dark" : "light");
+      grid.querySelectorAll(".theme-card").forEach(x => x.classList.remove("selected"));
+    } else {
+      applyTheme(currentTheme());
+    }
+  });
+
+  modal.querySelector("#themeClose").addEventListener("click", ()=>modal.remove());
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  const onEsc = (e)=>{ if (e.key === "Escape"){ modal.remove(); document.removeEventListener("keydown", onEsc); } };
+  document.addEventListener("keydown", onEsc);
+}
+
+function initNav(){
+  document.getElementById("navBack").addEventListener("click", ()=>window.history.back());
+  document.getElementById("navForward").addEventListener("click", ()=>window.history.forward());
 }
 
 /* ============================================================
@@ -449,6 +553,7 @@ function openUserMenu(){
         </div>
       </div>
       <button class="user-menu-item" data-act="avatar">🎨 Сменить аватар</button>
+      <button class="user-menu-item" data-act="theme">🌈 Сменить тему</button>
       <button class="user-menu-item" data-act="dashboard">📊 Статистика</button>
       <button class="user-menu-item" data-act="gallery">🖼 Галерея работ</button>
       <button class="user-menu-item" data-act="backup">💾 Резервные копии</button>
@@ -467,6 +572,7 @@ function openUserMenu(){
   };
   setTimeout(()=>document.addEventListener("click", close), 0);
   menu.querySelector('[data-act="avatar"]').addEventListener("click", ()=>{ menu.remove(); openAvatarModal(); });
+  menu.querySelector('[data-act="theme"]').addEventListener("click", ()=>{ menu.remove(); openThemeModal(); });
   menu.querySelector('[data-act="dashboard"]').addEventListener("click", ()=>{ menu.remove(); location.hash = "#/dashboard"; });
   menu.querySelector('[data-act="gallery"]').addEventListener("click", ()=>{ menu.remove(); location.hash = "#/gallery"; });
   menu.querySelector('[data-act="backup"]').addEventListener("click", ()=>{ menu.remove(); showBackupModal(); });
@@ -530,29 +636,6 @@ function importProfile(file){
 }
 
 /* ============================================================
-   ТЕМА
-   ============================================================ */
-function initTheme(){
-  const saved = localStorage.getItem("mdk0701.theme");
-  const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  applyTheme(saved || (systemDark ? "dark" : "light"));
-  document.getElementById("themeToggle").addEventListener("click", toggleTheme);
-}
-function applyTheme(theme){
-  document.documentElement.setAttribute("data-theme", theme);
-  document.getElementById("themeIcon").textContent = theme === "dark" ? "☀️" : "🌙";
-  localStorage.setItem("mdk0701.theme", theme);
-}
-function toggleTheme(){
-  const cur = document.documentElement.getAttribute("data-theme") || "light";
-  applyTheme(cur === "dark" ? "light" : "dark");
-}
-function initNav(){
-  document.getElementById("navBack").addEventListener("click", ()=>window.history.back());
-  document.getElementById("navForward").addEventListener("click", ()=>window.history.forward());
-}
-
-/* ============================================================
    ГЛАВНАЯ
    ============================================================ */
 function renderHome(){
@@ -575,7 +658,6 @@ function renderHome(){
     </section>
   `));
 
-  // Погода
   const weather = el(`<div style="margin-bottom:24px"><span class="weather-pill" id="weatherPill">🌤 Загрузка погоды…</span></div>`);
   app.appendChild(weather);
   loadWeather(weather.querySelector("#weatherPill"));
@@ -629,7 +711,6 @@ function renderHome(){
     app.appendChild(list);
   });
 
-  // Паспорта
   if (COURSE.passports?.length){
     app.appendChild(el(`<div class="steps-title">Паспорта станков</div>`));
     const block = el(`<section class="module"><div class="meta">Справочные материалы</div>
@@ -645,7 +726,6 @@ function renderHome(){
     app.appendChild(block);
   }
 
-  // Охрана труда
   if (COURSE.safety?.length){
     app.appendChild(el(`<div class="steps-title">Охрана труда</div>`));
     const block = el(`<section class="module"><div class="meta">Нормативные документы</div>
@@ -657,7 +737,6 @@ function renderHome(){
     app.appendChild(block);
   }
 
-  // Видео
   app.appendChild(el(`<div class="steps-title">История робототехники СССР</div>`));
   const vids = el(`<section class="module"><div class="meta">Модуль 4 · Видеоматериалы</div>
     <h2>История робототехники СССР</h2><p class="sub">Просмотр — прямо на странице.</p><div class="videos"></div></section>`);
@@ -667,7 +746,6 @@ function renderHome(){
     <div class="v-cap">${v.title}</div></div>`)));
   app.appendChild(vids);
 
-  // Итоговое
   app.appendChild(el(`<div class="steps-title">Итоговое задание</div>`));
   app.appendChild(el(`<section class="module"><h2>${COURSE.final.title}</h2>
     <p class="desc"><b>Задание:</b> ${COURSE.final.task}</p>
@@ -676,7 +754,6 @@ function renderHome(){
       ${COURSE.final.criteria.map(c=>`<div class="kpi"><div class="k-label">${c.weight}</div><div class="k-value" style="font-size:14px">${c.name}</div></div>`).join("")}
     </div><p class="desc"><b>Срок:</b> ${COURSE.final.deadline}</p></section>`));
 
-  // Комментарии
   if (window.renderCommentsBlock) app.appendChild(window.renderCommentsBlock());
 }
 
@@ -693,7 +770,7 @@ async function loadWeather(node){
 }
 
 /* ============================================================
-   ТЕМА / ТЕСТЫ (рендер)
+   ТЕМА / ТЕСТЫ
    ============================================================ */
 function renderTopic(id, tab = "passport", extra = ""){
   const found = findTopic(id);
@@ -782,7 +859,7 @@ function renderPractice(panel, t){
       ${p.solution?.length ? `<div class="p-solution"><h4>Ход решения</h4><ol>${p.solution.map(s=>`<li>${s}</li>`).join("")}</ol></div>` : ""}
       <div class="test-actions">
         <button class="btn ghost work-upload-btn" data-code="${p.code}" data-title="${p.title}">📎 Прикрепить работу</button>
-        <button class="btn ghost gcode-btn" data-code="${p.code}">👨‍💻 Открыть в G-code просмотрщике</button>
+        <button class="btn ghost gcode-btn" data-code="${p.code}">👨‍💻 G-code просмотрщик</button>
       </div>
     </div>`);
     box.querySelector(".work-upload-btn")?.addEventListener("click", ()=>window.openUploadModal?.(t.id, p.code, p.title));
@@ -1003,7 +1080,7 @@ function renderTestControl(body, t){
 }
 
 /* ============================================================
-   PDF + G-CODE + UPLOAD (лёгкие модалки)
+   PDF
    ============================================================ */
 function openPdfModal(file, title){
   document.querySelectorAll(".pdf-overlay").forEach(x => x.remove());
@@ -1032,7 +1109,7 @@ function openPdfModal(file, title){
 function goHome(e){ if (e) e.preventDefault(); location.hash = "#/"; }
 function route(){
   clearTestTimer();
-  document.querySelectorAll(".pdf-overlay, .report-overlay, .avatar-overlay, .search-overlay, .user-menu, .more-menu").forEach(x => x.remove());
+  document.querySelectorAll(".pdf-overlay, .report-overlay, .avatar-overlay, .search-overlay, .theme-overlay, .user-menu, .more-menu").forEach(x => x.remove());
   if (!state.student){ document.getElementById("app").innerHTML = ""; return; }
   const hash = location.hash.replace(/^#/, "") || "/";
   const parts = hash.split("/").filter(Boolean);
@@ -1083,6 +1160,7 @@ function openMoreMenu(){
     <button class="more-menu-item" data-go="#/calendar">📅 Календарь</button>
     <button class="more-menu-item" data-go="#/gosts">📐 ГОСТы</button>
     <button class="more-menu-item" data-go="#/qr">📱 QR-код</button>
+    <button class="more-menu-item" data-act="theme">🎨 Сменить тему</button>
     <button class="more-menu-item" data-go="#/teacher">👨‍🏫 Панель преподавателя</button>
     <button class="more-menu-item" data-act="report">📧 Отправить отчёт</button>
   </div>`);
@@ -1096,6 +1174,7 @@ function openMoreMenu(){
   setTimeout(()=>document.addEventListener("click", close), 0);
   menu.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", ()=>{ menu.remove(); location.hash = b.dataset.go; }));
   menu.querySelector('[data-act="report"]').addEventListener("click", ()=>{ menu.remove(); window.openReportModal?.(); });
+  menu.querySelector('[data-act="theme"]').addEventListener("click", ()=>{ menu.remove(); openThemeModal(); });
 }
 
 /* ============================================================

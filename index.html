@@ -9,7 +9,22 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>МДК 07.01 — Технология обработки деталей на станках с ЧПУ</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjYzE0YTJhIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI5NiIgcj0iNTIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI5NiIgY3k9Ijk2IiByPSIyOCIgZmlsbD0iIzFhNGEyYSIvPjwvc3ZnPg==">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjYzE0YTJhIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI5NiIgcj0iNTIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI5NiIgY3k9Ijk2IiByPSIyOCIgZmlsbD0iI2MxNGEyYSIvPjwvc3ZnPg==">
+
+<!-- Применяем тему ДО отрисовки, чтобы не было вспышки светлым -->
+<script>
+  (function(){
+    try {
+      var t = localStorage.getItem("mdk0701.theme");
+      if (!t || t === "auto"){
+        var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        t = d ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", t);
+    } catch(e){}
+  })();
+</script>
+
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -74,8 +89,8 @@
   <button class="topbar-btn" id="questionsBtn" title="Вопросы преподавателю" aria-label="Вопросы">❓</button>
   <button class="topbar-btn" id="dashboardBtn" title="Статистика" aria-label="Статистика">📊</button>
   <button class="topbar-btn" id="moreBtn" title="Ещё" aria-label="Ещё">⋯</button>
-  <button class="theme-toggle" id="themeToggle" title="Переключить тему" aria-label="Тема">
-    <span class="theme-icon" id="themeIcon">🌙</span>
+  <button class="theme-toggle" id="themeToggle" title="Сменить тему" aria-label="Сменить тему">
+    <span class="theme-icon" id="themeIcon">🎨</span>
   </button>
 </header>
 
