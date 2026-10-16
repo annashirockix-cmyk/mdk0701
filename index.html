@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#c14a2a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>МДК 07.01 — Технология обработки деталей на станках с ЧПУ</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjYzE0YTJhIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI5NiIgcj0iNTIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI5NiIgY3k9Ijk2IiByPSIyOCIgZmlsbD0iI2MxNGEyYSIvPjwvc3ZnPg==">
@@ -35,7 +34,7 @@
       <span class="brand-badge">МДК 07.01</span>
       <h1>Вход студента</h1>
     </div>
-    <p class="login-sub">Введите свои данные, чтобы начать работу. Прогресс сохранится в браузере и в облаке.</p>
+    <p class="login-sub">Введите ФИО и группу, чтобы начать работу. Прогресс сохранится в браузере и в облаке.</p>
 
     <label for="loginName">ФИО студента</label>
     <input id="loginName" type="text" placeholder="Иванов Иван Иванович" autocomplete="name">
@@ -46,16 +45,17 @@
     <datalist id="groupList">
       <option value="ТМ-21"><option value="ТМ-22"><option value="ТМ-23">
       <option value="ТС-21"><option value="ТС-22"><option value="ТМ-20">
+      <option value="ТМ-3">
     </datalist>
     <div class="field-hint" id="groupHint"></div>
 
     <label>Аватар</label>
     <div class="avatar-picker-inline" id="loginAvatarPicker"></div>
 
-    <button id="loginBtn" class="btn login-btn">Войти</button>
-    <p class="login-hint">Если вы уже заходили с другого устройства — введите те же ФИО и группу.</p>
+    <button id="loginBtn" class="btn login-btn">Войти как студент</button>
     <p class="login-hint">
-      <a href="#/staff" style="color:var(--accent);text-decoration:underline">Служебный вход для сотрудников →</a>
+      Служебный вход для сотрудников —
+      <a href="#" id="loginStaffLink" style="color:var(--accent);text-decoration:underline">логин и пароль</a>
     </p>
   </div>
 </div>
@@ -90,7 +90,7 @@
   <button class="topbar-btn" id="chatBtn" title="Чат группы" aria-label="Чат">💭</button>
   <button class="topbar-btn" id="questionsBtn" title="Вопросы преподавателю" aria-label="Вопросы">❓</button>
   <button class="topbar-btn" id="dashboardBtn" title="Статистика" aria-label="Статистика">📊</button>
-  <button class="topbar-btn" id="staffBtn" title="Служебный вход" aria-label="Служебный вход">👤</button>
+  <button class="topbar-btn" id="roleBtn" title="Сменить роль / Служебный вход" aria-label="Сменить роль">🎭</button>
   <button class="topbar-btn" id="moreBtn" title="Ещё" aria-label="Ещё">⋯</button>
   <button class="theme-toggle" id="themeToggle" title="Сменить тему" aria-label="Сменить тему">
     <span class="theme-icon" id="themeIcon">🎨</span>
@@ -112,9 +112,9 @@
 
 <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
-<script src="data.js"></script>
-<script src="info.js"></script>
+<script src="data.js" onerror="window.__mdkDataLoadError = true"></script>
+<script src="info.js" onerror="console.warn('info.js не загружен')"></script>
 <script src="script.js"></script>
-<script src="extra.js"></script>
+<script src="extra.js" onerror="console.warn('extra.js не загружен')"></script>
 </body>
 </html>
