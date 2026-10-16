@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (переписан, без вложенных template literals)
+   МДК 07.01 — script.js (исправлена загрузка COURSE)
    ============================================================ */
 
 "use strict";
@@ -69,6 +69,21 @@ try {
 } catch (e){}
 
 /* ============================================================
+   Доступ к COURSE (безопасно для const/var)
+   ============================================================ */
+function getCourse(){
+  // data.js объявляет `const COURSE = {...}`, поэтому window.COURSE не создаётся.
+  // Проверяем разные варианты.
+  try {
+    if (typeof COURSE !== "undefined" && COURSE && COURSE.sections) return COURSE;
+  } catch (e){}
+  try {
+    if (typeof window !== "undefined" && window.COURSE && window.COURSE.sections) return window.COURSE;
+  } catch (e){}
+  return null;
+}
+
+/* ============================================================
    Утилиты
    ============================================================ */
 function $(id){ return document.getElementById(id); }
@@ -91,7 +106,7 @@ function escapeHtml(s){
 }
 
 function findTopic(id){
-  var c = window.COURSE;
+  var c = getCourse();
   if (!c || !c.sections) return null;
   for (var i = 0; i < c.sections.length; i++){
     var s = c.sections[i];
@@ -754,7 +769,7 @@ function renderHome(){
   var crumbs = $("crumbs"); if (crumbs) crumbs.textContent = "";
   setActiveTopBtn("");
 
-  var c = window.COURSE;
+  var c = getCourse();
   if (!c || !c.sections){
     app.appendChild(el(
       '<section class="module">' +
@@ -1559,7 +1574,8 @@ window.addEventListener("DOMContentLoaded", function(){
     renderUserChip();
     updateNetStatus();
 
-    if (!window.COURSE || !window.COURSE.sections){
+    var _course = getCourse();
+    if (!_course || !_course.sections){
       var app = $("app");
       if (app){
         app.innerHTML = "";
