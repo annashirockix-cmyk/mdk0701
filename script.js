@@ -4,9 +4,10 @@
    + синхронизация прогресса через Google Apps Script
    + просмотр PDF в модалке
    + отправка отчёта
+   + комментарии с автоудалением через 5 лет
    ============================================================ */
 
-const REPORT_EMAIL   = "camelia.2110@yandex.ru";
+const REPORT_EMAIL    = "camelia.2110@yandex.ru";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 
 const state = {
@@ -14,7 +15,7 @@ const state = {
   progress: {},
   results: {},
   selfResults: {},
-  lastSync: localStorage.getItem("mdk0701.lastSync") || ""
+  lastSync: ""
 };
 
 /* ---------- ключ студента ---------- */
@@ -56,11 +57,11 @@ function saveSelfResults(){ saveStudentData(); scheduleCloudSave(); }
 
 /* ---------- синхронизация с облаком ---------- */
 let cloudTimer = null;
-let cloudBusy = false;
+let cloudBusy  = false;
 
 function scheduleCloudSave(){
   if (cloudTimer) clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(()=>{ cloudSave(); }, 3000);
+  cloudTimer = setTimeout(()=>{ cloudSave(true); }, 3000);
 }
 
 async function cloudSave(silent){
@@ -69,18 +70,18 @@ async function cloudSave(silent){
   if (!silent) setSyncStatus("Отправляем…");
 
   const params = new URLSearchParams();
-  params.append("action", "save");
-  params.append("key",    studentKey());
-  params.append("name",   state.student.name);
-  params.append("group",  state.student.group);
+  params.append("action",  "save");
+  params.append("key",     studentKey());
+  params.append("name",    state.student.name);
+  params.append("group",   state.student.group);
   params.append("payload", JSON.stringify({
-    progress: state.progress,
-    results: state.results,
+    progress:    state.progress,
+    results:     state.results,
     selfResults: state.selfResults
   }));
 
   try {
-    const res = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
+    const res  = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
     const data = await res.json();
     if (data && data.ok){
       state.lastSync = data.savedAt || new Date().toISOString();
@@ -103,23 +104,22 @@ async function cloudLoad(){
   const params = new URLSearchParams();
   params.append("action", "load");
   params.append("key",    studentKey());
-
   try {
-    const res = await fetch(APPS_SCRIPT_URL + "?" + params.toString(), { method:"GET" });
+    const res  = await fetch(APPS_SCRIPT_URL + "?" + params.toString(), { method:"GET" });
     const data = await res.json();
     if (data && data.ok && data.payload){
       return { payload: JSON.parse(data.payload), savedAt: data.savedAt || "" };
     }
-  } catch (err){ /* тихо игнорируем — оффлайн */ }
+  } catch (err){ /* оффлайн */ }
   return null;
 }
 
 function setSyncStatus(text){
-  const el = document.getElementById("syncStatus");
-  if (!el) return;
-  el.textContent = text;
-  el.className = "sync-status";
-  setTimeout(()=>{ if (el.textContent === text) el.textContent = ""; }, 3000);
+  const node = document.getElementById("syncStatus");
+  if (!node) return;
+  node.textContent = text;
+  node.className = "sync-status";
+  setTimeout(()=>{ if (node.textContent === text) node.textContent = ""; }, 3000);
 }
 
 /* ---------- утилиты ---------- */
@@ -133,15 +133,18 @@ function findTopic(id){
     for (const t of s.topics) if (t.id === id) return { section: s, topic: t };
   return null;
 }
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
 
 /* ============================================================
    АВТОРИЗАЦИЯ
    ============================================================ */
 function initAuth(){
-  const overlay = document.getElementById("loginOverlay");
-  const nameInput = document.getElementById("loginName");
+  const overlay    = document.getElementById("loginOverlay");
+  const nameInput  = document.getElementById("loginName");
   const groupInput = document.getElementById("loginGroup");
-  const btn = document.getElementById("loginBtn");
+  const btn        = document.getElementById("loginBtn");
 
   if (!state.student){
     overlay.hidden = false;
@@ -151,7 +154,6 @@ function initAuth(){
     loadStudentData();
     overlay.hidden = true;
     document.body.style.overflow = "";
-    // тихая догрузка из облака при старте
     setTimeout(async ()=>{
       const cloud = await cloudLoad();
       if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
@@ -166,14 +168,10 @@ function initAuth(){
   }
 
   btn.addEventListener("click", async ()=>{
-    const name = (nameInput.value || "").trim();
+    const name  = (nameInput.value  || "").trim();
     const group = (groupInput.value || "").trim();
-    if (!name || name.length < 3){
-      nameInput.focus(); nameInput.style.borderColor = "var(--err)"; return;
-    }
-    if (!group || group.length < 2){
-      groupInput.focus(); groupInput.style.borderColor = "var(--err)"; return;
-    }
+    if (!name || name.length < 3){ nameInput.focus(); nameInput.style.borderColor = "var(--err)"; return; }
+    if (!group || group.length < 2){ groupInput.focus(); groupInput.style.borderColor = "var(--err)"; return; }
 
     if (state.student) saveStudentData();
 
@@ -185,7 +183,6 @@ function initAuth(){
     document.body.style.overflow = "";
     renderUserChip();
 
-    // пробуем достать облако
     const cloud = await cloudLoad();
     let restored = false;
     if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
@@ -199,7 +196,7 @@ function initAuth(){
 
     renderHome();
     if (restored){
-      alert("Прогресс восстановлен из облака.");
+      setTimeout(()=>alert("Прогресс восстановлен из облака."), 200);
     }
   });
 
@@ -214,12 +211,12 @@ function initAuth(){
 }
 
 function renderUserChip(){
-  const chip = document.getElementById("userChip");
-  const nameEl = document.getElementById("userChipName");
+  const chip    = document.getElementById("userChip");
+  const nameEl  = document.getElementById("userChipName");
   const groupEl = document.getElementById("userChipGroup");
   if (!chip || !state.student) return;
   chip.hidden = false;
-  nameEl.textContent = state.student.name;
+  nameEl.textContent  = state.student.name;
   groupEl.textContent = "Гр. " + state.student.group;
 }
 
@@ -244,7 +241,7 @@ function openUserMenu(){
   `);
   document.body.appendChild(menu);
   menu.style.position = "fixed";
-  menu.style.top = (rect.bottom + 8) + "px";
+  menu.style.top  = (rect.bottom + 8) + "px";
   menu.style.right = (window.innerWidth - rect.right) + "px";
 
   const close = (e)=>{
@@ -263,7 +260,7 @@ function openUserMenu(){
 
   menu.querySelector('[data-act="switch"]').addEventListener("click", ()=>{
     menu.remove();
-    if (!confirm("Сменить пользователя? Ваш прогресс сохранён в этом браузере и в облаке.")) return;
+    if (!confirm("Сменить пользователя? Ваш прогресс сохранён локально и в облаке.")) return;
     saveStudentData();
     state.student = null;
     state.progress = {};
@@ -309,8 +306,8 @@ function exportProfile(){
     selfResults: state.selfResults
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
   const safeName  = s.name.replace(/[^\wа-яё\-]+/gi, "_");
   const safeGroup = s.group.replace(/[^\wа-яё\-]+/gi, "_");
   a.href = url;
@@ -334,8 +331,7 @@ function importProfile(file){
     state.results = data.results || {};
     state.selfResults = data.selfResults || {};
     saveStudent(); saveStudentData();
-    renderUserChip(); renderHome();
-    cloudSave(true);
+    renderUserChip(); renderHome(); cloudSave(true);
     alert("✔ Профиль загружен.");
   };
   reader.readAsText(file);
@@ -539,6 +535,9 @@ function renderHome(){
       <p class="desc"><b>Срок:</b> ${COURSE.final.deadline}</p>
     </section>
   `));
+
+  // Комментарии
+  app.appendChild(renderCommentsBlock());
 }
 
 /* ============================================================
@@ -683,11 +682,11 @@ function renderSelf(panel, t){
       <div class="self-feedback"></div>
     </div>`);
     const input = block.querySelector(".self-input");
-    const btn = block.querySelector(".self-check");
-    const fb = block.querySelector(".self-feedback");
+    const btn   = block.querySelector(".self-check");
+    const fb    = block.querySelector(".self-feedback");
     btn.addEventListener("click", ()=>{
-      const userAns = (input.value || "").trim().toLowerCase();
-      const correct = task.a.trim().toLowerCase();
+      const userAns  = (input.value || "").trim().toLowerCase();
+      const correct  = task.a.trim().toLowerCase();
       const accepted = Array.isArray(task.accept) ? task.accept.map(x=>x.trim().toLowerCase()) : [];
       const ok = userAns === correct || accepted.includes(userAns);
       fb.textContent = ok ? "✔ Верно" : ("✘ Неверно. Правильный ответ: " + task.a);
@@ -709,7 +708,7 @@ function renderSelf(panel, t){
       if (q.querySelector(".self-feedback").classList.contains("ok")) ok++;
     });
     const total = tasks.length;
-    const pct = Math.round(ok / total * 100);
+    const pct   = Math.round(ok / total * 100);
     const grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
     result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${grade}.`;
     result.className = "test-result " + (grade >= 3 ? "ok" : "bad");
@@ -771,7 +770,7 @@ function renderTest(panel, t){
       }
     });
     const total = t.test.length;
-    const pct = Math.round(ok / total * 100);
+    const pct   = Math.round(ok / total * 100);
     let grade = 2;
     if (pct >= 90) grade = 5; else if (pct >= 75) grade = 4; else if (pct >= 60) grade = 3;
     result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${grade}.`;
@@ -820,6 +819,139 @@ function openPdfModal(file, title){
   }
   function onEsc(e){ if (e.key === "Escape") closePdf(); }
   document.addEventListener("keydown", onEsc);
+}
+
+/* ============================================================
+   КОММЕНТАРИИ
+   ============================================================ */
+async function loadComments(){
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + "?action=loadcomments");
+    const data = await res.json();
+    if (data && data.ok && Array.isArray(data.comments)) return data.comments;
+  } catch (err){ /* оффлайн */ }
+  return null;
+}
+
+async function saveComment(name, group, rating, text){
+  const params = new URLSearchParams();
+  params.append("action", "savecomment");
+  params.append("name",   name);
+  params.append("group",  group);
+  params.append("rating", String(rating));
+  params.append("text",   text);
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
+    const data = await res.json();
+    return data && data.ok;
+  } catch (err){ return false; }
+}
+
+function renderCommentsBlock(){
+  const block = el(`
+    <section class="module comments-module">
+      <div class="meta">Отзывы выпускников</div>
+      <h2>Комментарии прошедших курс</h2>
+      <p class="sub">Оставить отзыв может любой студент после прохождения курса.
+        Комментарии старше 5 лет удаляются автоматически.</p>
+
+      <form class="comment-form" id="commentForm">
+        <div class="cf-row">
+          <label>Оценка курса</label>
+          <div class="star-rating" id="starRating">
+            <input type="radio" name="rating" value="5" id="r5" checked><label for="r5">★</label>
+            <input type="radio" name="rating" value="4" id="r4"><label for="r4">★</label>
+            <input type="radio" name="rating" value="3" id="r3"><label for="r3">★</label>
+            <input type="radio" name="rating" value="2" id="r2"><label for="r2">★</label>
+            <input type="radio" name="rating" value="1" id="r1"><label for="r1">★</label>
+          </div>
+        </div>
+        <textarea id="commentText" class="comment-text" maxlength="600"
+          placeholder="Что помогло, что запомнилось, что стоит улучшить… (до 600 символов)"></textarea>
+        <div class="cf-footer">
+          <div class="cf-counter"><span id="commentCounter">0</span> / 600</div>
+          <button type="submit" class="btn">Оставить отзыв</button>
+        </div>
+        <div class="comment-status" id="commentStatus"></div>
+      </form>
+
+      <div class="comments-list" id="commentsList">
+        <div class="comment-empty">Загружаем отзывы…</div>
+      </div>
+    </section>
+  `);
+
+  const ta      = block.querySelector("#commentText");
+  const counter = block.querySelector("#commentCounter");
+  ta.addEventListener("input", ()=>{ counter.textContent = ta.value.length; });
+
+  block.querySelector("#commentForm").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const status = block.querySelector("#commentStatus");
+    const text = ta.value.trim();
+    if (text.length < 10){
+      status.textContent = "Слишком короткий отзыв (мин. 10 символов).";
+      status.className = "comment-status bad";
+      return;
+    }
+    const rating = Number((block.querySelector('input[name="rating"]:checked') || {}).value || 5);
+    status.textContent = "Отправляем…";
+    status.className = "comment-status";
+
+    const ok = await saveComment(
+      state.student ? state.student.name  : "Гость",
+      state.student ? state.student.group : "—",
+      rating, text
+    );
+
+    if (ok){
+      status.textContent = "✔ Спасибо! Отзыв опубликован.";
+      status.className = "comment-status ok";
+      ta.value = "";
+      counter.textContent = "0";
+      await refreshComments(block.querySelector("#commentsList"));
+    } else {
+      status.textContent = "Не удалось отправить. Проверьте интернет.";
+      status.className = "comment-status bad";
+    }
+  });
+
+  setTimeout(()=>refreshComments(block.querySelector("#commentsList")), 50);
+  return block;
+}
+
+async function refreshComments(container){
+  const list = await loadComments();
+  container.innerHTML = "";
+  if (list === null){
+    container.appendChild(el(`<div class="comment-empty">Не удалось загрузить отзывы. Проверьте интернет.</div>`));
+    return;
+  }
+  if (list.length === 0){
+    container.appendChild(el(`<div class="comment-empty">Пока нет отзывов. Будьте первым!</div>`));
+    return;
+  }
+  list.forEach(c=>{
+    const date    = new Date(c.date);
+    const dateStr = date.toLocaleDateString("ru-RU", { day:"2-digit", month:"long", year:"numeric" });
+    const stars   = "★".repeat(Math.max(1, Math.min(5, c.rating))) +
+                    "☆".repeat(5 - Math.max(1, Math.min(5, c.rating)));
+    container.appendChild(el(`
+      <div class="comment-card">
+        <div class="comment-head">
+          <div class="comment-author">
+            <span class="comment-name">${escapeHtml(c.name)}</span>
+            <span class="comment-group">гр. ${escapeHtml(c.group)}</span>
+          </div>
+          <div class="comment-meta">
+            <span class="comment-stars">${stars}</span>
+            <span class="comment-date">${dateStr}</span>
+          </div>
+        </div>
+        <div class="comment-text-body">${escapeHtml(c.text)}</div>
+      </div>
+    `));
+  });
 }
 
 /* ============================================================
@@ -925,14 +1057,14 @@ function openReportModal(){
     params.append("report",  buildReport());
 
     try {
-      await fetch(APPS_SCRIPT_URL, { method: "POST", body: params });
+      await fetch(APPS_SCRIPT_URL, { method:"POST", body: params });
       status.textContent = "✔ Отчёт отправлен на camelia.2110@yandex.ru и anna.shirockix@gmail.com";
       status.className = "report-status ok";
       btn.textContent = "Отправлено";
     } catch (err){
       const subject = encodeURIComponent("МДК 07.01 — отчёт " + s.name + " (гр. " + s.group + ")");
-      const body = encodeURIComponent(buildReport());
-      const mailto = "mailto:" + REPORT_EMAIL + "?subject=" + subject + "&body=" + body;
+      const body    = encodeURIComponent(buildReport());
+      const mailto  = "mailto:" + REPORT_EMAIL + "?subject=" + subject + "&body=" + body;
       status.innerHTML = "Не удалось отправить автоматически. " +
         '<a href="' + mailto + '" style="color:var(--accent);text-decoration:underline">Открыть письмо в почтовом клиенте →</a>';
       status.className = "report-status bad";

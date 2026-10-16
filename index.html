@@ -11,7 +11,7 @@
 </head>
 <body>
 
-<!-- ============ ЭКРАН ВХОДА ============ -->
+<!-- ЭКРАН ВХОДА -->
 <div class="login-overlay" id="loginOverlay" hidden>
   <div class="login-card">
     <div class="login-brand">
@@ -20,7 +20,7 @@
     </div>
     <p class="login-sub">
       Введите свои данные, чтобы начать работу.
-      Они сохранятся в браузере и попадут в отчёт преподавателю.
+      Прогресс сохранится в этом браузере и в облаке.
     </p>
 
     <label for="loginName">ФИО студента</label>
@@ -32,12 +32,12 @@
     <button id="loginBtn" class="btn login-btn">Войти</button>
 
     <p class="login-hint">
-      Если вы уже заходили — данные подставятся автоматически.
+      Если вы уже заходили с другого устройства — просто введите то же ФИО и группу.
     </p>
   </div>
 </div>
 
-<!-- ============ ШАПКА ============ -->
+<!-- ШАПКА -->
 <header class="topbar">
   <div class="nav-group">
     <button class="nav-btn" id="navBack" title="Назад" aria-label="Назад">←</button>
@@ -50,7 +50,7 @@
 
   <div class="crumbs" id="crumbs"></div>
 
-  <div class="user-chip" id="userChip" title="Сменить пользователя" hidden>
+  <div class="user-chip" id="userChip" title="Меню профиля" hidden>
     <span class="user-chip-name" id="userChipName"></span>
     <span class="user-chip-group" id="userChipGroup"></span>
   </div>
