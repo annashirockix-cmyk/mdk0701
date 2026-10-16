@@ -108,6 +108,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   font-size:16px;line-height:1;transition:background .15s, border-color .15s;
 }
 .topbar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.topbar-btn.active{border-color:var(--accent);background:var(--accent-soft)}
 .topbar-ico{font-size:16px}
 .theme-toggle{
   width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
@@ -417,6 +418,62 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
 .user-menu-item:hover{background:var(--accent-soft);color:var(--accent);}
 .user-menu-item.danger:hover{background:rgba(192,57,43,.12);color:var(--err);}
 html[data-theme="dark"] .user-menu-item.danger:hover{background:rgba(255,110,94,.15);color:var(--err);}
+
+/* ---------- Комментарии ---------- */
+.comments-module .comment-form{
+  display:flex;flex-direction:column;gap:12px;margin:16px 0 22px;
+  border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:var(--card-soft);
+}
+.cf-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.cf-row label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.star-rating{display:inline-flex;flex-direction:row-reverse;gap:2px}
+.star-rating input{display:none}
+.star-rating label{
+  font-size:26px;line-height:1;color:var(--border);cursor:pointer;
+  transition:color .12s, transform .12s;
+}
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label{color:#f0b400;}
+.star-rating label:hover{transform:scale(1.08)}
+.comment-text{
+  width:100%;min-height:90px;resize:vertical;
+  padding:12px 14px;border:1px solid var(--border);border-radius:10px;
+  background:var(--card);color:var(--text);font:inherit;font-size:14px;outline:none;
+  transition:border-color .15s;
+}
+.comment-text:focus{border-color:var(--accent)}
+.cf-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cf-counter{font-size:12px;color:var(--muted)}
+.comment-status{font-size:13px;min-height:18px}
+.comment-status.ok{color:var(--ok)}
+.comment-status.bad{color:var(--err)}
+
+.comments-list{display:flex;flex-direction:column;gap:12px}
+.comment-empty{
+  border:1px dashed var(--border);border-radius:12px;padding:22px;
+  text-align:center;color:var(--muted);font-size:14px;background:var(--card-soft);
+}
+.comment-card{
+  border:1px solid var(--border);border-radius:12px;padding:14px 18px;
+  background:var(--card-soft);
+}
+.comment-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  margin-bottom:8px;flex-wrap:wrap;
+}
+.comment-author{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.comment-name{font-weight:600;font-size:14px}
+.comment-group{font-size:12px;color:var(--muted)}
+.comment-meta{display:flex;align-items:center;gap:10px}
+.comment-stars{color:#f0b400;font-size:14px;letter-spacing:1px}
+.comment-date{font-size:12px;color:var(--muted)}
+.comment-text-body{font-size:14px;color:var(--text-soft);white-space:pre-wrap;word-break:break-word}
+
+/* ---------- Страница комментариев ---------- */
+.comments-page{display:flex;flex-direction:column;gap:0}
+.comments-page .comments-module{margin-bottom:0}
+.comments-page > .backlink{margin-bottom:18px}
 
 /* ---------- Адаптивность ---------- */
 @media (max-width:900px){ .crumbs{display:none} }

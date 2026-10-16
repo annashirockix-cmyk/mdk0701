@@ -4,6 +4,7 @@
    + синхронизация прогресса через Google Apps Script
    + просмотр PDF в модалке
    + отправка отчёта
+   + отдельная страница «Комментарии» (#/comments)
    + комментарии с автоудалением через 5 лет
    ============================================================ */
 
@@ -162,7 +163,7 @@ function initAuth(){
         state.selfResults = cloud.payload.selfResults || {};
         state.lastSync    = cloud.savedAt;
         saveStudentData();
-        renderHome();
+        route();
       }
     }, 500);
   }
@@ -232,6 +233,7 @@ function openUserMenu(){
         <div class="user-menu-name">${state.student.name}</div>
         <div class="user-menu-group">Группа ${state.student.group}</div>
       </div>
+      <button class="user-menu-item" data-act="comments">💬 Комментарии</button>
       <button class="user-menu-item" data-act="sync">☁ Синхронизировать сейчас</button>
       <button class="user-menu-item" data-act="switch">🔄 Сменить пользователя</button>
       <button class="user-menu-item" data-act="export">⬇️ Скачать профиль (.json)</button>
@@ -251,6 +253,11 @@ function openUserMenu(){
     }
   };
   setTimeout(()=>document.addEventListener("click", close), 0);
+
+  menu.querySelector('[data-act="comments"]').addEventListener("click", ()=>{
+    menu.remove();
+    location.hash = "#/comments";
+  });
 
   menu.querySelector('[data-act="sync"]').addEventListener("click", async ()=>{
     menu.remove();
@@ -290,7 +297,7 @@ function openUserMenu(){
     menu.remove();
     if (!confirm("Очистить ВЕСЬ прогресс (тесты, самостоятельные, открытые вкладки)?")) return;
     state.progress = {}; state.results = {}; state.selfResults = {};
-    saveStudentData(); renderHome(); cloudSave(true);
+    saveStudentData(); route(); cloudSave(true);
   });
 }
 
@@ -331,7 +338,7 @@ function importProfile(file){
     state.results = data.results || {};
     state.selfResults = data.selfResults || {};
     saveStudent(); saveStudentData();
-    renderUserChip(); renderHome(); cloudSave(true);
+    renderUserChip(); route(); cloudSave(true);
     alert("✔ Профиль загружен.");
   };
   reader.readAsText(file);
@@ -372,6 +379,7 @@ function renderHome(){
   const app = document.getElementById("app");
   app.innerHTML = "";
   document.getElementById("crumbs").textContent = "";
+  setActiveTopBtn("");
 
   app.appendChild(el(`
     <section class="hero">
@@ -536,8 +544,35 @@ function renderHome(){
     </section>
   `));
 
-  // Комментарии
   app.appendChild(renderCommentsBlock());
+}
+
+/* ============================================================
+   СТРАНИЦА «КОММЕНТАРИИ»
+   ============================================================ */
+function renderCommentsPage(){
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Комментарии";
+  setActiveTopBtn("comments");
+
+  app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
+
+  const wrap = el(`<div class="comments-page"></div>`);
+  wrap.appendChild(renderCommentsBlock());
+  app.appendChild(wrap);
+}
+
+function initComments(){
+  const btn = document.getElementById("commentsBtn");
+  if (btn) btn.addEventListener("click", ()=>{ location.hash = "#/comments"; });
+}
+
+function setActiveTopBtn(which){
+  const cb = document.getElementById("commentsBtn");
+  const rb = document.getElementById("reportBtn");
+  if (cb) cb.classList.toggle("active", which === "comments");
+  if (rb) rb.classList.toggle("active", which === "report");
 }
 
 /* ============================================================
@@ -550,6 +585,7 @@ function renderTopic(id, tab = "passport"){
   const app = document.getElementById("app");
   app.innerHTML = "";
   document.getElementById("crumbs").textContent = topic.code + " · " + topic.title;
+  setActiveTopBtn("");
 
   app.appendChild(el(`
     <a class="backlink" href="#/" onclick="goHome(event)">← К программе</a>
@@ -1023,6 +1059,7 @@ function buildReport(){
 
 function openReportModal(){
   document.querySelectorAll(".report-overlay").forEach(x=>x.remove());
+  setActiveTopBtn("report");
   const modal = el(`
     <div class="report-overlay">
       <div class="report-modal">
@@ -1040,7 +1077,9 @@ function openReportModal(){
   modal.querySelector("pre").textContent = buildReport();
   document.body.appendChild(modal);
 
-  modal.querySelector("#reportCancel").addEventListener("click", ()=>modal.remove());
+  const close = ()=>{ modal.remove(); setActiveTopBtn(""); };
+
+  modal.querySelector("#reportCancel").addEventListener("click", close);
 
   modal.querySelector("#reportSend").addEventListener("click", async ()=>{
     const status = modal.querySelector(".report-status");
@@ -1082,6 +1121,7 @@ function initReport(){
    ROUTER
    ============================================================ */
 function goHome(e){ if (e) e.preventDefault(); location.hash = "#/"; }
+
 function route(){
   if (!state.student){
     document.getElementById("app").innerHTML = "";
@@ -1089,7 +1129,10 @@ function route(){
   }
   const hash = location.hash.replace(/^#/, "") || "/";
   const parts = hash.split("/").filter(Boolean);
-  if (parts[0] === "topic" && parts[1]){
+
+  if (parts[0] === "comments"){
+    renderCommentsPage();
+  } else if (parts[0] === "topic" && parts[1]){
     renderTopic(parts[1], parts[2] || "passport");
   } else {
     renderHome();
@@ -1103,6 +1146,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   initNav();
   initAuth();
   initReport();
+  initComments();
   renderUserChip();
   route();
 });
