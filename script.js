@@ -1,23 +1,60 @@
 /* ============================================================
    SPA-роутер и рендер МДК 07.01
-   + авторизация, трекинг результатов, отправка отчёта
+   + авторизация с хранением прогресса по каждому студенту
+   + экспорт/импорт профиля (.json)
+   + отправка отчёта через Google Apps Script
    ============================================================ */
 
 const REPORT_EMAIL = "camelia.2110@yandex.ru";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 
+/* ---------- состояние ---------- */
 const state = {
   student: JSON.parse(localStorage.getItem("mdk0701.student") || "null"),
-  progress: JSON.parse(localStorage.getItem("mdk0701.progress") || "{}"),
-  results: JSON.parse(localStorage.getItem("mdk0701.results") || "{}"),
-  selfResults: JSON.parse(localStorage.getItem("mdk0701.selfResults") || "{}")
+  progress: {},
+  results: {},
+  selfResults: {}
 };
 
-function saveStudent(){ localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); }
-function saveProgress(){ localStorage.setItem("mdk0701.progress", JSON.stringify(state.progress)); }
-function saveResults(){ localStorage.setItem("mdk0701.results", JSON.stringify(state.results)); }
-function saveSelfResults(){ localStorage.setItem("mdk0701.selfResults", JSON.stringify(state.selfResults)); }
+/* ---------- ключ студента ---------- */
+function studentKey(s){
+  s = s || state.student;
+  if (!s || !s.name || !s.group) return null;
+  return encodeURIComponent(
+    s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()
+  );
+}
 
+/* ---------- сохранение/загрузка данных студента ---------- */
+function loadStudentData(){
+  const k = studentKey();
+  if (!k){
+    state.progress = {};
+    state.results = {};
+    state.selfResults = {};
+    return;
+  }
+  state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress." + k)    || "{}");
+  state.results     = JSON.parse(localStorage.getItem("mdk0701.results." + k)     || "{}");
+  state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + k) || "{}");
+}
+
+function saveStudentData(){
+  const k = studentKey();
+  if (!k) return;
+  localStorage.setItem("mdk0701.progress."    + k, JSON.stringify(state.progress));
+  localStorage.setItem("mdk0701.results."     + k, JSON.stringify(state.results));
+  localStorage.setItem("mdk0701.selfResults." + k, JSON.stringify(state.selfResults));
+}
+
+function saveStudent(){ localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); }
+
+/* обёртки — совместимы с вызовами в renderXxx */
+function saveProgress(){ saveStudentData(); }
+function saveResults(){ saveStudentData(); }
+function saveSelfResults(){ saveStudentData(); }
+
+/* ---------- утилиты ---------- */
 function el(html){
   const t = document.createElement("template");
   t.innerHTML = html.trim();
@@ -43,6 +80,7 @@ function initAuth(){
     document.body.style.overflow = "hidden";
     if (nameInput) nameInput.focus();
   } else {
+    loadStudentData();
     overlay.hidden = true;
     document.body.style.overflow = "";
   }
@@ -60,12 +98,34 @@ function initAuth(){
       groupInput.style.borderColor = "var(--err)";
       return;
     }
+
+    // был другой студент → сохранить его данные
+    if (state.student) saveStudentData();
+
+    const isReturning = localStorage.getItem(
+      "mdk0701.progress." + encodeURIComponent(name.toLowerCase() + "|" + group.toLowerCase())
+    ) !== null;
+
     state.student = { name, group, loginAt: new Date().toISOString() };
     saveStudent();
+    loadStudentData();
+
     overlay.hidden = true;
     document.body.style.overflow = "";
     renderUserChip();
     renderHome();
+
+    if (!isReturning){
+      setTimeout(()=>{
+        alert(
+          "Добро пожаловать!\n\n" +
+          "Ваш прогресс сохраняется в этом браузере.\n" +
+          "Чтобы перенести его на другое устройство —\n" +
+          "нажмите на свой профиль в правом верхнем углу\n" +
+          "и выберите «Скачать профиль»."
+        );
+      }, 300);
+    }
   });
 
   [nameInput, groupInput].forEach(inp=>{
@@ -76,22 +136,14 @@ function initAuth(){
     inp.addEventListener("input", ()=>{ inp.style.borderColor = ""; });
   });
 
+  // Клик по чипу — меню профиля
   const chip = document.getElementById("userChip");
   if (chip){
-    chip.addEventListener("click", ()=>{
-      if (!confirm("Сменить пользователя? Прогресс текущего пользователя будет сохранён.")) return;
-      state.student = null;
-      saveStudent();
-      const ov = document.getElementById("loginOverlay");
-      ov.hidden = false;
-      document.body.style.overflow = "hidden";
-      document.getElementById("loginName").value = "";
-      document.getElementById("loginGroup").value = "";
-      document.getElementById("loginName").focus();
-    });
+    chip.addEventListener("click", openUserMenu);
   }
 }
 
+/* ---------- чип пользователя ---------- */
 function renderUserChip(){
   const chip = document.getElementById("userChip");
   const nameEl = document.getElementById("userChipName");
@@ -100,6 +152,146 @@ function renderUserChip(){
   chip.hidden = false;
   nameEl.textContent = state.student.name;
   groupEl.textContent = "Гр. " + state.student.group;
+}
+
+/* ---------- меню профиля ---------- */
+function openUserMenu(){
+  // закрыть старое, если открыто
+  document.querySelectorAll(".user-menu").forEach(m=>m.remove());
+
+  const chip = document.getElementById("userChip");
+  const rect = chip.getBoundingClientRect();
+
+  const menu = el(`
+    <div class="user-menu">
+      <div class="user-menu-head">
+        <div class="user-menu-name">${state.student.name}</div>
+        <div class="user-menu-group">Группа ${state.student.group}</div>
+      </div>
+      <button class="user-menu-item" data-act="switch">🔄 Сменить пользователя</button>
+      <button class="user-menu-item" data-act="export">⬇️ Скачать профиль (.json)</button>
+      <button class="user-menu-item" data-act="import">⬆️ Загрузить профиль (.json)</button>
+      <button class="user-menu-item danger" data-act="clear">🗑 Очистить мой прогресс</button>
+    </div>
+  `);
+  document.body.appendChild(menu);
+
+  // позиционирование
+  menu.style.position = "fixed";
+  menu.style.top = (rect.bottom + 8) + "px";
+  menu.style.right = (window.innerWidth - rect.right) + "px";
+
+  // закрытие по клику вне
+  const close = (e)=>{
+    if (!menu.contains(e.target) && e.target !== chip) {
+      menu.remove();
+      document.removeEventListener("click", close);
+    }
+  };
+  setTimeout(()=>document.addEventListener("click", close), 0);
+
+  // обработчики
+  menu.querySelector('[data-act="switch"]').addEventListener("click", ()=>{
+    menu.remove();
+    if (!confirm("Сменить пользователя? Ваш прогресс сохранён и будет доступен при следующем входе с теми же ФИО и группой.")) return;
+    saveStudentData();
+    state.student = null;
+    state.progress = {};
+    state.results = {};
+    state.selfResults = {};
+    saveStudent();
+    const ov = document.getElementById("loginOverlay");
+    ov.hidden = false;
+    document.body.style.overflow = "hidden";
+    document.getElementById("loginName").value = "";
+    document.getElementById("loginGroup").value = "";
+    document.getElementById("loginName").focus();
+    document.getElementById("userChip").hidden = true;
+  });
+
+  menu.querySelector('[data-act="export"]').addEventListener("click", ()=>{
+    menu.remove();
+    exportProfile();
+  });
+
+  menu.querySelector('[data-act="import"]').addEventListener("click", ()=>{
+    menu.remove();
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.addEventListener("change", (e)=>{
+      const file = e.target.files[0];
+      if (file) importProfile(file);
+    });
+    input.click();
+  });
+
+  menu.querySelector('[data-act="clear"]').addEventListener("click", ()=>{
+    menu.remove();
+    if (!confirm("Очистить ВЕСЬ прогресс (тесты, самостоятельные, открытые вкладки)?")) return;
+    state.progress = {};
+    state.results = {};
+    state.selfResults = {};
+    saveStudentData();
+    renderHome();
+  });
+}
+
+/* ---------- экспорт профиля ---------- */
+function exportProfile(){
+  const s = state.student;
+  if (!s) return;
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    student: s,
+    progress: state.progress,
+    results: state.results,
+    selfResults: state.selfResults
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safeName = s.name.replace(/[^\wа-яё\-]+/gi, "_");
+  const safeGroup = s.group.replace(/[^\wа-яё\-]+/gi, "_");
+  a.href = url;
+  a.download = "mdk0701_" + safeName + "_" + safeGroup + ".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------- импорт профиля ---------- */
+function importProfile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let data;
+    try { data = JSON.parse(e.target.result); }
+    catch (err){ alert("Не удалось прочитать файл: " + err.message); return; }
+
+    if (!data || !data.student || !data.student.name){
+      alert("Это не файл профиля МДК 07.01.");
+      return;
+    }
+
+    if (!confirm(
+      "Загрузить профиль:\n" +
+      data.student.name + " (гр. " + data.student.group + ")\n\n" +
+      "Текущий прогресс в этом браузере будет заменён."
+    )) return;
+
+    state.student = data.student;
+    state.progress = data.progress || {};
+    state.results = data.results || {};
+    state.selfResults = data.selfResults || {};
+    saveStudent();
+    saveStudentData();
+    renderUserChip();
+    renderHome();
+    alert("✔ Профиль загружен.");
+  };
+  reader.readAsText(file);
 }
 
 /* ============================================================
@@ -175,7 +367,6 @@ function renderHome(){
     </section>
   `));
 
-  // Блок «ИНФОРМАЦИЯ!»
   if (COURSE.practiceFormatting){
     const f = COURSE.practiceFormatting;
     const infoBlock = el(`
@@ -200,7 +391,6 @@ function renderHome(){
     app.appendChild(infoBlock);
   }
 
-  // Разделы и темы
   COURSE.sections.forEach(sec=>{
     app.appendChild(el(`<div class="steps-title">${sec.code} · ${sec.title} · ${sec.hours} ак. ч</div>`));
     const list = el(`<div class="topics"></div>`);
@@ -223,7 +413,6 @@ function renderHome(){
     app.appendChild(list);
   });
 
-  // Паспорта станков
   if (COURSE.passports && COURSE.passports.length){
     app.appendChild(el(`<div class="steps-title">Паспорта станков</div>`));
     const block = el(`<section class="module">
@@ -246,7 +435,6 @@ function renderHome(){
     app.appendChild(block);
   }
 
-  // Охрана труда
   if (COURSE.safety && COURSE.safety.length){
     app.appendChild(el(`<div class="steps-title">Охрана труда</div>`));
     const block = el(`<section class="module">
@@ -269,7 +457,6 @@ function renderHome(){
     app.appendChild(block);
   }
 
-  // Видео
   app.appendChild(el(`<div class="steps-title">История робототехники СССР</div>`));
   const vids = el(`<section class="module">
     <div class="meta">Модуль 4 · Видеоматериалы</div>
@@ -290,7 +477,6 @@ function renderHome(){
   });
   app.appendChild(vids);
 
-  // Итоговое задание
   app.appendChild(el(`<div class="steps-title">Итоговое задание</div>`));
   app.appendChild(el(`
     <section class="module">
@@ -654,7 +840,6 @@ function openReportModal(){
 
     const s = state.student || { name: "—", group: "—" };
 
-    // URL-encoded — простой запрос без preflight, CORS не сработает
     const params = new URLSearchParams();
     params.append("student", s.name);
     params.append("group",   s.group);
