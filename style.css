@@ -1,41 +1,5 @@
 /* ============================================================
    МДК 07.01 — style.css (полностью)
-   Разделы:
-   1.  Темы (light / dark / sepia / ocean / forest / contrast)
-   1a. Выбор темы (модалка)
-   2.  Общие стили
-   3.  Экран входа студента
-   4.  Пикер аватара
-   5.  Тонкая шапка + Боковая шторка
-   6.  Статусы, баннер объявлений
-   7.  Главная (hero, шаги, модуль)
-   8.  Информационный блок
-   9.  Список тем
-   10. Детали темы (topic-head, tabs, panel)
-   11. Практические
-   12. Тесты
-   13. Тренировка и разбор
-   14. Видео
-   15. Документы
-   16. Иллюстрации, таблицы, код
-   17. Отчёт
-   18. PDF
-   19. Меню (user-menu, more-menu)
-   20. Модалка аватара / ролей
-   21. Комментарии
-   22. Дашборд
-   23. Поиск
-   24. Чат
-   25. Вопросы
-   26. Галерея
-   27. G-code просмотрщик
-   28. Справочник G/M-кодов
-   29. Полезные материалы (links/books)
-   30. Панель преподавателя
-   31. Календарь
-   32. ГОСТы / QR
-   33. Конфетти, офлайн, sync
-   34. Адаптивность
    ============================================================ */
 
 /* ============================================================
@@ -1044,7 +1008,7 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
 .gcode-example-expl li{font-size:13.5px;color:var(--text-soft);margin:4px 0}
 
 /* ============================================================
-   29. ПОЛЕЗНЫЕ МАТЕРИАЛЫ (articles/videos/books)
+   29. ПОЛЕЗНЫЕ МАТЕРИАЛЫ
    ============================================================ */
 .links-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .link-card{
@@ -1174,7 +1138,55 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
 .sync-status{display:inline-block;margin-left:10px;font-size:12px;color:var(--ok);min-height:14px}
 
 /* ============================================================
-   34. АДАПТИВНОСТЬ
+   34. РЕЙТИНГ
+   ============================================================ */
+.rating-groups{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.rating-group-card{
+  display:flex;align-items:center;gap:16px;
+  padding:14px 18px;border:1px solid var(--border);
+  border-radius:12px;background:var(--card-soft);
+  transition:border-color .15s, transform .15s;
+}
+.rating-group-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.rating-group-card.winner{
+  border-color:var(--gold);
+  background:linear-gradient(90deg, rgba(240,180,0,.10) 0%, var(--card-soft) 60%);
+}
+.rg-medal{
+  font-size:24px;font-weight:700;color:var(--accent);
+  min-width:44px;text-align:center;flex-shrink:0;
+}
+.rating-group-card.winner .rg-medal{font-size:28px}
+.rg-body{flex:1;min-width:0}
+.rg-title{font-weight:600;font-size:16px;margin-bottom:3px}
+.rg-meta{font-size:12.5px;color:var(--muted)}
+.rg-score{
+  display:flex;flex-direction:column;align-items:center;
+  padding-left:16px;border-left:1px solid var(--border);
+  flex-shrink:0;min-width:74px;
+}
+.rg-score-value{
+  font-size:26px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;line-height:1;
+}
+.rg-score-label{
+  font-size:11px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;margin-top:3px;
+}
+.rating-student-group{margin-bottom:24px}
+.rating-student-group:last-child{margin-bottom:0}
+.rsg-title{
+  margin:0 0 8px;font-size:15px;letter-spacing:.02em;
+  padding-bottom:6px;border-bottom:1px dashed var(--border);
+}
+.rating-table{font-size:13.5px}
+.rating-table td{padding:9px 12px}
+.rating-table tbody tr:nth-child(1) td{background:rgba(240,180,0,.08)}
+.rating-table tbody tr:nth-child(2) td{background:rgba(180,180,180,.08)}
+.rating-table tbody tr:nth-child(3) td{background:rgba(200,130,80,.08)}
+
+/* ============================================================
+   35. АДАПТИВНОСТЬ
    ============================================================ */
 @media (max-width:1080px){ .brand-title{display:none} }
 @media (max-width:900px){ .crumbs{display:none} }
@@ -1195,6 +1207,10 @@ figure figcaption{margin-top:8px;color:var(--muted);font-size:13px;font-style:it
   .calendar-day{min-height:36px;font-size:11px}
   .theme-grid{grid-template-columns:repeat(2,1fr)}
   .drawer{width:280px}
+  .rating-group-card{padding:12px 14px;gap:12px}
+  .rg-score-value{font-size:22px}
+  .rating-table{font-size:12.5px}
+  .rating-table td{padding:7px 8px}
 }
 @media (max-width:520px){
   .steps,.tabs{grid-template-columns:1fr}
