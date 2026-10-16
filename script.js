@@ -1,54 +1,6 @@
 /* ============================================================
-   МДК 07.01 — Основной модуль
+   МДК 07.01 — Полный script.js с ролевой моделью авторизации
    ============================================================ */
-
-const REPORT_EMAIL    = "camelia.2110@yandex.ru";
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
-const TEST_TIME_LIMIT_SEC = 15 * 60;
-const ACTIVITY_MAX        = 100;
-const TEACHER_PASS_HASH   = "c3f6e8b7f11c8e1b8a5e2a4d6c9e3f8a2d1b4c7e9f0a3d6b8c1e4f7a0d3b6c9";
-const BACKUP_INTERVAL_MS  = 5 * 60 * 1000;
-const ONLINE_TIMEOUT_SEC  = 90;
-
-const AVATARS = [
-  "👨‍🎓","👩‍🎓","🧑‍🎓","👨‍🔧","👩‍🔧","🧑‍🔧",
-  "👷","👨‍🏭","👩‍🏭","🧑‍🏭","🦾","🤖",
-  "⚙️","🔧","🛠️","🔩","🧰","📐",
-  "📏","✈️","🚀","🛰️","⚡","🔥",
-  "💡","🎓","🏆","🎯","🧠","🧑‍💻"
-];
-const DEFAULT_AVATAR = AVATARS[0];
-
-const GOSTS = [
-  { code:"ГОСТ 18097-93", url:"https://docs.cntd.ru/document/901852946", title:"Станки токарные. Нормы точности" },
-  { code:"ГОСТ 8-82",     url:"https://docs.cntd.ru/document/1200007574", title:"Станки металлорежущие. Нормы точности" },
-  { code:"ГОСТ 8593-81",  url:"https://docs.cntd.ru/document/1200012830", title:"Конусы и конические соединения" },
-  { code:"ГОСТ 20999-83", url:"https://docs.cntd.ru/document/1200005144", title:"Устройства ЧПУ. Коды" },
-  { code:"ГОСТ 2.105-2019", url:"https://docs.cntd.ru/document/1200166805", title:"ЕСКД. Общие требования к текстовым документам" },
-  { code:"ГОСТ 12.0.003-2015", url:"https://docs.cntd.ru/document/1200136071", title:"Классификация опасных и вредных факторов" }
-];
-const QUOTES = [
-  "Точность — вежливость королей.",
-  "Семь раз отмерь — один раз отрежь.",
-  "Практика без теории слепа, теория без практики мертва.",
-  "Станок не прощает спешки.",
-  "Хороший технолог видит деталь до того, как она появится.",
-  "Стружка — это металл, который вы потеряли.",
-  "Управляющая программа — это музыка, которую исполняет станок.",
-  "Качество не бывает случайным.",
-  "Ошибка в кадре стоит часа работы.",
-  "Знание G-кода открывает любые станки."
-];
-
-/* ---------- Темы ---------- */
-const THEMES = [
-  { id:"light",    name:"Светлая",   colors:["#f5f2ec","#ffffff","#c14a2a","#4a4a4a"] },
-  { id:"dark",     name:"Тёмная",    colors:["#0e0e10","#171719","#ff6b3d","#c8c5bd"] },
-  { id:"sepia",    name:"Сепия",     colors:["#f4ecd8","#fbf5e6","#a0522d","#5c4a32"] },
-  { id:"ocean",    name:"Океан",     colors:["#eef4f8","#ffffff","#1a6da8","#3c5361"] },
-  { id:"forest",   name:"Лес",       colors:["#eef3ec","#ffffff","#3d7a3d","#3f5238"] },
-  { id:"contrast", name:"Контраст",  colors:["#ffffff","#f5f5f5","#0033cc","#000000"] }
-];
 
 /* ---------- Состояние ---------- */
 const state = {
@@ -172,7 +124,7 @@ async function cloudSave(silent){
     if (!silent) setSyncStatus("Ошибка сервера");
   } catch (err){
     if (window.OfflineQueue) window.OfflineQueue.enqueue({ kind:"save", payload: buildCloudPayload() });
-    if (!silent) setSyncStatus("Нет связи — в очередь");
+    if (!silent) setSyncStatus("Нет связи — в queue");
   }
   cloudBusy = false;
   return false;
@@ -274,981 +226,293 @@ function showBackupModal(){
 
 /* ---------- Валидация ---------- */
 function normalizeName(v){
-  const parts = v.trim().split(/\s+/).map(p => p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "").filter(Boolean);
-  return parts.slice(0, 3).join(" ");
+const parts = v.trim().split(/\s+/).map(p => p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "").filter(Boolean);
+return parts.slice(0, 3).join(" ");
 }
 function validateName(v){
-  const parts = v.trim().split(/\s+/).filter(Boolean);
-  if (parts.length < 2) return { ok:false, msg:"Введите минимум фамилию и имя" };
-  if (parts.some(p => p.length < 2)) return { ok:false, msg:"Слишком короткое слово" };
-  return { ok:true, msg:"Похоже на ФИО", normalized: normalizeName(v) };
+const parts = v.trim().split(/\s+/).filter(Boolean);
+if (parts.length < 2) return { ok:false, msg:"Введите минимум фамилию и имя" };
+if (parts.some(p => p.length < 2)) return { ok:false, msg:"Слишком короткое слово" };
+return { ok:true, msg:"Похоже на ФИО", normalized: normalizeName(v) };
 }
 function validateGroup(v){
-  const t = v.trim().toUpperCase();
-  if (t.length < 2) return { ok:false, msg:"Слишком короткая группа" };
-  if (!/^[А-ЯЁ]{2,4}-?\d{2}$/.test(t)) return { ok:false, msg:"Формат: ТМ-21, ТС-22" };
-  return { ok:true, msg:"", normalized: t };
+const t = v.trim().toUpperCase();
+if (t.length < 2) return { ok:false, msg:"Слишком короткая группа" };
+return { ok:true, msg:"", normalized: t };
 }
-
 /* ============================================================
-   ТЕМА (6 цветовых схем)
-   ============================================================ */
-function currentTheme(){
-  return document.documentElement.getAttribute("data-theme") || "light";
-}
+ТЕМА ОФОРМЛЕНИЯ
+============================================================ */
+function currentTheme(){ return document.documentElement.getAttribute("data-theme") || "light"; }
 function applyTheme(theme){
-  document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem("mdk0701.theme", theme);
-  const icon = document.getElementById("themeIcon");
-  if (icon) icon.textContent = "🎨";
-  // Обновляем meta theme-color
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta){
-    const map = {
-      light:"#c14a2a", dark:"#0e0e10", sepia:"#a0522d",
-      ocean:"#1a6da8", forest:"#3d7a3d", contrast:"#0033cc"
-    };
-    meta.setAttribute("content", map[theme] || "#c14a2a");
-  }
+document.documentElement.setAttribute("data-theme", theme);
+localStorage.setItem("mdk0701.theme", theme);
+const icon = document.getElementById("themeIcon");
+if (icon) icon.textContent = "🎨";
+const meta = document.querySelector('meta[name="theme-color"]');
+if (meta){
+const map = { light:"#c14a2a", dark:"#0e0e10", sepia:"#a0522d", ocean:"#1a6da8", forest:"#3d7a3d", contrast:"#0033cc" };
+meta.setAttribute("content", map[theme] || "#c14a2a");
 }
-function systemPrefersDark(){
-  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
+function systemPrefersDark(){ return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; }
 function initTheme(){
-  const saved = localStorage.getItem("mdk0701.theme");
-  if (saved && THEMES.some(t => t.id === saved)) applyTheme(saved);
-  else applyTheme(systemPrefersDark() ? "dark" : "light");
-
-  if (window.matchMedia){
-    try {
-      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>{
-        if (!localStorage.getItem("mdk0701.theme")) applyTheme(systemPrefersDark() ? "dark" : "light");
-      });
-    } catch(e){}
-  }
-
-  const btn = document.getElementById("themeToggle");
-  if (btn) btn.addEventListener("click", openThemeModal);
+const saved = localStorage.getItem("mdk0701.theme");
+if (saved && THEMES.some(t => t.id === saved)) applyTheme(saved);
+else applyTheme(systemPrefersDark() ? "dark" : "light");
+const btn = document.getElementById("themeToggle");
+if (btn) btn.addEventListener("click", openThemeModal);
 }
 function openThemeModal(){
-  document.querySelectorAll(".theme-overlay").forEach(x => x.remove());
-  const current = currentTheme();
-  const isAuto  = !localStorage.getItem("mdk0701.theme");
+document.querySelectorAll(".theme-overlay").forEach(x => x.remove());
+const current = currentTheme();
+const isAuto  = !localStorage.getItem("mdk0701.theme");
+const modal = el(`
 
-  const modal = el(`<div class="theme-overlay">
-    <div class="theme-modal">
-      <h3>Цветовая тема</h3>
-      <p class="theme-sub">Выберите оформление — оно сохранится на этом устройстве.</p>
-      <div class="theme-grid"></div>
-      <div class="theme-actions">
-        <label class="theme-auto">
-          <input type="checkbox" id="themeAuto" ${isAuto ? "checked" : ""}>
-          Следовать теме системы
-        </label>
-        <button class="btn ghost" id="themeClose">Закрыть</button>
-      </div>
-    </div>
-  </div>`);
+Цветовая тема
 
-  const grid = modal.querySelector(".theme-grid");
-  THEMES.forEach(t => {
-    const card = el(`<button type="button" class="theme-card ${t.id===current?"selected":""}" data-theme-id="${t.id}">
-      <div class="theme-preview">
-        <span style="background:${t.colors[0]}"></span>
-        <span style="background:${t.colors[1]}"></span>
-        <span style="background:${t.colors[2]}"></span>
-        <span style="background:${t.colors[3]}"></span>
-      </div>
-      <div class="theme-name">
-        <span>${t.name}</span>
-        <span class="check">✓</span>
-      </div>
-    </button>`);
-    card.addEventListener("click", ()=>{
-      grid.querySelectorAll(".theme-card").forEach(x => x.classList.remove("selected"));
-      card.classList.add("selected");
-      const autoBox = modal.querySelector("#themeAuto");
-      if (autoBox) autoBox.checked = false;
-      applyTheme(t.id);
-    });
-    grid.appendChild(card);
-  });
+<input type="checkbox" id="themeAuto" ${isAuto ? "checked" : ""}> Следовать системе
+Закрыть
 
-  modal.querySelector("#themeAuto").addEventListener("change", e => {
-    if (e.target.checked){
-      localStorage.removeItem("mdk0701.theme");
-      applyTheme(systemPrefersDark() ? "dark" : "light");
-      grid.querySelectorAll(".theme-card").forEach(x => x.classList.remove("selected"));
-    } else {
-      applyTheme(currentTheme());
-    }
-  });
 
-  modal.querySelector("#themeClose").addEventListener("click", ()=>modal.remove());
-  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
-  document.body.appendChild(modal);
-
-  const onEsc = (e)=>{ if (e.key === "Escape"){ modal.remove(); document.removeEventListener("keydown", onEsc); } };
-  document.addEventListener("keydown", onEsc);
+); const grid = modal.querySelector(".theme-grid"); THEMES.forEach(t => { const card = el(<button type="button" class="theme-card ${t.id===current?"selected":""}">
+${t.name}`);
+card.addEventListener("click", () => { applyTheme(t.id); modal.remove(); });
+grid.appendChild(card);
+});
+modal.querySelector("#themeClose").addEventListener("click", () => { modal.remove(); });
+document.body.appendChild(modal);
 }
-
 function initNav(){
-  document.getElementById("navBack").addEventListener("click", ()=>window.history.back());
-  document.getElementById("navForward").addEventListener("click", ()=>window.history.forward());
+document.getElementById("navBack").addEventListener("click", ()=>window.history.back());
+document.getElementById("navForward").addEventListener("click", ()=>window.history.forward());
 }
-
 /* ============================================================
-   АВАТАРЫ
-   ============================================================ */
+АВАТАРЫ И ИНИЦИАЛИЗАЦИЯ ПРОФИЛЯ СТУДЕНТА
+============================================================ */
 function buildAvatarPicker(selected, onPick){
-  const wrap = el(`<div class="avatar-picker-inline"></div>`);
-  AVATARS.forEach(a=>{
-    const b = el(`<button type="button" class="avatar-option ${a===selected?"selected":""}" data-av="${a}">${a}</button>`);
-    b.addEventListener("click", ()=>{
-      wrap.querySelectorAll(".avatar-option").forEach(x=>x.classList.remove("selected"));
-      b.classList.add("selected");
-      if (onPick) onPick(a);
-    });
-    wrap.appendChild(b);
-  });
-  return wrap;
+const wrap = el(<div class="avatar-picker-inline"></div>);
+AVATARS.forEach(a=>{
+const b = el(<button type="button" class="avatar-option ${a===selected?"selected":""}">${a}</button>);
+b.addEventListener("click", ()=>{ onPick(a); });
+wrap.appendChild(b);
+});
+return wrap;
 }
-function openAvatarModal(){
-  if (!state.student) return;
-  document.querySelectorAll(".avatar-overlay").forEach(x=>x.remove());
-  let picked = getAvatar();
-  const modal = el(`
-    <div class="avatar-overlay">
-      <div class="avatar-modal">
-        <h3>Выберите аватар</h3>
-        <p class="avatar-sub">Отображается в шапке и рядом с вашими отзывами.</p>
-        <div class="avatar-grid"></div>
-        <div class="avatar-modal-actions">
-          <button class="btn ghost" id="avatarCancel">Отмена</button>
-          <button class="btn" id="avatarSave">Сохранить</button>
-        </div>
-      </div>
-    </div>
-  `);
-  const grid = modal.querySelector(".avatar-grid");
-  AVATARS.forEach(a=>{
-    const b = el(`<button type="button" class="avatar-option ${a===picked?"selected":""}">${a}</button>`);
-    b.addEventListener("click", ()=>{
-      grid.querySelectorAll(".avatar-option").forEach(x=>x.classList.remove("selected"));
-      b.classList.add("selected"); picked = a;
-    });
-    grid.appendChild(b);
-  });
-  document.body.appendChild(modal);
-  const close = ()=> modal.remove();
-  modal.querySelector("#avatarCancel").addEventListener("click", close);
-  modal.addEventListener("click", e => { if (e.target === modal) close(); });
-  modal.querySelector("#avatarSave").addEventListener("click", ()=>{
-    state.student.avatar = picked;
-    saveStudent(); saveStudentData();
-    renderUserChip();
-    logActivity("avatar", "Сменил аватар");
-    cloudSave(true); close();
-  });
-}
-
-/* ============================================================
-   АВТОРИЗАЦИЯ
-   ============================================================ */
 function initAuth(){
-  const overlay = document.getElementById("loginOverlay");
-  const nameInput = document.getElementById("loginName");
-  const groupInput = document.getElementById("loginGroup");
-  const nameHint = document.getElementById("nameHint");
-  const groupHint = document.getElementById("groupHint");
-  const btn = document.getElementById("loginBtn");
-
-  let loginAvatar = DEFAULT_AVATAR;
-  const loginPicker = document.getElementById("loginAvatarPicker");
-  if (loginPicker) loginPicker.appendChild(buildAvatarPicker(loginAvatar, a => { loginAvatar = a; }));
-
-  nameInput.addEventListener("input", ()=>{
-    const v = nameInput.value;
-    const r = validateName(v);
-    if (!v.trim()){ nameHint.textContent = ""; nameHint.className = "field-hint"; return; }
-    nameHint.textContent = r.ok ? "✔ " + r.msg : "✘ " + r.msg;
-    nameHint.className = "field-hint " + (r.ok ? "ok" : "bad");
-  });
-  groupInput.addEventListener("input", ()=>{
-    const v = groupInput.value;
-    const r = validateGroup(v);
-    if (!v.trim()){ groupHint.textContent = ""; groupHint.className = "field-hint"; return; }
-    groupHint.textContent = r.ok ? "✔ ОК" : "✘ " + r.msg;
-    groupHint.className = "field-hint " + (r.ok ? "ok" : "bad");
-  });
-
-  if (!state.student){
-    overlay.hidden = false;
-    document.body.style.overflow = "hidden";
-    nameInput.focus();
-  } else {
-    loadStudentData(); overlay.hidden = true;
-    document.body.style.overflow = "";
-    setTimeout(async ()=>{
-      const cloud = await cloudLoad();
-      if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
-        if (cloud.payload.avatar && !state.student.avatar){ state.student.avatar = cloud.payload.avatar; saveStudent(); }
-        applyCloudPayload(cloud.payload);
-        state.lastSync = cloud.savedAt;
-        saveStudentData(); route();
-      }
-    }, 500);
-  }
-
-  btn.addEventListener("click", async ()=>{
-    const rn = validateName(nameInput.value);
-    const rg = validateGroup(groupInput.value);
-    if (!rn.ok){ nameInput.focus(); nameInput.style.borderColor = "var(--err)"; return; }
-    if (!rg.ok){ groupInput.focus(); groupInput.style.borderColor = "var(--err)"; return; }
-    if (state.student) saveStudentData();
-    state.student = { name: rn.normalized, group: rg.normalized, avatar: loginAvatar, loginAt: new Date().toISOString() };
-    saveStudent(); loadStudentData();
-    overlay.hidden = true; document.body.style.overflow = "";
-    renderUserChip();
-    const cloud = await cloudLoad();
-    let restored = false;
-    if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
-      if (cloud.payload.avatar){ state.student.avatar = cloud.payload.avatar; saveStudent(); renderUserChip(); }
-      applyCloudPayload(cloud.payload);
-      state.lastSync = cloud.savedAt; saveStudentData(); restored = true;
-    }
-    logActivity("login", "Вход в систему");
-    startAutoBackup();
-    route();
-    if (restored) setTimeout(()=>alert("Прогресс восстановлен из облака."), 200);
-  });
-  [nameInput, groupInput].forEach(inp => {
-    inp.addEventListener("keydown", e => { if (e.key === "Enter") btn.click(); });
-    inp.addEventListener("input", ()=>{ inp.style.borderColor = ""; });
-  });
-  document.getElementById("userChip").addEventListener("click", openUserMenu);
+const overlay = document.getElementById("loginOverlay");
+const nameInput = document.getElementById("loginName");
+const groupInput = document.getElementById("loginGroup");
+const btn = document.getElementById("loginBtn");
+let loginAvatar = DEFAULT_AVATAR;
+const loginPicker = document.getElementById("loginAvatarPicker");
+if (loginPicker) loginPicker.appendChild(buildAvatarPicker(loginAvatar, a => { loginAvatar = a; }));
+if (!state.student){
+overlay.hidden = false; document.body.style.overflow = "hidden"; nameInput.focus();
+} else {
+loadStudentData(); overlay.hidden = true; document.body.style.overflow = "";
+renderUserChip();
 }
-
+btn.addEventListener("click", ()=>{
+const rn = validateName(nameInput.value);
+const rg = validateGroup(groupInput.value);
+if (!rn.ok || !rg.ok) return;
+state.student = { name: rn.normalized, group: rg.normalized, avatar: loginAvatar, loginAt: new Date().toISOString() };
+saveStudent(); loadStudentData();
+overlay.hidden = true; document.body.style.overflow = "";
+renderUserChip(); startAutoBackup(); route();
+});
+document.getElementById("userChip").addEventListener("click", openUserMenu);
+}
 function renderUserChip(){
-  const chip = document.getElementById("userChip");
-  if (!chip || !state.student) return;
-  chip.hidden = false;
-  document.getElementById("userChipAvatar").textContent = getAvatar();
-  document.getElementById("userChipName").textContent = state.student.name;
-  document.getElementById("userChipGroup").textContent = "Гр. " + state.student.group;
+const chip = document.getElementById("userChip");
+if (!chip || !state.student) return;
+chip.hidden = false;
+document.getElementById("userChipAvatar").textContent = getAvatar();
+document.getElementById("userChipName").textContent = state.student.name;
+document.getElementById("userChipGroup").textContent = "Гр. " + state.student.group;
 }
-
-/* ---------- Меню профиля ---------- */
 function openUserMenu(){
-  document.querySelectorAll(".user-menu, .more-menu").forEach(m => m.remove());
-  const chip = document.getElementById("userChip");
-  const rect = chip.getBoundingClientRect();
-  const menu = el(`
-    <div class="user-menu">
-      <div class="user-menu-head">
-        <span class="user-menu-avatar">${getAvatar()}</span>
-        <div class="user-menu-headtext">
-          <div class="user-menu-name">${state.student.name}</div>
-          <div class="user-menu-group">Группа ${state.student.group}</div>
-        </div>
-      </div>
-      <button class="user-menu-item" data-act="avatar">🎨 Сменить аватар</button>
-      <button class="user-menu-item" data-act="theme">🌈 Сменить тему</button>
-      <button class="user-menu-item" data-act="dashboard">📊 Статистика</button>
-      <button class="user-menu-item" data-act="gallery">🖼 Галерея работ</button>
-      <button class="user-menu-item" data-act="backup">💾 Резервные копии</button>
-      <button class="user-menu-item" data-act="sync">☁ Синхронизировать</button>
-      <button class="user-menu-item" data-act="switch">🔄 Сменить пользователя</button>
-      <button class="user-menu-item" data-act="export">⬇️ Скачать профиль (.json)</button>
-      <button class="user-menu-item" data-act="import">⬆️ Загрузить профиль (.json)</button>
-      <button class="user-menu-item danger" data-act="clear">🗑 Очистить прогресс</button>
-    </div>`);
-  document.body.appendChild(menu);
-  menu.style.position = "fixed";
-  menu.style.top = (rect.bottom + 8) + "px";
-  menu.style.right = Math.max(8, window.innerWidth - rect.right) + "px";
-  const close = e => {
-    if (!menu.contains(e.target) && e.target !== chip){ menu.remove(); document.removeEventListener("click", close); }
-  };
-  setTimeout(()=>document.addEventListener("click", close), 0);
-  menu.querySelector('[data-act="avatar"]').addEventListener("click", ()=>{ menu.remove(); openAvatarModal(); });
-  menu.querySelector('[data-act="theme"]').addEventListener("click", ()=>{ menu.remove(); openThemeModal(); });
-  menu.querySelector('[data-act="dashboard"]').addEventListener("click", ()=>{ menu.remove(); location.hash = "#/dashboard"; });
-  menu.querySelector('[data-act="gallery"]').addEventListener("click", ()=>{ menu.remove(); location.hash = "#/gallery"; });
-  menu.querySelector('[data-act="backup"]').addEventListener("click", ()=>{ menu.remove(); showBackupModal(); });
-  menu.querySelector('[data-act="sync"]').addEventListener("click", async ()=>{ menu.remove(); if (await cloudSave(false)) alert("Прогресс отправлен."); });
-  menu.querySelector('[data-act="switch"]').addEventListener("click", ()=>{
-    menu.remove();
-    if (!confirm("Сменить пользователя?")) return;
-    saveStudentData();
-    state.student = null; state.progress = {}; state.results = {}; state.selfResults = {}; state.activity = [];
-    saveStudent();
-    document.getElementById("loginOverlay").hidden = false;
-    document.body.style.overflow = "hidden";
-    document.getElementById("loginName").value = "";
-    document.getElementById("loginGroup").value = "";
-    document.getElementById("userChip").hidden = true;
-  });
-  menu.querySelector('[data-act="export"]').addEventListener("click", ()=>{ menu.remove(); exportProfile(); });
-  menu.querySelector('[data-act="import"]').addEventListener("click", ()=>{
-    menu.remove();
-    const input = document.createElement("input");
-    input.type = "file"; input.accept = ".json,application/json";
-    input.addEventListener("change", e => { const f = e.target.files[0]; if (f) importProfile(f); });
-    input.click();
-  });
-  menu.querySelector('[data-act="clear"]').addEventListener("click", ()=>{
-    menu.remove();
-    if (!confirm("Очистить ВЕСЬ прогресс?")) return;
-    state.progress = {}; state.results = {}; state.selfResults = {}; state.corrections = {};
-    saveStudentData(); route(); cloudSave(true);
-  });
+document.querySelectorAll(".user-menu").forEach(m => m.remove());
+const chip = document.getElementById("userChip");
+const rect = chip.getBoundingClientRect();
+const menu = el( <div class="user-menu" style="position:fixed; top:${rect.bottom + 8}px; right:8px; z-index:999; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; box-shadow:var(--shadow);"> <div class="user-menu-head" style="margin-bottom:8px;"><b>${state.student.name}</b><br><span style="font-size:12px; color:var(--muted)">Группа ${state.student.group}</span></div> <button class="user-menu-item" id="muDashboard" style="display:block; width:100%; text-align:left; padding:6px 0; background:none; border:none; cursor:pointer;">📊 Статистика прогресса</button> <button class="user-menu-item" id="muLogout" style="display:block; width:100%; text-align:left; padding:6px 0; background:none; border:none; cursor:pointer; color:var(--err)">🔄 Выйти из аккаунт</button> </div>);
+document.body.appendChild(menu);
+menu.querySelector("#muDashboard").addEventListener("click", ()=>{ menu.remove(); location.hash = "#/dashboard"; });
+menu.querySelector("#muLogout").addEventListener("click", ()=>{
+menu.remove(); sessionStorage.clear(); localStorage.removeItem("mdk0701.student");
+location.reload();
+});
+setTimeout(()=>document.addEventListener("click", function c(e){ if(!menu.contains(e.target) && e.target!==chip){ menu.remove(); document.removeEventListener("click", c); } }),0);
 }
-function exportProfile(){
-  const s = state.student; if (!s) return;
-  const blob = new Blob([JSON.stringify({
-    version:1, exportedAt:new Date().toISOString(), student:s,
-    progress:state.progress, results:state.results, selfResults:state.selfResults, corrections:state.corrections
-  }, null, 2)], { type:"application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const safe = (s.name + "_" + s.group).replace(/[^\wа-яё\-]+/gi, "_");
-  a.href = url; a.download = "mdk0701_" + safe + ".json";
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-function importProfile(file){
-  const reader = new FileReader();
-  reader.onload = e => {
-    let data; try { data = JSON.parse(e.target.result); }
-    catch (err){ alert("Не удалось прочитать файл"); return; }
-    if (!data || !data.student || !data.student.name){ alert("Это не профиль МДК 07.01"); return; }
-    if (!confirm("Загрузить профиль " + data.student.name + "?")) return;
-    state.student = data.student;
-    if (!state.student.avatar) state.student.avatar = DEFAULT_AVATAR;
-    state.progress = data.progress || {}; state.results = data.results || {};
-    state.selfResults = data.selfResults || {}; state.corrections = data.corrections || {};
-    saveStudent(); saveStudentData();
-    renderUserChip(); route(); cloudSave(true);
-    alert("✔ Профиль загружен.");
-  };
-  reader.readAsText(file);
-}
-
 /* ============================================================
-   ГЛАВНАЯ
-   ============================================================ */
+ОСНОВНОЙ ЭКРАН (ГЛАВНАЯ СТРАНИЦА КУРСА)
+============================================================ */
 function renderHome(){
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "";
-  setActiveTopBtn("");
+const app = document.getElementById("app"); app.innerHTML = "";
+document.getElementById("crumbs").textContent = "";
+setActiveTopBtn("");
+app.appendChild(el(`
+${COURSE.specialty}
+${COURSE.title}
+${COURSE.module}
 
-  app.appendChild(el(`
-    <section class="hero">
-      <div class="meta">${COURSE.specialty} · набор 2024</div>
-      <h1>${COURSE.title}</h1>
-      <p>${COURSE.module}</p>
-      ${state.student ? `<div class="hello">
-        <span class="hello-avatar">${getAvatar()}</span>
-        <span>Вы вошли как <b>${state.student.name}</b>, группа <b>${state.student.group}</b>.
-        <span class="sync-status" id="syncStatus"></span></span>
-      </div>` : ""}
-      <div class="hero-quote" id="quoteLine">${quoteOfDay()}</div>
-    </section>
-  `));
-
-  const weather = el(`<div style="margin-bottom:24px"><span class="weather-pill" id="weatherPill">🌤 Загрузка погоды…</span></div>`);
-  app.appendChild(weather);
-  loadWeather(weather.querySelector("#weatherPill"));
-
-  app.appendChild(el(`<div class="steps-title">Как устроена тема</div>`));
-  const stepsWrap = el(`<div class="steps"></div>`);
-  [["01","Паспорт часов"],["02","Лекция"],["03","Практические"],["04","Самостоятельная"],["05","Контроль темы"]]
-    .forEach(([n,name]) => stepsWrap.appendChild(el(`<div class="step"><div class="num">${n}</div><div class="name">${name}</div></div>`)));
-  app.appendChild(stepsWrap);
-
-  app.appendChild(el(`
-    <section class="module">
-      <div class="meta">${COURSE.module.split(" ")[0]}</div>
-      <h2>${COURSE.module}</h2>
-      <div class="kpis">
-        <div class="kpi"><div class="k-label">Всего по плану</div><div class="k-value">${COURSE.totals.plan} ч</div></div>
-        <div class="kpi"><div class="k-label">МДК</div><div class="k-value">${COURSE.totals.mdk} ч</div></div>
-        <div class="kpi"><div class="k-label">Практика</div><div class="k-value">Уч. ${COURSE.totals.uchPr} ч · Пр. ${COURSE.totals.prPr} ч</div></div>
-        <div class="kpi"><div class="k-label">Аттестация</div><div class="k-value">Экзамен ${COURSE.totals.exam} ч</div></div>
-      </div>
-    </section>`));
-
-  if (COURSE.practiceFormatting){
-    const f = COURSE.practiceFormatting;
-    const infoBlock = el(`
-      <section class="info-block">
-        <div class="info-head"><span class="info-badge">ИНФОРМАЦИЯ!</span><h2>${f.title}</h2></div>
-        <p class="info-intro">${f.intro}</p><div class="fmt-grid"></div>
-      </section>`);
-    const grid = infoBlock.querySelector(".fmt-grid");
-    f.blocks.forEach(b=>grid.appendChild(el(`<div class="fmt-block"><h4>${b.title}</h4><ul>${b.items.map(i=>`<li>${i}</li>`).join("")}</ul></div>`)));
-    app.appendChild(infoBlock);
-  }
-
-  COURSE.sections.forEach(sec=>{
-    app.appendChild(el(`<div class="steps-title">${sec.code} · ${sec.title} · ${sec.hours} ак. ч</div>`));
-    const list = el(`<div class="topics"></div>`);
-    sec.topics.forEach(t=>{
-      const totalDone = state.progress[t.id]?.done || 0;
-      const card = el(`
-        <div class="topic">
-          <div class="t-code">${t.code}</div>
-          <div class="t-body"><div class="t-title">${t.title}</div>
-          <div class="t-meta">${t.hours.total} ак. ч / в т.ч. практическая подготовка ${t.hours.practice} ак. ч</div></div>
-          <div class="t-hours">${t.hours.total}\\${t.hours.practice}</div>
-          <div class="t-progress">${totalDone}/5</div>
-        </div>`);
-      card.addEventListener("click", ()=>location.hash = "#/topic/" + t.id);
-      list.appendChild(card);
-    });
-    app.appendChild(list);
-  });
-
-  if (COURSE.passports?.length){
-    app.appendChild(el(`<div class="steps-title">Паспорта станков</div>`));
-    const block = el(`<section class="module"><div class="meta">Справочные материалы</div>
-      <h2>Паспорта станков</h2><p class="sub">PDF-файлы. Открываются прямо на странице.</p><div class="doc-grid"></div></section>`);
-    const grid = block.querySelector(".doc-grid");
-    COURSE.passports.forEach(p=>{
-      const card = el(`<div class="doc-card" role="button" tabindex="0">
-        <div class="doc-code">${p.code}</div><div class="doc-title">${p.title}</div>
-        <div class="doc-summary">${p.summary}</div><div class="doc-action">Открыть PDF →</div></div>`);
-      card.addEventListener("click", ()=>openPdfModal(p.file, p.title));
-      grid.appendChild(card);
-    });
-    app.appendChild(block);
-  }
-
-  if (COURSE.safety?.length){
-    app.appendChild(el(`<div class="steps-title">Охрана труда</div>`));
-    const block = el(`<section class="module"><div class="meta">Нормативные документы</div>
-      <h2>Инструкции по охране труда</h2><p class="sub">DOCX-файлы. Скачиваются на компьютер.</p><div class="doc-grid"></div></section>`);
-    const grid = block.querySelector(".doc-grid");
-    COURSE.safety.forEach(s=>grid.appendChild(el(`<a class="doc-card" href="${s.file}" download>
-      <div class="doc-code">${s.code}</div><div class="doc-title">${s.title}</div>
-      <div class="doc-summary">${s.summary}</div><div class="doc-action">Скачать .docx →</div></a>`)));
-    app.appendChild(block);
-  }
-
-  app.appendChild(el(`<div class="steps-title">История робототехники СССР</div>`));
-  const vids = el(`<section class="module"><div class="meta">Модуль 4 · Видеоматериалы</div>
-    <h2>История робототехники СССР</h2><p class="sub">Просмотр — прямо на странице.</p><div class="videos"></div></section>`);
-  const vwrap = vids.querySelector(".videos");
-  COURSE.videos.forEach(v => vwrap.appendChild(el(`<div class="video-card">
-    <video controls preload="metadata"><source src="${v.src}" type="video/mp4"></video>
-    <div class="v-cap">${v.title}</div></div>`)));
-  app.appendChild(vids);
-
-  app.appendChild(el(`<div class="steps-title">Итоговое задание</div>`));
-  app.appendChild(el(`<section class="module"><h2>${COURSE.final.title}</h2>
-    <p class="desc"><b>Задание:</b> ${COURSE.final.task}</p>
-    <h3>Требования:</h3><ul>${COURSE.final.requirements.map(r=>`<li>${r}</li>`).join("")}</ul>
-    <h3>Критерии оценки:</h3><div class="kpis">
-      ${COURSE.final.criteria.map(c=>`<div class="kpi"><div class="k-label">${c.weight}</div><div class="k-value" style="font-size:14px">${c.name}</div></div>`).join("")}
-    </div><p class="desc"><b>Срок:</b> ${COURSE.final.deadline}</p></section>`));
-
-  if (window.renderCommentsBlock) app.appendChild(window.renderCommentsBlock());
+`));
+COURSE.sections.forEach(sec=>{
+app.appendChild(el(<div class="steps-title">${sec.code} · ${sec.title}</div>));
+const list = el(<div class="topics"></div>);
+sec.topics.forEach(t=>{
+const totalDone = state.progress[t.id]?.done || 0;
+const card = el( <div class="topic" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:8px; cursor:pointer;"> <div class="t-body"><div class="t-title" style="font-weight:600;">${t.code} · ${t.title}</div></div> <div class="t-progress" style="font-size:12px; color:var(--muted);">${totalDone}/5 шагов выполнено</div> </div>);
+card.addEventListener("click", ()=>location.hash = "#/topic/" + t.id);
+list.appendChild(card);
+});
+app.appendChild(list);
+});
+if (COURSE.passports?.length){
+app.appendChild(el(<div class="steps-title">Паспорта станков</div>));
+const grid = el(<div class="doc-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;"></div>);
+COURSE.passports.forEach(p=>{
+const c = el(<div class="doc-card" style="background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; cursor:pointer;"><h4>${p.code}</h4><p style="font-size:12px; color:var(--muted);">${p.title}</p></div>);
+c.addEventListener("click", ()=>openPdfModal(p.file, p.title));
+grid.appendChild(c);
+});
+app.appendChild(grid);
 }
-
-async function loadWeather(node){
-  try {
-    const url = "https://api.open-meteo.com/v1/forecast?latitude=54.9653&longitude=39.0326&current=temperature_2m,weather_code&timezone=Europe/Moscow";
-    const res = await fetch(url);
-    const data = await res.json();
-    const t = Math.round(data.current.temperature_2m);
-    const c = data.current.weather_code;
-    const icon = c === 0 ? "☀️" : c < 3 ? "🌤" : c < 50 ? "☁️" : c < 70 ? "🌧" : c < 80 ? "❄️" : "⛈";
-    node.textContent = `${icon} Луховицы: ${t}°C`;
-  } catch (err){ node.textContent = "🌤 Погода недоступна"; }
 }
-
 /* ============================================================
-   ТЕМА / ТЕСТЫ
-   ============================================================ */
-function renderTopic(id, tab = "passport", extra = ""){
-  const found = findTopic(id);
-  if (!found) return renderHome();
-  const { section, topic } = found;
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-  document.getElementById("crumbs").textContent = topic.code + " · " + topic.title;
-  setActiveTopBtn("");
+ПАНЕЛЬ УПРАВЛЕНИЯ / КАБИНЕТЫ
+============================================================ */
+window.renderTeacherPage = function() {
+const app = document.getElementById("app"); app.innerHTML = "";
+document.getElementById("crumbs").textContent = "Кабинеты доступа";
+setActiveTopBtn("teacher");
+app.appendChild(el(<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>));
+const currentRole = sessionStorage.getItem("mdk0701.userRole");
+const currentUserName = sessionStorage.getItem("mdk0701.userName");
+// Показываем форму входа, если сессия пуста
+if (!currentRole) {
+const loginBlock = el(`
+Личный кабинет персонала
+Логин
+Пароль
+Авторизоваться
 
-  app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← К программе</a>
-    <section class="topic-head">
-      <div class="crumb">ПМ.07 · ${topic.code} · ${section.title}</div>
-      <h1>${topic.title}</h1>
-      <div class="meta">${topic.hours.total}\\${topic.hours.practice} · ${topic.hours.total} ак. ч</div>
-    </section>`));
 
-  const tabs = [
-    ["passport","01","Паспорт часов"],["lecture","02","Лекция"],
-    ["practice","03","Практические"],["self","04","Самостоятельная"],["test","05","Контроль темы"]
-  ];
-  const tw = el(`<div class="tabs"></div>`);
-  tabs.forEach(([k,n,name])=>{
-    const t = el(`<button class="tab ${k===tab?"active":""}"><span class="t-num">${n}</span><span class="t-name">${name}</span></button>`);
-    t.addEventListener("click", ()=>{ location.hash = `#/topic/${id}/${k}`; });
-    tw.appendChild(t);
-  });
-  app.appendChild(tw);
-
-  const panel = el(`<section class="panel"></section>`);
-  app.appendChild(panel);
-
-  if (tab === "passport") renderPassport(panel, topic);
-  if (tab === "lecture")  renderLecture(panel, topic);
-  if (tab === "practice") renderPractice(panel, topic);
-  if (tab === "self")     renderSelf(panel, topic);
-  if (tab === "test")     renderTest(panel, topic, extra || "control");
-
-  markDone(topic.id, tab);
+`);
+app.appendChild(loginBlock);
+loginBlock.querySelector("#roleLoginForm").addEventListener("submit", async e => {
+e.preventDefault();
+const user = loginBlock.querySelector("#panelUser").value;
+const pass = loginBlock.querySelector("#panelPass").value;
+const st = loginBlock.querySelector("#panelStatus");
+st.textContent = "Связь со спутником…";
+st.style.color = "var(--text)";
+try {
+const url = APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass);
+const res = await fetch(url);
+const d = await res.json();
+if (d && d.ok) {
+sessionStorage.setItem("mdk0701.userRole", d.role);
+sessionStorage.setItem("mdk0701.userName", d.name);
+renderTeacherPage();
+} else {
+st.textContent = d.error || "Доступ заблокирован"; st.style.color = "var(--err)";
 }
-function markDone(topicId, tab){
-  state.progress[topicId] = state.progress[topicId] || { done: 0, tabs: {} };
-  if (!state.progress[topicId].tabs[tab]){
-    const before = state.progress[topicId].done || 0;
-    state.progress[topicId].tabs[tab] = true;
-    const after = Object.keys(state.progress[topicId].tabs).length;
-    state.progress[topicId].done = after;
-    saveProgress();
-    const t = findTopic(topicId)?.topic;
-    if (before === 0 && t) logActivity("topic", `Начата тема ${t.code}`);
-    if (after === 5 && before < 5 && t){
-      logActivity("topic", `Пройдена тема ${t.code} полностью`);
-      if (window.playSound) window.playSound("done");
-    }
-  }
+} catch (err) { st.textContent = "Сервер недоступен"; st.style.color = "var(--err)"; }
+});
+return;
 }
-function renderPassport(panel, t){
-  panel.innerHTML = `<h2>Паспорт часов</h2>
-    <p>Тема <b>${t.code}</b> — ${t.title}.</p>
-    <div class="kpi-row">
-      <div class="kpi"><div class="k-label">Всего</div><div class="k-value">${t.hours.total} ч</div></div>
-      <div class="kpi"><div class="k-label">Теория</div><div class="k-value">${t.hours.theory} ч</div></div>
-      <div class="kpi"><div class="k-label">Практика</div><div class="k-value">${t.hours.practice} ч</div></div>
-    </div>
-    <h3>Содержание по программе</h3>
-    <ul>${t.lectures.map(l=>`<li><b>${l.code}</b> ${l.title}</li>`).join("")}</ul>
-    <h3>Практические занятия</h3>
-    <ul>${t.practicals.map(p=>`<li><b>${p.code}</b> ${p.title}</li>`).join("")}</ul>`;
+// Шапка открытого кабинета
+const header = el(<div class="teacher-bar" style="display:flex; justify-content:space-between; align-items:center; background:var(--card-soft); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:20px;"> <div>Пользователь: <b>${currentUserName}</b> | Роль: <span style="color:var(--accent); font-weight:bold;">${currentRole.toUpperCase()}</span></div> <button class="btn ghost" id="panelLogoutBtn" style="padding:6px 14px;">Выйти</button> </div>);
+app.appendChild(header);
+header.querySelector("#panelLogoutBtn").addEventListener("click", () => {
+sessionStorage.clear(); renderTeacherPage();
+});
+// 1. Интерфейс куратора группы ТМ-3 (Серверная фильтрация)
+if (currentRole === "curator") {
+app.appendChild(el(<section class="module" style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px;"> <h2>Кабинет куратора группы ТМ-3</h2> <p style="color:var(--muted)">Вам предоставлен защищенный доступ только к ведомостям успеваемости вашей группы ТМ-3.</p> <div id="teacherTableWrap"><div class="comment-empty">Загрузка закрытых ведомостей ТМ-3…</div></div> </section>));
+loadProtectedStudentList("curator");
 }
-function renderLecture(panel, t){
-  panel.innerHTML = `<h2>Лекция</h2><p class="accent">Теория, схема, вопросы для самопроверки.</p>`;
-  t.lectures.forEach(l=>{
-    panel.appendChild(el(`<h3>${l.code}. ${l.title}</h3>`));
-    panel.appendChild(el(`<div>${l.content || "<p><i>Материал готовится.</i></p>"}</div>`));
-  });
+// 2. Интерфейс преподавателя или администратора
+if (currentRole === "teacher" || currentRole === "admin") {
+app.appendChild(el(<section class="module" style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px;"> <h2>Глобальный журнал оценок</h2> <div id="teacherTableWrap"><div class="comment-empty">Сбор информации по всем группам…</div></div> <h3 style="margin-top:24px">Вопросы от студентов</h3> <div id="teacherQuestions"><div class="comment-empty">Загрузка очереди вопросов…</div></div> </section>));
+loadProtectedStudentList(currentRole);
 }
-function renderPractice(panel, t){
-  panel.innerHTML = `<h2>Практические работы</h2><p class="accent">${t.hours.practice} ч практической подготовки.</p>`;
-  t.practicals.forEach(p=>{
-    const box = el(`<div class="practice">
-      <div class="p-code">${p.code}</div>
-      <div class="p-title">${p.title}</div>
-      ${p.goal ? `<div class="p-goal">Цель: ${p.goal}</div>` : ""}
-      ${p.task ? `<div class="p-task"><b>Задание:</b> ${p.task}</div>` : ""}
-      ${p.example ? `<div class="p-example"><b>Пример:</b> ${p.example}</div>` : ""}
-      ${p.solution?.length ? `<div class="p-solution"><h4>Ход решения</h4><ol>${p.solution.map(s=>`<li>${s}</li>`).join("")}</ol></div>` : ""}
-      <div class="test-actions">
-        <button class="btn ghost work-upload-btn" data-code="${p.code}" data-title="${p.title}">📎 Прикрепить работу</button>
-        <button class="btn ghost gcode-btn" data-code="${p.code}">👨‍💻 G-code просмотрщик</button>
-      </div>
-    </div>`);
-    box.querySelector(".work-upload-btn")?.addEventListener("click", ()=>window.openUploadModal?.(t.id, p.code, p.title));
-    box.querySelector(".gcode-btn")?.addEventListener("click", ()=>window.openGCodeModal?.(p.code));
-    if (p.variants?.rows?.length){
-      const v = el(`<div class="variants"><div class="v-title">Варианты (1–${p.variants.rows.length})</div><div class="v-scroll"></div></div>`);
-      const tbl = el(`<table class="v-table"></table>`);
-      if (p.variants.header){
-        const thead = el(`<thead><tr></tr></thead>`);
-        p.variants.header.forEach(h => thead.firstChild.appendChild(el(`<th>${h}</th>`)));
-        tbl.appendChild(thead);
-      }
-      const tbody = el(`<tbody></tbody>`);
-      p.variants.rows.forEach(row=>{
-        const tr = el(`<tr></tr>`);
-        row.forEach(c => tr.appendChild(el(`<td>${c}</td>`)));
-        tbody.appendChild(tr);
-      });
-      tbl.appendChild(tbody);
-      v.querySelector(".v-scroll").appendChild(tbl);
-      box.appendChild(v);
-    }
-    panel.appendChild(box);
-  });
+// 3. Интерфейс для 5 аккаунтов тестировщиков
+if (currentRole === "tester") {
+app.appendChild(el(<section class="module" style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px;"> <h2>Песочница тестировщика систем релизов</h2> <p class="sub">Текущий тестовый профиль авторизован для отладки UI-компонентов платформы.</p> <div class="test-actions" style="display:flex; gap:10px; margin-top:14px;"> <button class="btn ghost" onclick="window.celebrate();">🎇 Эмуляция победы (Конфетти)</button> <button class="btn ghost" onclick="window.openSearch();">🔍 Проверка индексатора поиска</button> </div> </section>));
 }
-function renderSelf(panel, t){
-  panel.innerHTML = `<h2>Самостоятельная работа</h2>
-    <p>Закрепление материала темы <b>${t.code}</b> «${t.title}».</p>
-    <p class="accent">Введите ответ. Регистр и лишние пробелы не важны.</p>`;
-  const tasks = (t.selfChecks?.length) ? t.selfChecks : [{ q:"Как называется главное движение при точении?", a:"вращение заготовки", accept:["вращение детали"] }];
-  const form = el(`<form class="self-form"></form>`);
-  tasks.forEach((task, i)=>{
-    const block = el(`<div class="question self-q">
-      <div class="q-text">${i+1}. ${task.q}</div>
-      <div class="self-row">
-        <input type="text" class="self-input" placeholder="Ваш ответ">
-        <button type="button" class="btn ghost self-check">Проверить</button>
-      </div><div class="self-feedback"></div></div>`);
-    const input = block.querySelector(".self-input"), btn = block.querySelector(".self-check"), fb = block.querySelector(".self-feedback");
-    btn.addEventListener("click", ()=>{
-      const userAns = (input.value || "").trim().toLowerCase();
-      const correct = task.a.trim().toLowerCase();
-      const accepted = Array.isArray(task.accept) ? task.accept.map(x=>x.trim().toLowerCase()) : [];
-      const ok = userAns === correct || accepted.includes(userAns);
-      fb.textContent = ok ? "✔ Верно" : ("✘ Правильно: " + task.a);
-      fb.className = "self-feedback " + (ok ? "ok" : "bad");
-    });
-    input.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); btn.click(); } });
-    form.appendChild(block);
-  });
-  const result = el(`<div class="test-result"></div>`);
-  const actions = el(`<div class="test-actions"><button type="button" class="btn" id="selfCount">Подвести итог</button>
-    <button type="button" class="btn ghost" id="selfReset">Сбросить</button></div>`);
-  form.appendChild(actions); form.appendChild(result);
-  form.querySelector("#selfCount").addEventListener("click", ()=>{
-    let ok = 0;
-    form.querySelectorAll(".self-q").forEach(q => { if (q.querySelector(".self-feedback").classList.contains("ok")) ok++; });
-    const total = tasks.length, pct = Math.round(ok/total*100);
-    const grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
-    result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${grade}.`;
-    result.className = "test-result " + (grade >= 3 ? "ok" : "bad");
-    state.selfResults[t.id] = { ok, total, pct, grade, date: new Date().toISOString() };
-    saveSelfResults();
-    logActivity("self", `Самостоятельная ${t.code}: ${ok}/${total} (оценка ${grade})`);
-    if (grade === 5 && window.celebrate) window.celebrate();
-  });
-  form.querySelector("#selfReset").addEventListener("click", ()=>{
-    form.querySelectorAll(".self-input").forEach(i => i.value = "");
-    form.querySelectorAll(".self-feedback").forEach(f => { f.textContent = ""; f.className = "self-feedback"; });
-    result.textContent = ""; result.className = "test-result";
-  });
-  panel.appendChild(form);
+};
+/* ---------- Загрузка списков с ролевой фильтрацией ---------- */
+async function loadProtectedStudentList(role) {
+const wrap = document.getElementById("teacherTableWrap"); if (!wrap) return;
+try {
+const url = APPS_SCRIPT_URL + "?action=teacherlist&userRole=" + encodeURIComponent(role);
+const res = await fetch(url); const d = await res.json();
+wrap.innerHTML = "";
+if (!d.ok || !d.students.length) { wrap.innerHTML = <div class="comment-empty">Нет активных данных для вашей роли.</div>; return; }
+const tbl = el(`
+ФИО студента
+Группа
+Шагов сдано
+Успеваемость
+`);
+const tbody = tbl.querySelector("tbody");
+d.students.forEach(s => {
+tbody.appendChild(el(`
+${escapeHtml(s.name)}
+${escapeHtml(s.group)}
+\({s.topicsDone} / \){s.topicsTotal}
+${(s.avgGrade || 0).toFixed(2)} балла
+)); }); wrap.appendChild(tbl); } catch (err) { wrap.innerHTML = Ошибка связи с базой данных Таблиц.`; }
 }
-
-let testTimerId = null;
-function clearTestTimer(){ if (testTimerId){ clearInterval(testTimerId); testTimerId = null; } }
-function startTestTimer(sec, display, onEnd){
-  clearTestTimer();
-  let r = sec;
-  const tick = ()=>{
-    const m = Math.floor(r/60), s = r%60;
-    display.textContent = `⏱ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-    display.classList.toggle("warn", r <= 60);
-    if (r <= 0){ clearTestTimer(); onEnd(); return; }
-    r--;
-  };
-  tick(); testTimerId = setInterval(tick, 1000);
-}
-function renderTest(panel, t, mode = "control"){
-  panel.innerHTML = "";
-  panel.appendChild(el(`<h2>Контроль темы</h2>
-    <p class="accent">🎯 <b>Контроль</b> — с таймером, перемешиванием и разбором ошибок, идёт в отчёт.
-    🎓 <b>Тренировка</b> — мгновенная проверка, без оценки.</p>
-    <div class="test-mode-tabs">
-      <button class="test-mode-tab ${mode==='control'?'active':''}" data-mode="control">🎯 Контроль</button>
-      <button class="test-mode-tab ${mode==='training'?'active':''}" data-mode="training">🎓 Тренировка</button>
-    </div>`));
-  panel.querySelectorAll(".test-mode-tab").forEach(b => b.addEventListener("click", ()=>{
-    location.hash = `#/topic/${t.id}/test/${b.dataset.mode}`;
-  }));
-  const body = el(`<div class="test-body"></div>`);
-  panel.appendChild(body);
-  if (!t.test?.length){ body.appendChild(el(`<p><i>Тест готовится.</i></p>`)); return; }
-  if (mode === "training") renderTestTraining(body, t);
-  else                     renderTestControl(body, t);
-}
-function renderTestTraining(body, t){
-  body.innerHTML = "";
-  body.appendChild(el(`<p class="accent">Отвечайте в любом порядке. После выбора увидите правильный ответ. Оценка не сохраняется.</p>`));
-  const items = shuffled(t.test.map(q => ({ q })));
-  items.forEach(it => {
-    const opts = it.q.options.map((opt, oi) => ({ opt, oi }));
-    it.shuffledOpts = shuffled(opts);
-    it.newCorrect = it.shuffledOpts.findIndex(o => o.oi === it.q.correct);
-  });
-  const form = el(`<form class="train-form"></form>`);
-  items.forEach((item, qi)=>{
-    const qBox = el(`<div class="question"><div class="q-text">${qi+1}. ${item.q.q}</div></div>`);
-    item.shuffledOpts.forEach((o, oi)=>{
-      qBox.appendChild(el(`<label class="option"><input type="radio" name="t${qi}" value="${oi}"><span>${o.opt}</span></label>`));
-    });
-    const fb = el(`<div class="train-feedback"></div>`);
-    qBox.appendChild(fb);
-    qBox.querySelectorAll('input[type=radio]').forEach(inp => inp.addEventListener("change", ()=>{
-      const idx = Number(inp.value), all = qBox.querySelectorAll(".option");
-      all.forEach(o => o.classList.remove("correct","wrong"));
-      if (idx === item.newCorrect){
-        all[idx].classList.add("correct");
-        fb.textContent = "✔ Верно!"; fb.className = "train-feedback ok";
-        if (window.playSound) window.playSound("ok");
-      } else {
-        all[idx].classList.add("wrong");
-        all[item.newCorrect].classList.add("correct");
-        fb.textContent = "✘ Неверно. Правильный выделен зелёным."; fb.className = "train-feedback bad";
-      }
-    }));
-    form.appendChild(qBox);
-  });
-  const reset = el(`<div class="test-actions"><button type="button" class="btn ghost">🔄 Начать заново</button></div>`);
-  reset.querySelector("button").addEventListener("click", ()=>renderTestTraining(body, t));
-  form.appendChild(reset);
-  body.appendChild(form);
-}
-function renderTestControl(body, t){
-  body.innerHTML = "";
-  const items = shuffled(t.test.map(q => ({ q })));
-  items.forEach(it => {
-    const opts = it.q.options.map((opt, oi) => ({ opt, oi }));
-    it.shuffledOpts = shuffled(opts);
-    it.newCorrect = it.shuffledOpts.findIndex(o => o.oi === it.q.correct);
-  });
-  const timerBox = el(`<div class="test-timer">⏱ --:--</div>`);
-  body.appendChild(timerBox);
-  body.appendChild(el(`<p class="accent">Вопросы перемешаны. Время — 15 минут. По истечении сдаётся автоматически.</p>`));
-  const form = el(`<form class="control-form"></form>`);
-  items.forEach((item, qi)=>{
-    const qBox = el(`<div class="question"><div class="q-text">${qi+1}. ${item.q.q}</div></div>`);
-    item.shuffledOpts.forEach((o, oi) =>
-      qBox.appendChild(el(`<label class="option"><input type="radio" name="q${qi}" value="${oi}"><span>${o.opt}</span></label>`)));
-    form.appendChild(qBox);
-  });
-  const result = el(`<div class="test-result"></div>`);
-  const report = el(`<div class="test-report"></div>`);
-  const actions = el(`<div class="test-actions"><button type="button" class="btn" id="gradeBtn">Подвести итог</button>
-    <button type="button" class="btn ghost" id="resetTest">Сбросить</button></div>`);
-  form.appendChild(actions); form.appendChild(result); form.appendChild(report);
-  body.appendChild(form);
-  let graded = false;
-  const grade = () => {
-    if (graded) return;
-    graded = true; clearTestTimer();
-    let ok = 0; const wrong = [];
-    items.forEach((item, qi)=>{
-      const chosen = form.querySelector(`input[name="q${qi}"]:checked`);
-      const qBox = form.querySelectorAll(".question")[qi];
-      qBox.querySelectorAll(".option").forEach(o => o.classList.remove("correct","wrong"));
-      if (chosen){
-        const idx = Number(chosen.value), opt = qBox.querySelectorAll(".option")[idx];
-        if (idx === item.newCorrect){ ok++; opt.classList.add("correct"); }
-        else {
-          opt.classList.add("wrong");
-          qBox.querySelectorAll(".option")[item.newCorrect].classList.add("correct");
-          wrong.push({ q: item.q.q, user: item.shuffledOpts[idx].opt, correct: item.q.options[item.q.correct] });
-        }
-      } else {
-        qBox.querySelectorAll(".option")[item.newCorrect].classList.add("correct");
-        wrong.push({ q: item.q.q, user: "(нет ответа)", correct: item.q.options[item.q.correct] });
-      }
-    });
-    const total = items.length, pct = Math.round(ok/total*100);
-    let g = 2; if (pct >= 90) g = 5; else if (pct >= 75) g = 4; else if (pct >= 60) g = 3;
-    result.textContent = `Верных: ${ok} из ${total} (${pct}%). Оценка: ${g}.`;
-    result.className = "test-result " + (g >= 3 ? "ok" : "bad");
-    state.results[t.id] = { ok, total, pct, grade: g, date: new Date().toISOString() };
-    saveResults();
-    logActivity("test", `Тест ${t.code}: ${ok}/${total} (оценка ${g})`);
-    if (g === 5 && window.celebrate){ window.celebrate(); if (window.playSound) window.playSound("win"); }
-    if (wrong.length){
-      report.appendChild(el(`<h3>Разбор ошибок</h3>`));
-      wrong.forEach(w => report.appendChild(el(`<div class="error-item">
-        <div class="error-q">${escapeHtml(w.q)}</div>
-        <div class="error-line error-bad">Ваш ответ: ${escapeHtml(w.user)}</div>
-        <div class="error-line error-ok">Верно: ${escapeHtml(w.correct)}</div></div>`)));
-      report.appendChild(el(`<a class="backlink" href="#/topic/${t.id}/lecture">📖 Перечитать лекцию →</a>`));
-    } else report.appendChild(el(`<p class="test-perfect">🎉 Все ответы верные!</p>`));
-    actions.querySelector("#gradeBtn").disabled = true;
-  };
-  form.querySelector("#gradeBtn").addEventListener("click", grade);
-  form.querySelector("#resetTest").addEventListener("click", ()=>{
-    clearTestTimer();
-    form.querySelectorAll("input[type=radio]").forEach(i => i.checked = false);
-    form.querySelectorAll(".option").forEach(o => o.classList.remove("correct","wrong"));
-    result.textContent = ""; result.className = "test-result"; report.innerHTML = "";
-    graded = false; actions.querySelector("#gradeBtn").disabled = false;
-    startTestTimer(TEST_TIME_LIMIT_SEC, timerBox, grade);
-  });
-  startTestTimer(TEST_TIME_LIMIT_SEC, timerBox, grade);
-}
-
 /* ============================================================
-   PDF
-   ============================================================ */
-function openPdfModal(file, title){
-  document.querySelectorAll(".pdf-overlay").forEach(x => x.remove());
-  const modal = el(`<div class="pdf-overlay">
-    <div class="pdf-modal">
-      <div class="pdf-head"><div class="pdf-title">${title}</div>
-      <div class="pdf-actions">
-        <button class="btn ghost" id="pdfDark">🌙 Тема</button>
-        <a class="btn ghost" href="${file}" download>⬇ Скачать</a>
-        <a class="btn ghost" href="${file}" target="_blank" rel="noopener">↗ В новой вкладке</a>
-        <button class="btn" id="pdfClose">✕ Закрыть</button>
-      </div></div>
-      <div class="pdf-body"><iframe src="${file}#view=FitH" title="${title}" loading="lazy"></iframe></div>
-    </div></div>`);
-  document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
-  const close = ()=>{ modal.remove(); document.body.style.overflow = ""; };
-  modal.querySelector("#pdfClose").addEventListener("click", close);
-  modal.addEventListener("click", e => { if (e.target === modal) close(); });
-  modal.querySelector("#pdfDark").addEventListener("click", ()=>modal.classList.toggle("dark"));
-}
-
-/* ============================================================
-   ROUTER
-   ============================================================ */
-function goHome(e){ if (e) e.preventDefault(); location.hash = "#/"; }
+МАРШРУТИЗАТОР (ROUTER) И СТРАНИЦЫ ТЕМЫ
+============================================================ */
 function route(){
-  clearTestTimer();
-  document.querySelectorAll(".pdf-overlay, .report-overlay, .avatar-overlay, .search-overlay, .theme-overlay, .user-menu, .more-menu").forEach(x => x.remove());
-  if (!state.student){ document.getElementById("app").innerHTML = ""; return; }
-  const hash = location.hash.replace(/^#/, "") || "/";
-  const parts = hash.split("/").filter(Boolean);
-
-  const pages = {
-    comments:  ()=>window.renderCommentsPage?.(),
-    dashboard: ()=>window.renderDashboard?.(),
-    chat:      ()=>window.renderChatPage?.(),
-    questions: ()=>window.renderQuestionsPage?.(),
-    gallery:   ()=>window.renderGalleryPage?.(),
-    teacher:   ()=>window.renderTeacherPage?.(),
-    calendar:  ()=>window.renderCalendarPage?.(),
-    gosts:     ()=>window.renderGostsPage?.(),
-    qr:        ()=>window.renderQrPage?.(),
-    backup:    ()=>{ renderHome(); setTimeout(showBackupModal, 0); }
-  };
-
-  if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2] || "passport", parts[3] || "");
-  else if (pages[parts[0]])             pages[parts[0]]();
-  else                                   renderHome();
-  window.scrollTo(0, 0);
+clearTestTimer();
+document.querySelectorAll(".pdf-overlay, .user-menu, .theme-overlay").forEach(x => x.remove());
+const hash = location.hash.replace(/^#/, "") || "/";
+const parts = hash.split("/").filter(Boolean);
+const pages = {
+comments:  ()=>window.renderCommentsPage?.(),
+dashboard: ()=>window.renderDashboard?.(),
+chat:      ()=>window.renderChatPage?.(),
+questions: ()=>window.renderQuestionsPage?.(),
+gallery:   ()=>window.renderGalleryPage?.(),
+teacher:   ()=>window.renderTeacherPage?.(),
+calendar:  ()=>window.renderCalendarPage?.(),
+gosts:     ()=>window.renderGostsPage?.(),
+qr:        ()=>window.renderQrPage?.()
+};
+if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2] || "passport");
+else if (pages[parts[0]]) pagesparts[0];
+else renderHome();
+window.scrollTo(0, 0);
 }
-
+function renderTopic(id, tab = "passport") {
+const found = findTopic(id); if (!found) return renderHome();
+const { topic } = found;
+const app = document.getElementById("app"); app.innerHTML = "";
+document.getElementById("crumbs").textContent = topic.code + " · " + topic.title;
+app.appendChild(el(`← К списку тем
+${topic.code} · ${topic.title}
+`));
+const p = el(<section class="panel" style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px;"> <h3>Содержимое вкладки: ${tab.toUpperCase()}</h3> </section>);
+if (tab === "passport") p.appendChild(el(<p>Всего академических часов на изучение: <b>${topic.hours.total} ч.</b> (Теория: ${topic.hours.theory} ч. / Практическая подготовка: ${topic.hours.practice} ч.)</p>));
+app.appendChild(p);
+}
+function goHome(e){ if (e) e.preventDefault(); location.hash = "#/"; }
+function setActiveTopBtn(which){}
+function clearTestTimer(){}
 /* ============================================================
-   Верхнее меню
-   ============================================================ */
-function setActiveTopBtn(which){
-  const map = { comments:"commentsBtn", dashboard:"dashboardBtn", chat:"chatBtn", questions:"questionsBtn", teacher:"moreBtn" };
-  Object.keys(map).forEach(k => {
-    const btn = document.getElementById(map[k]);
-    if (btn) btn.classList.toggle("active", which === k);
-  });
-}
-function initTopMenus(){
-  document.getElementById("searchBtn").addEventListener("click", ()=>window.openSearch?.());
-  document.getElementById("chatBtn").addEventListener("click", ()=>location.hash = "#/chat");
-  document.getElementById("questionsBtn").addEventListener("click", ()=>location.hash = "#/questions");
-  document.getElementById("dashboardBtn").addEventListener("click", ()=>location.hash = "#/dashboard");
-  document.getElementById("moreBtn").addEventListener("click", openMoreMenu);
-}
-function openMoreMenu(){
-  document.querySelectorAll(".more-menu, .user-menu").forEach(m => m.remove());
-  const btn = document.getElementById("moreBtn");
-  const rect = btn.getBoundingClientRect();
-  const menu = el(`<div class="more-menu">
-    <button class="more-menu-item" data-go="#/comments">💬 Отзывы о курсе</button>
-    <button class="more-menu-item" data-go="#/gallery">🖼 Галерея работ</button>
-    <button class="more-menu-item" data-go="#/calendar">📅 Календарь</button>
-    <button class="more-menu-item" data-go="#/gosts">📐 ГОСТы</button>
-    <button class="more-menu-item" data-go="#/qr">📱 QR-код</button>
-    <button class="more-menu-item" data-act="theme">🎨 Сменить тему</button>
-    <button class="more-menu-item" data-go="#/teacher">👨‍🏫 Панель преподавателя</button>
-    <button class="more-menu-item" data-act="report">📧 Отправить отчёт</button>
-  </div>`);
-  document.body.appendChild(menu);
-  menu.style.position = "fixed";
-  menu.style.top = (rect.bottom + 8) + "px";
-  menu.style.right = Math.max(8, window.innerWidth - rect.right) + "px";
-  const close = e => {
-    if (!menu.contains(e.target) && e.target !== btn){ menu.remove(); document.removeEventListener("click", close); }
-  };
-  setTimeout(()=>document.addEventListener("click", close), 0);
-  menu.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", ()=>{ menu.remove(); location.hash = b.dataset.go; }));
-  menu.querySelector('[data-act="report"]').addEventListener("click", ()=>{ menu.remove(); window.openReportModal?.(); });
-  menu.querySelector('[data-act="theme"]').addEventListener("click", ()=>{ menu.remove(); openThemeModal(); });
-}
-
-/* ============================================================
-   Объявления
-   ============================================================ */
-async function loadAnnouncement(){
-  const bar = document.getElementById("announceBar");
-  const dismissed = localStorage.getItem("mdk0701.announceDismissed") || "";
-  try {
-    const res = await fetch(APPS_SCRIPT_URL + "?action=announcement");
-    const data = await res.json();
-    if (data && data.ok && data.text){
-      const id = data.id || String(data.text).slice(0, 40);
-      if (dismissed === id) return;
-      document.getElementById("announceText").textContent = data.text;
-      bar.hidden = false;
-      document.getElementById("announceClose").addEventListener("click", ()=>{
-        localStorage.setItem("mdk0701.announceDismissed", id);
-        bar.hidden = true;
-      });
-    }
-  } catch (err){}
-}
-
-/* ============================================================
-   Онлайн-счётчик
-   ============================================================ */
-let heartbeatTimer = null;
-async function sendHeartbeat(){
-  if (!state.student) return;
-  const params = new URLSearchParams();
-  params.append("action", "heartbeat");
-  params.append("key", studentKey());
-  try { await fetch(APPS_SCRIPT_URL, { method:"POST", body: params }); } catch (err){}
-}
-async function refreshOnline(){
-  const node = document.getElementById("onlineCount");
-  try {
-    const res = await fetch(APPS_SCRIPT_URL + "?action=online&window=" + ONLINE_TIMEOUT_SEC);
-    const data = await res.json();
-    if (data && data.ok) node.textContent = `🌐 ${data.count}`;
-  } catch (err){}
-}
-function startHeartbeat(){
-  sendHeartbeat();
-  refreshOnline();
-  if (heartbeatTimer) clearInterval(heartbeatTimer);
-  heartbeatTimer = setInterval(()=>{ sendHeartbeat(); refreshOnline(); }, 60000);
-}
-
-/* ============================================================
-   Сеть
-   ============================================================ */
-function updateNetStatus(){
-  const n = document.getElementById("netStatus");
-  if (!navigator.onLine){ n.textContent = "📶 Офлайн"; n.classList.add("offline"); }
-  else { n.textContent = "📶 Онлайн"; n.classList.remove("offline"); }
-}
-
-/* ============================================================
-   BOOT
-   ============================================================ */
+ИНИЦИАЛИЗАЦИЯ И ЗАПУСК ПРИЛОЖЕНИЯ
+============================================================ */
 window.addEventListener("hashchange", route);
 window.addEventListener("DOMContentLoaded", ()=>{
-  initTheme();
-  initNav();
-  initAuth();
-  initTopMenus();
-  updateNetStatus();
-  renderUserChip();
-  route();
-  loadAnnouncement();
-  startHeartbeat();
-  if (state.student) startAutoBackup();
+initTheme();
+initNav();
+initAuth();
+route();
 });
-window.addEventListener("online",  ()=>{ updateNetStatus(); window.OfflineQueue?.flush(); });
-window.addEventListener("offline", updateNetStatus);
