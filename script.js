@@ -809,6 +809,7 @@ function renderHome(){
     var finals = el('<div class="steps"></div>');
     [["🏋️","Итоговая тренировка","#/final-training"],
      ["🎓","Итоговый экзамен","#/final-exam"],
+     ["📖","G- и M-коды","#/gcode-reference"],
      ["📊","Статистика","#/dashboard"]]
       .forEach(function(item){
         var card = el(
@@ -1444,6 +1445,7 @@ function openMoreMenu(){
     '<div class="more-menu">' +
       '<button class="more-menu-item" data-go="#/final-training">🏋️ Итоговая тренировка (все вопросы)</button>' +
       '<button class="more-menu-item" data-go="#/final-exam">🎓 Итоговый экзамен (25 вопросов)</button>' +
+      '<button class="more-menu-item" data-go="#/gcode-reference">📖 G- и M-коды (справочник)</button>' +
       '<button class="more-menu-item" data-go="#/dashboard">📊 Статистика и работы</button>' +
       '<button class="more-menu-item" data-go="#/comments">💬 Отзывы о курсе</button>' +
       '<button class="more-menu-item" data-go="#/gallery">🖼 Галерея работ</button>' +
@@ -1511,8 +1513,9 @@ function route(){
     calendar:  function(){ if (window.renderCalendarPage)  window.renderCalendarPage();  },
     gosts:     function(){ if (window.renderGostsPage)     window.renderGostsPage();     },
     qr:        function(){ if (window.renderQrPage)        window.renderQrPage();        },
-    "final-training": function(){ if (window.renderFinalTrainingPage) window.renderFinalTrainingPage(); },
-    "final-exam":     function(){ if (window.renderFinalExamPage)     window.renderFinalExamPage();     }
+    "final-training":  function(){ if (window.renderFinalTrainingPage) window.renderFinalTrainingPage(); },
+    "final-exam":      function(){ if (window.renderFinalExamPage)     window.renderFinalExamPage();     },
+    "gcode-reference": function(){ if (window.renderGCodeReferencePage) window.renderGCodeReferencePage(); }
   };
 
   if (parts[0] === "topic" && parts[1]){
