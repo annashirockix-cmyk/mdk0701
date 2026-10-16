@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#c14a2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>МДК 07.01 — Технология обработки деталей на станках с ЧПУ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ ЭКРАН ВХОДА ============ -->
+<div class="login-overlay" id="loginOverlay" hidden>
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-badge">МДК 07.01</span>
+      <h1>Вход в систему</h1>
+    </div>
+    <p class="login-sub">
+      Введите свои данные, чтобы начать работу.
+      Они сохранятся в браузере и попадут в отчёт преподавателю.
+    </p>
+
+    <label for="loginName">ФИО студента</label>
+    <input id="loginName" type="text" placeholder="Иванов Иван Иванович" autocomplete="name">
+
+    <label for="loginGroup">Группа</label>
+    <input id="loginGroup" type="text" placeholder="ТМ-21" autocomplete="off">
+
+    <button id="loginBtn" class="btn login-btn">Войти</button>
+
+    <p class="login-hint">
+      Если вы уже заходили — данные подставятся автоматически.
+    </p>
+  </div>
+</div>
+
+<!-- ============ ШАПКА ============ -->
+<header class="topbar">
+  <div class="nav-group">
+    <button class="nav-btn" id="navBack" title="Назад" aria-label="Назад">←</button>
+    <button class="nav-btn" id="navForward" title="Вперёд" aria-label="Вперёд">→</button>
+    <a class="brand" href="#/" onclick="goHome(event)">
+      <span class="brand-badge">МДК 07.01</span>
+      <span class="brand-title">Оператор станков с ПУ</span>
+    </a>
+  </div>
+
+  <div class="crumbs" id="crumbs"></div>
+
+  <div class="user-chip" id="userChip" title="Сменить пользователя" hidden>
+    <span class="user-chip-name" id="userChipName"></span>
+    <span class="user-chip-group" id="userChipGroup"></span>
+  </div>
+
+  <button class="topbar-btn" id="reportBtn" title="Отправить отчёт преподавателю" aria-label="Отправить отчёт">
+    <span class="topbar-ico">📧</span>
+  </button>
+
+  <button class="theme-toggle" id="themeToggle" title="Переключить тему" aria-label="Переключить тему">
+    <span class="theme-icon" id="themeIcon">🌙</span>
+  </button>
+</header>
+
+<main id="app"></main>
+
+<footer class="footer">
+  ГБПОУ МО «Луховицкий авиационный техникум» · Профессионалитет · 2024
+</footer>
+
+<script src="data.js"></script>
+<script src="info.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
