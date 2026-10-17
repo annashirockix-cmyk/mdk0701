@@ -1,10 +1,10 @@
 /* Service Worker МДК 07.01 */
-const CACHE = "mdk0701-v15-super-final"; // <--- ОБНОВЛЕНО
+const CACHE = "mdk0701-v21-final"; // ОБНОВЛЕНО
 const ASSETS = [
   "./", "./index.html", "./style.css",
   "./data.js", "./info.js", "./script.js", "./extra.js", "./data-extra.js",
-  "./final.js", "./links.js", "./rating.js", "./schedule.js", "./journal.js", "./assistant.js",
-  "./manifest.json"
+  "./final.js", "./links.js", "./rating.js", "./schedule.js", "./journal.js", 
+  "./assistant.js", "./minigames.js", "./easter-eggs.js", "./manifest.json"
 ];
 
 self.addEventListener("install", (e) => {
