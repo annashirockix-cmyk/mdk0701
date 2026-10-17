@@ -59,6 +59,19 @@ window.renderCommentsBlock = function(){
 };
 window.renderCommentsPage = function(){ const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Комментарии"; app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`)); app.appendChild(window.renderCommentsBlock()); };
 
+async function loadWorksForGallery(){
+  if (!APPS_SCRIPT_URL || !state.student) return [];
+  try {
+    const p = new URLSearchParams();
+    p.append("action", "worksload");
+    p.append("group", state.student.group);
+    const res = await fetch(APPS_SCRIPT_URL + "?" + p.toString());
+    const d = await res.json();
+    if (d && d.ok && Array.isArray(d.works)) return d.works;
+  } catch(err){}
+  return [];
+}
+
 window.openUploadModal = function(topicId, workCode, workTitle){
   document.querySelectorAll(".avatar-overlay").forEach(x => x.remove());
   const modal = el(`<div class="avatar-overlay"><div class="avatar-modal"><h3>Прикрепить работу</h3><p class="avatar-sub">${workCode} — ${workTitle}</p><div class="upload-zone" id="uploadZone"><div class="uz-title">📎 Выберите файл</div><input type="file" id="uploadInput" hidden></div><div class="test-actions"><button class="btn ghost" id="uploadCancel">Отмена</button><button class="btn" id="uploadSend" disabled>Загрузить</button></div></div></div>`);
@@ -68,155 +81,135 @@ window.openUploadModal = function(topicId, workCode, workTitle){
   sendBtn.addEventListener("click", ()=>{ window.showToast("Файл загружен (демо)", "ok"); modal.remove(); });
 };
 
-window.renderTeacherPage = function(){ const app = document.getElementById("app"); app.innerHTML = "<h2>Панель преподавателя</h2><p>В разработке</p>"; };
-
-/* ДАШБОРД */
-window.renderDashboard = function(){
-  const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Статистика";
+window.renderGalleryPage = function(){
+  const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Галерея работ";
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
-  app.appendChild(el(`<section class="hero"><div class="meta">Аналитика</div><h1>Мой прогресс</h1></section>`));
-
-  let topicsDone = 0;
-  COURSE.sections.forEach(sec => sec.topics.forEach(t => { if ((state.progress[t.id]?.done || 0) >= 5) topicsDone++; }));
-  const tests5 = Object.values(state.results).filter(r => r.grade === 5).length;
-  const hasUploads = (state.activity || []).some(a => a.type === "upload");
   
-  const achData = [
-    { id: "first_step", icon: "🥉", title: "Первый шаг", desc: "Пройдена 1 тема", unlocked: topicsDone >= 1 },
-    { id: "bookworm", icon: "📚", title: "Книжный червь", desc: "Пройдено 5 тем", unlocked: topicsDone >= 5 },
-    { id: "excellent", icon: "🔥", title: "Отличник", desc: "Сдан тест на 5", unlocked: tests5 >= 1 },
-    { id: "uploader", icon: "📎", title: "Мастер загрузок", desc: "Прикреплена работа", unlocked: hasUploads }
-  ];
+  const block = el(`<section class="module">
+    <div class="meta">Обмен опытом</div>
+    <h2>Галерея выполненных работ</h2>
+    <p class="sub">Работы студентов группы. Вы можете прикрепить свои файлы в разделе «Практические работы».</p>
+    <div class="test-actions" style="margin-bottom:14px">
+      <label class="btn ghost"><input type="checkbox" id="myOnly" style="margin-right:6px">Только мои</label>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"><div class="comment-empty">Загружаем работы…</div></div>
+  </section>`);
+  app.appendChild(block);
 
-  const achBlock = el(`<section class="module"><h2>🏆 Мои достижения</h2><div class="achievements-grid"></div></section>`);
-  const grid = achBlock.querySelector(".achievements-grid");
-  achData.forEach(a => { grid.appendChild(el(`<div class="ach-card ${a.unlocked ? 'unlocked' : ''}"><span class="ach-icon">${a.icon}</span><div class="ach-title">${a.title}</div><div class="ach-desc">${a.desc}</div></div>`)); });
-  app.appendChild(achBlock);
-
-  const kpi = el(`<section class="module"><h2>Общие показатели</h2><div class="kpis"></div></section>`);
-  const kgrid = kpi.querySelector(".kpis");
-  kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Тем пройдено</div><div class="k-value">${topicsDone}</div></div>`));
-  kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Отличных тестов</div><div class="k-value">${tests5}</div></div>`));
-  kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Достижений</div><div class="k-value">${achData.filter(a=>a.unlocked).length} / 4</div></div>`));
-  app.appendChild(kpi);
-
-  const pieSection = el(`<section class="module"><h2>Структура прогресса</h2><div class="pie-wrap"></div></section>`);
-  const pw = pieSection.querySelector(".pie-wrap");
-  const slices = [
-    { value: topicsDone, color: "var(--accent)", label: `Тем пройдено (${topicsDone})` },
-    { value: tests5, color: "var(--ok)", label: `Отличных тестов (${tests5})` }
-  ];
-  pw.appendChild(el(`<div class="pie-chart">${svgPie(slices)}</div>`));
-  const legend = el(`<div class="pie-legend"></div>`);
-  slices.forEach(s => legend.appendChild(el(`<div class="legend-row"><span class="legend-dot" style="background:${s.color}"></span><span>${s.label}</span></div>`)));
-  pw.appendChild(legend);
-  app.appendChild(pieSection);
-
-  const weeks = activityByWeek();
-  const chart = el(`<section class="module"><h2>Активность по неделям</h2><div class="week-chart"></div></section>`);
-  const bars = chart.querySelector(".week-chart");
-  const maxC = Math.max(1, ...weeks.map(w => w.count));
-  weeks.forEach((w, i) => { bars.appendChild(el(`<div class="week-bar"><div class="wb-count">${w.count}</div><div class="wb-bar" style="height:${Math.round(w.count / maxC * 100)}%"></div><div class="wb-label">${i === weeks.length - 1 ? "сейчас" : "−" + (weeks.length - i - 1) + "н"}</div></div>`)); });
-  app.appendChild(chart);
-};
-
-function svgPie(slices){
-  const total = slices.reduce((s,x) => s + Math.max(0, x.value), 0);
-  if (total <= 0) return `<svg viewBox="0 0 140 140" class="pie-svg"><circle cx="70" cy="70" r="60" fill="var(--border)"/></svg>`;
-  const R = 60, cx = 70, cy = 70, ir = 35; let acc = 0;
-  const paths = slices.map(s => {
-    if (s.value <= 0) return "";
-    const a0 = acc / total * Math.PI * 2 - Math.PI/2; acc += s.value; const a1 = acc / total * Math.PI * 2 - Math.PI/2;
-    const large = (a1 - a0) > Math.PI ? 1 : 0; const x0o = cx + R*Math.cos(a0), y0o = cy + R*Math.sin(a0);
-    const x1o = cx + R*Math.cos(a1), y1o = cy + R*Math.sin(a1); const x0i = cx + ir*Math.cos(a1), y0i = cy + ir*Math.sin(a1);
-    const x1i = cx + ir*Math.cos(a0), y1i = cy + ir*Math.sin(a0);
-    return `<path d="M${x0o} ${y0o} A${R} ${R} 0 ${large} 1 ${x1o} ${y1o} L${x0i} ${y0i} A${ir} ${ir} 0 ${large} 0 ${x1i} ${y1i} Z" fill="${s.color}"/>`;
-  }).join("");
-  return `<svg viewBox="0 0 140 140" class="pie-svg">${paths}</svg>`;
-}
-function activityByWeek(){
-  const weeks = []; const now = new Date(); const day = now.getDay() || 7;
-  for (let i = 7; i >= 0; i--){ const start = new Date(now); start.setDate(now.getDate() - i*7 - (day - 1)); start.setHours(0,0,0,0); const end = new Date(start); end.setDate(start.getDate() + 7); weeks.push({ start, end, count: 0 }); }
-  (state.activity || []).forEach(a => { const d = new Date(a.date); for (const w of weeks) if (d >= w.start && d < w.end){ w.count++; break; } });
-  return weeks;
-}
-
-/* G-CODE ВИЗУАЛИЗАТОР */
-const GCODE_SAMPLES = {
-  "ПЗ 4": `N10 G21 G40 G90\nN20 T0101\nN30 S1200 M3\nN40 G0 X42 Z2\nN50 G1 Z0 F0.15\nN60 X-0.5\nN70 G0 X42 Z2\nN80 T0202\nN90 S1400 M3\nN100 G1 X30 Z-40 F0.1\nN110 G3 X20 Z-45 R5\nN120 G0 X50 Z50\nN130 M5\nN140 M30`
-};
-function highlightGCode(text){
-  return text.split("\n").map(line => {
-    let safe = escapeHtml(line);
-    safe = safe.replace(/(\([^)]*\))/g, '<span class="comment">$1</span>').replace(/\b(G\d+(\.\d+)?)/g, '<span class="g">$1</span>').replace(/\b(M\d+)/g, '<span class="m">$1</span>').replace(/\b([XYZIJKRUW]-?\d+(\.\d+)?)/g, '<span class="xyz">$1</span>').replace(/\b([FSTP]-?\d+(\.\d+)?)/g, '<span class="f">$1</span>').replace(/\b(N\d+)/g, '<span class="n">$1</span>');
-    return '<span class="gcode-line">' + safe + '</span>';
-  }).join("\n");
-}
-window.openGCodeModal = function(workCode){
-  const samples = Object.keys(GCODE_SAMPLES); const initial = GCODE_SAMPLES[workCode] || GCODE_SAMPLES[samples[0]];
-  const modal = el(`<div class="avatar-overlay"><div class="avatar-modal" style="max-width:900px"><h3>Просмотрщик G-кода</h3><div style="display:grid;grid-template-columns:1fr;gap:12px"><div><pre class="gcode-view" id="gcodeRef">${highlightGCode(initial)}</pre></div><div class="gcode-canvas-wrap"><canvas id="gcodeCanvas" class="gcode-canvas"></canvas></div></div><div class="test-actions" style="margin-top:14px"><button class="btn" id="gcodeDraw">Нарисовать траекторию</button><button class="btn ghost" id="gcodeClose">Закрыть</button></div></div></div>`);
-  document.body.appendChild(modal); modal.querySelector("#gcodeClose").addEventListener("click", ()=>modal.remove());
-  
-  modal.querySelector("#gcodeDraw").addEventListener("click", ()=>{
-    const canvas = modal.querySelector("#gcodeCanvas"); const ctx = canvas.getContext("2d");
-    canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
-    for(let i=0; i<canvas.width; i+=30) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-    for(let i=0; i<canvas.height; i+=30) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+  async function refresh(){
+    const grid = document.getElementById("galleryGrid");
+    const myOnly = document.getElementById("myOnly").checked;
+    grid.innerHTML = "";
     
-    let cx = 50, cz = 50; ctx.beginPath(); ctx.moveTo(cx, cz);
-    const lines = initial.split("\n");
-    lines.forEach(line => {
-      const matchG = line.match(/G(\d+)/); const matchX = line.match(/X(-?\d+\.?\d*)/); const matchZ = line.match(/Z(-?\d+\.?\d*)/);
-      if (matchG) {
-        const g = parseInt(matchG[1]);
-        if (g === 0 || g === 1 || g === 3) {
-          if (matchX) cx += parseFloat(matchX[1]) * 1.5; if (matchZ) cz += parseFloat(matchZ[1]) * 1.5;
-          ctx.strokeStyle = g === 0 ? "#ffeb3b" : "#4caf50";
-          ctx.lineTo(cx, cz); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx, cz);
-        }
-      }
+    let works = await loadWorksForGallery();
+    if (myOnly) works = works.filter(w => w.key === studentKey());
+
+    if (!works.length){
+      grid.appendChild(el(`<div class="comment-empty">Пока нет загруженных работ. Откройте любую практическую и нажмите «Прикрепить»!</div>`));
+      return;
+    }
+    
+    works.reverse().forEach(w => {
+      const ext = (w.fileName || "").split(".").pop().toLowerCase();
+      const icon = ext === "pdf" ? "📄" : ["png","jpg","jpeg"].includes(ext) ? "🖼" : ext === "zip" ? "🗜" : "📎";
+      
+      grid.appendChild(el(`<div class="gallery-card">
+        <div class="gc-thumb">${icon}</div>
+        <div class="gc-body">
+          <div class="gc-title">${escapeHtml(w.workCode)} — ${escapeHtml(w.workTitle)}</div>
+          <div class="gc-meta">${escapeHtml(w.name)} · гр. ${escapeHtml(w.group)} · ${fmtRel(w.date)}</div>
+          <div class="gc-meta">${escapeHtml(w.fileName)}</div>
+          <div class="gc-actions">
+            <a class="btn ghost" href="${w.fileUrl}" target="_blank" rel="noopener">↗ Открыть</a>
+          </div>
+        </div></div>`));
     });
-    window.showToast("Траектория построена", "ok");
-  });
+  }
+  
+  document.getElementById("myOnly").addEventListener("change", refresh);
+  refresh();
 };
 
-window.renderGCodeReferencePage = function(){ 
-  const app = document.getElementById("app"); app.innerHTML = ""; 
-  document.getElementById("crumbs").textContent = "G-коды";
-  app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
-  app.appendChild(el('<section class="hero"><div class="meta">Справочные материалы</div><h1>Базовые G- и M-коды</h1></section>'));
-  app.appendChild(el('<div class="module"><button class="btn" onclick="openGCodeModal()">Открыть визуализатор траекторий</button></div>'));
-};
-
-window.renderChatPage = function(){
-  const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Чат группы " + state.student.group;
+window.renderGostsPage = function(){
+  const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "ГОСТы";
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
-  app.appendChild(el(`<section class="module"><div class="meta">Общение</div><h2>Чат группы ${state.student.group}</h2><p class="sub">Сообщения обновляются автоматически.</p><div class="chat-wrap"><div class="chat-log" id="chatLog"><div class="comment-empty">Загружаем сообщения…</div></div><form class="chat-form" id="chatForm"><input type="text" class="chat-input" id="chatInput" maxlength="500" placeholder="Ваше сообщение…" autocomplete="off"><button type="submit" class="btn">Отправить</button></form></div></section>`));
-  const log = document.getElementById("chatLog"), input = document.getElementById("chatInput");
-  log.innerHTML = '<div class="chat-msg own"><span class="chat-msg-avatar">👨‍🎓</span><div><div class="chat-msg-head"><span class="chat-msg-name">Вы</span><span class="chat-msg-date">только что</span></div><div class="chat-msg-body">Привет! Это тестовое сообщение.</div></div></div>';
-  document.getElementById("chatForm").addEventListener("submit", (e)=>{ e.preventDefault(); const text = input.value.trim(); if (!text) return; input.value = ""; window.showToast("Сообщение отправлено", "ok"); });
+  
+  const gosts = [
+    { code: "ГОСТ 18097-93", title: "Станки токарные. Нормы точности", url: "https://docs.cntd.ru/document/1200015818" },
+    { code: "ГОСТ 8-82", title: "Станки металлорежущие. Нормы точности", url: "https://docs.cntd.ru/document/1200015819" },
+    { code: "ГОСТ 20999-83", title: "Устройства ЧПУ. Коды", url: "https://docs.cntd.ru/document/1200015820" },
+    { code: "ГОСТ 12.2.009-99", title: "Станки металлообрабатывающие. Общие требования безопасности", url: "https://docs.cntd.ru/document/1200015821" },
+    { code: "ГОСТ 12.2.029-88", title: "Приспособления станочные. Требования безопасности", url: "https://docs.cntd.ru/document/1200015822" },
+    { code: "ГОСТ 25762-83", title: "Обработка резанием. Термины и определения", url: "https://docs.cntd.ru/document/1200015823" },
+    { code: "ГОСТ 3.1404-86", title: "Формы и правила оформления документов на техпроцессы", url: "https://docs.cntd.ru/document/1200015824" },
+    { code: "ГОСТ 14.004-83", title: "Технологическая подготовка производства", url: "https://docs.cntd.ru/document/1200015825" }
+  ];
+
+  const block = el(`<section class="module">
+    <div class="meta">Нормативные документы</div>
+    <h2>Быстрые ссылки на ГОСТы</h2>
+    <p class="sub">Открываются на портале docs.cntd.ru в новой вкладке.</p>
+    <div class="gost-grid" id="gostGrid"></div>
+  </section>`);
+  
+  const grid = block.querySelector("#gostGrid");
+  gosts.forEach(g => {
+    grid.appendChild(el(`<a class="gost-item" href="${g.url}" target="_blank" rel="noopener">
+      <b>${escapeHtml(g.code)}</b><span>${escapeHtml(g.title)}</span>
+    </a>`));
+  });
+  
+  app.appendChild(block);
 };
 
-window.renderQuestionsPage = function(){ 
-  const app = document.getElementById("app"); app.innerHTML = ""; 
-  document.getElementById("crumbs").textContent = "Вопросы преподавателю";
+const CALENDAR_EVENTS = [
+  { date:"09-01", title:"День знаний" }, { date:"10-05", title:"День учителя" },
+  { date:"11-04", title:"День народного единства" }, { date:"12-31", title:"Новогодние каникулы" },
+  { date:"02-23", title:"День защитника Отечества" }, { date:"03-08", title:"Международный женский день" },
+  { date:"05-01", title:"Праздник весны и труда" }, { date:"05-09", title:"День Победы" }, { date:"06-01", title:"Начало летних каникул" }
+];
+window.renderCalendarPage = function(){
+  const app = document.getElementById("app");
+  app.innerHTML = ""; document.getElementById("crumbs").textContent = "Календарь";
+  app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
+  const now = new Date(); const year = now.getFullYear(), month = now.getMonth();
+  const firstDay = new Date(year, month, 1); const lastDate = new Date(year, month + 1, 0).getDate();
+  const startWeekday = (firstDay.getDay() + 6) % 7; const monthName = firstDay.toLocaleDateString("ru-RU", { month:"long", year:"numeric" }); const today = now.getDate();
+  const events = CALENDAR_EVENTS.map(e => { const [mm, dd] = e.date.split("-").map(Number); return { ...e, mm, dd }; });
+  const monthEvents = events.filter(e => e.mm === month + 1).sort((a,b) => a.dd - b.dd);
+  app.appendChild(el(`<section class="module"><div class="meta">Учебный год</div><h2>${monthName[0].toUpperCase() + monthName.slice(1)}</h2><div class="calendar-grid">${["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(d => `<div class="calendar-head">${d}</div>`).join("")}${Array.from({length:startWeekday}).map(() => `<div class="calendar-day empty"></div>`).join("")}${Array.from({length:lastDate}).map((_, i) => { const d = i + 1; const dayEvents = events.filter(e => e.mm === month + 1 && e.dd === d); const cls = ["calendar-day"]; if (d === today) cls.push("today"); if (dayEvents.length) cls.push("event"); return `<div class="${cls.join(" ")}"><div class="cd-num">${d}</div>${dayEvents.map(e => `<div class="cd-event">${escapeHtml(e.title)}</div>`).join("")}</div>`; }).join("")}</div><h3 style="margin-top:20px">События месяца</h3><div class="event-list">${monthEvents.length ? monthEvents.map(e => `<div class="event-item"><span class="ev-date">${String(e.dd).padStart(2,"0")}.${String(e.mm).padStart(2,"0")}</span><span class="ev-text">${escapeHtml(e.title)}</span></div>`).join("") : `<div class="comment-empty">В этом месяце событий нет.</div>`}</div></section>`));
+};
+
+window.renderProfilePage = function() {
+  const app = document.getElementById("app"); app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Личный кабинет";
   app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
-  app.appendChild(el('<section class="module"><h2>Анонимные вопросы</h2><p class="sub">Вопрос отправляется без имени.</p><form class="comment-form" id="qForm"><textarea id="qText" class="comment-text" placeholder="Ваш вопрос..."></textarea><button type="submit" class="btn" style="margin-top:10px">Отправить</button></form></section>'));
-  document.getElementById("qForm").addEventListener("submit", (e)=>{ e.preventDefault(); window.showToast("Вопрос отправлен", "ok"); document.getElementById("qText").value = ""; });
+  if (!state.student && !state.staff) { app.appendChild(el('<section class="module"><h2>Вы не авторизованы</h2></section>')); return; }
+  var isStaff = !!state.staff;
+  var name = isStaff ? state.staff.name : state.student.name;
+  var group = isStaff ? (state.staff.group || "Сотрудник") : ("Группа " + state.student.group);
+  var role = isStaff ? (ROLE_LABELS[state.staff.role] || state.staff.role) : "🎓 Студент";
+  var avatar = isStaff ? "👨‍🏫" : getAvatar();
+  app.appendChild(el('<div class="profile-card"><div class="profile-avatar">' + avatar + '</div><div class="profile-info"><h2>' + escapeHtml(name) + '</h2><div class="p-group">' + escapeHtml(group) + '</div><div class="p-role">' + role + '</div></div></div>'));
+  var grid = el('<div class="profile-grid"></div>');
+  if (!isStaff) {
+    var topicsDone = 0;
+    COURSE.sections.forEach(sec => sec.topics.forEach(t => { if ((state.progress[t.id]?.done || 0) >= 5) topicsDone++; }));
+    var grades = [...Object.values(state.results).map(x=>x.grade), ...Object.values(state.selfResults).map(x=>x.grade)].filter(x=>x>0);
+    var avgGrade = grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toFixed(2) : "—";
+    grid.appendChild(el('<div class="profile-widget"><h3>📊 Моя успеваемость</h3><div class="pw-list"><div class="pw-item"><span>Пройдено тем:</span><b>' + topicsDone + '</b></div><div class="pw-item"><span>Средний балл:</span><b>' + avgGrade + '</b></div><div class="pw-item"><span>Пройдено тестов:</span><b>' + Object.keys(state.results).length + '</b></div><div class="pw-item"><span>В избранном:</span><b>' + (state.favorites ? state.favorites.length : 0) + '</b></div></div><button class="btn" style="margin-top:16px; width:100%" onclick="location.hash=\'#/dashboard\'">Перейти в статистику</button></div>'));
+    grid.appendChild(el('<div class="profile-widget"><h3>🔗 Быстрые ссылки</h3><div class="pw-list" style="gap:12px"><a href="#/final-training" class="btn ghost" style="text-align:left">🏋️ Итоговая тренировка</a><a href="#/final-exam" class="btn ghost" style="text-align:left">🎓 Итоговый экзамен</a><a href="#/gallery" class="btn ghost" style="text-align:left">🖼 Галерея работ</a><a href="#/links" class="btn ghost" style="text-align:left">📚 Полезные материалы</a></div></div>'));
+  } else {
+    grid.appendChild(el('<div class="profile-widget"><h3>🛠 Управление</h3><div class="pw-list" style="gap:12px"><a href="#/journal" class="btn" style="text-align:left">📔 Открыть журнал</a><a href="#/schedule" class="btn ghost" style="text-align:left">📅 Редактировать расписание</a>' + (state.staff.role === "teacher" || state.staff.role === "admin" ? '<a href="#/staff" class="btn ghost" style="text-align:left">🛠 Панель преподавателя</a>' : '') + '<a href="#/questions" class="btn ghost" style="text-align:left">❓ Вопросы студентов</a></div></div>'));
+    grid.appendChild(el('<div class="profile-widget"><h3>ℹ️ Информация</h3><div class="pw-list"><div class="pw-item"><span>Роль в системе:</span><b>' + state.staff.role + '</b></div><div class="pw-item"><span>Логин:</span><b>' + state.staff.username + '</b></div></div></div>'));
+  }
+  app.appendChild(grid);
 };
 
-window.renderGalleryPage = function(){ document.getElementById("app").innerHTML = "<h2>Галерея</h2><p>В разработке</p>"; };
-window.renderCalendarPage = function(){ document.getElementById("app").innerHTML = "<h2>Календарь</h2><p>В разработке</p>"; };
-window.renderGostsPage = function(){ document.getElementById("app").innerHTML = "<h2>ГОСТы</h2><p>В разработке</p>"; };
 window.renderQrPage = function(){ 
-  const app = document.getElementById("app"); app.innerHTML = ""; 
-  document.getElementById("crumbs").textContent = "QR-код";
-  app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
+  const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "QR-код";
+  app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
   const url = location.origin + location.pathname;
   const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(url) + "&size=400";
   app.appendChild(el(`<section class="module"><h2>QR-код сайта</h2><div class="qr-wrap" style="margin-top:20px"><img src="${qrUrl}" style="width:200px; border-radius:10px;"></div></section>`));
 };
-
-function activityIcon(type){ return type === "login" ? "🚪" : type === "topic" ? "📖" : type === "test" ? "📝" : type === "upload" ? "📎" : "🔔"; }
