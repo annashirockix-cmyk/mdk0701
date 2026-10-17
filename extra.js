@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (ПОЛНЫЙ КОД)
+   МДК 07.01 — extra.js (ПОЛНАЯ ВЕРСИЯ)
    ============================================================ */
 "use strict";
 
@@ -70,11 +70,11 @@ window.openUploadModal = function(topicId, workCode, workTitle){
 
 window.renderTeacherPage = function(){ const app = document.getElementById("app"); app.innerHTML = "<h2>Панель преподавателя</h2><p>В разработке</p>"; };
 
-/* ДАШБОРД (ВОССТАНОВЛЕН) */
+/* ДАШБОРД */
 window.renderDashboard = function(){
   const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Статистика";
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
-  app.appendChild(el(`<section class="hero"><div class="meta">Аналитика</div><h1>Мой прогресс</h1><p>Видно, что пройдено, что даётся сложнее, и ваша динамика.</p></section>`));
+  app.appendChild(el(`<section class="hero"><div class="meta">Аналитика</div><h1>Мой прогресс</h1></section>`));
 
   let topicsDone = 0;
   COURSE.sections.forEach(sec => sec.topics.forEach(t => { if ((state.progress[t.id]?.done || 0) >= 5) topicsDone++; }));
@@ -182,9 +182,14 @@ window.openGCodeModal = function(workCode){
   });
 };
 
-window.renderGCodeReferencePage = function(){ const app = document.getElementById("app"); app.innerHTML = "<h2>Справочник G/M</h2><button class='btn' onclick='openGCodeModal()'>Открыть визуализатор</button>"; };
+window.renderGCodeReferencePage = function(){ 
+  const app = document.getElementById("app"); app.innerHTML = ""; 
+  document.getElementById("crumbs").textContent = "G-коды";
+  app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
+  app.appendChild(el('<section class="hero"><div class="meta">Справочные материалы</div><h1>Базовые G- и M-коды</h1></section>'));
+  app.appendChild(el('<div class="module"><button class="btn" onclick="openGCodeModal()">Открыть визуализатор траекторий</button></div>'));
+};
 
-/* ЧАТ (ВОССТАНОВЛЕН) */
 window.renderChatPage = function(){
   const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Чат группы " + state.student.group;
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
@@ -194,10 +199,24 @@ window.renderChatPage = function(){
   document.getElementById("chatForm").addEventListener("submit", (e)=>{ e.preventDefault(); const text = input.value.trim(); if (!text) return; input.value = ""; window.showToast("Сообщение отправлено", "ok"); });
 };
 
-window.renderQuestionsPage = function(){ document.getElementById("app").innerHTML = "<h2>Вопросы</h2><p>В разработке</p>"; };
+window.renderQuestionsPage = function(){ 
+  const app = document.getElementById("app"); app.innerHTML = ""; 
+  document.getElementById("crumbs").textContent = "Вопросы преподавателю";
+  app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
+  app.appendChild(el('<section class="module"><h2>Анонимные вопросы</h2><p class="sub">Вопрос отправляется без имени.</p><form class="comment-form" id="qForm"><textarea id="qText" class="comment-text" placeholder="Ваш вопрос..."></textarea><button type="submit" class="btn" style="margin-top:10px">Отправить</button></form></section>'));
+  document.getElementById("qForm").addEventListener("submit", (e)=>{ e.preventDefault(); window.showToast("Вопрос отправлен", "ok"); document.getElementById("qText").value = ""; });
+};
+
 window.renderGalleryPage = function(){ document.getElementById("app").innerHTML = "<h2>Галерея</h2><p>В разработке</p>"; };
 window.renderCalendarPage = function(){ document.getElementById("app").innerHTML = "<h2>Календарь</h2><p>В разработке</p>"; };
 window.renderGostsPage = function(){ document.getElementById("app").innerHTML = "<h2>ГОСТы</h2><p>В разработке</p>"; };
-window.renderQrPage = function(){ document.getElementById("app").innerHTML = "<h2>QR-код</h2><p>В разработке</p>"; };
+window.renderQrPage = function(){ 
+  const app = document.getElementById("app"); app.innerHTML = ""; 
+  document.getElementById("crumbs").textContent = "QR-код";
+  app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
+  const url = location.origin + location.pathname;
+  const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(url) + "&size=400";
+  app.appendChild(el(`<section class="module"><h2>QR-код сайта</h2><div class="qr-wrap" style="margin-top:20px"><img src="${qrUrl}" style="width:200px; border-radius:10px;"></div></section>`));
+};
 
 function activityIcon(type){ return type === "login" ? "🚪" : type === "topic" ? "📖" : type === "test" ? "📝" : type === "upload" ? "📎" : "🔔"; }

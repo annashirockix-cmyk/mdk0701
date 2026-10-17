@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (ФИНАЛЬНАЯ СБОРКА)
+   МДК 07.01 — script.js (ПОЛНАЯ ВЕРСИЯ)
    ============================================================ */
 "use strict";
 
@@ -342,7 +342,6 @@ function route(){
   window.scrollTo(0, 0);
 }
 
-/* ВОССТАНОВЛЕННЫЕ ВКЛАДКИ ТЕМЫ */
 function renderTopic(id, tab, mode){
   tab = tab || "passport"; mode = mode || "control"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = ""; $("crumbs").textContent = t.topic.code + " · " + t.topic.title;
@@ -372,8 +371,20 @@ function renderTopic(id, tab, mode){
   if (tab === "practice") {
     panel.appendChild(el('<h2>Практические работы</h2>'));
     (t.topic.practicals||[]).forEach(p=>{
-      var status = "none"; // Упрощено для стабильности
-      panel.appendChild(el('<div class="practice"><div class="p-code">'+p.code+'</div><div class="p-title">'+p.title+'</div><p>'+(p.task||'')+'</p><button class="btn" onclick="window.showToast(\'Функция загрузки файлов в демо-режиме\', \'ok\')">📎 Прикрепить работу</button></div>'));
+      var html = '<div class="practice"><div class="practice-head"><div class="p-code">'+p.code+'</div></div><div class="p-title">'+p.title+'</div>';
+      if(p.goal) html += '<div class="p-goal">Цель: '+p.goal+'</div>';
+      if(p.task) html += '<div class="p-task"><b>Задание:</b> '+p.task+'</div>';
+      if(p.example) html += '<div class="p-example"><b>Пример:</b> '+p.example+'</div>';
+      if(p.solution && p.solution.length) { html += '<div class="p-solution"><h4>Ход решения:</h4><ol>'; p.solution.forEach(s=>html+='<li>'+s+'</li>'); html+='</ol></div>'; }
+      if(p.variants && p.variants.rows && p.variants.rows.length) {
+        html += '<div class="variants"><div class="v-title">Варианты</div><div class="v-scroll"><table class="v-table"><thead><tr>';
+        if(p.variants.header) p.variants.header.forEach(h=>html+='<th>'+h+'</th>');
+        html += '</tr></thead><tbody>';
+        p.variants.rows.forEach(r=>{ html+='<tr>'; r.forEach(c=>html+='<td>'+c+'</td>'); html+='</tr>'; });
+        html += '</tbody></table></div></div>';
+      }
+      html += '<div class="test-actions"><button class="btn" onclick="window.showToast(\'Демо-загрузка файла\', \'ok\')">📎 Прикрепить</button></div></div>';
+      panel.appendChild(el(html));
     });
   }
   if (tab === "self") {

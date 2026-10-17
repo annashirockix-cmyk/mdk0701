@@ -1,8 +1,7 @@
 /* Service Worker МДК 07.01 */
-const CACHE = "mdk0701-v5-final"; // <--- ОБНОВЛЕНО
+const CACHE = "mdk0701-v6-final"; // <--- ОБЯЗАТЕЛЬНО ОБНОВИТЬ
 const ASSETS = [
-  "./", "./index.html",
-  "./style.css",
+  "./", "./index.html", "./style.css",
   "./data.js", "./info.js", "./script.js", "./extra.js", "./data-extra.js",
   "./final.js", "./links.js", "./rating.js", "./schedule.js", "./journal.js", "./assistant.js",
   "./manifest.json"
