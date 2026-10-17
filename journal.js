@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (Обновленная версия)
+   МДК 07.01 — journal.js (Только журнал и отчеты)
    ============================================================ */
 "use strict";
 
@@ -13,14 +13,6 @@ const DEFAULT_STUDENTS = [
 ];
 
 const DEFAULT_DATES = ["05.11", "11.11", "12.11", "18.11", "19.11", "25.11", "26.11", "02.12", "03.12", "09.12", "10.12", "16.12", "17.12"];
-
-const FLASHCARDS = [
-  { q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ (ISO 6983).", topic: "Основы" },
-  { q: "Что делает команда G00?", a: "Быстрое позиционирование (ускоренный ход).", topic: "G-коды" },
-  { q: "Что делает команда G01?", a: "Линейная интерполяция (рабочая подача по прямой).", topic: "G-коды" },
-  { q: "Что делает команда G02 и G03?", a: "G02 — дуга по часовой, G03 — против часовой.", topic: "G-коды" },
-  { q: "Что такое M03?", a: "Включение шпинделя по часовой стрелке (правое вращение).", topic: "M-коды" }
-];
 
 function jEl(html) { var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
 function jEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
@@ -45,18 +37,8 @@ window.renderJournalPage = function() {
   app.appendChild(jEl('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
   app.appendChild(jEl('<section class="hero"><div class="meta">Успеваемость</div><h1>Журнал группы ' + jEsc(targetGroup) + '</h1><p>Дисциплина: Программирование для автоматизированного оборудования.</p></section>'));
 
-  var tabs = jEl('<div class="test-mode-tabs" style="margin-bottom:20px"><button class="test-mode-tab active" data-tab="table">📖 Журнал</button><button class="test-mode-tab" data-tab="cards">🎴 Карточки знаний</button></div>');
-  app.appendChild(tabs);
   var contentBox = jEl('<div id="journalContent"></div>');
   app.appendChild(contentBox);
-
-  tabs.querySelectorAll(".test-mode-tab").forEach(btn => {
-    btn.addEventListener("click", function() {
-      tabs.querySelectorAll(".test-mode-tab").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      if (btn.dataset.tab === "table") drawTable(); else drawFlashcards();
-    });
-  });
 
   function drawTable() {
     contentBox.innerHTML = "";
@@ -155,17 +137,5 @@ window.renderJournalPage = function() {
     }).catch(() => { btn.innerHTML = oldText; btn.disabled = false; alert("❌ Ошибка сети."); });
   }
 
-  function drawFlashcards() {
-    contentBox.innerHTML = "";
-    contentBox.appendChild(jEl('<div class="module"><h2>Карточки знаний</h2><p class="sub">Нажмите, чтобы перевернуть.</p><div id="flashcardArea"></div><div class="test-actions" style="justify-content:center; margin-top:20px"><button class="btn ghost" id="nextCardBtn">Следующая →</button></div></div>'));
-    var area = contentBox.querySelector("#flashcardArea"), currentIndex = 0;
-    function renderCard() {
-      var card = FLASHCARDS[currentIndex]; area.innerHTML = "";
-      var el = jEl('<div class="flashcard" id="fCard"><div class="flashcard-inner"><div class="flashcard-front"><div style="color:var(--accent);font-size:12px;margin-bottom:10px">' + card.topic + '</div><h3>' + card.q + '</h3></div><div class="flashcard-back"><h3>Ответ</h3><p>' + card.a + '</p></div></div></div>');
-      el.addEventListener("click", () => el.classList.toggle("flipped")); area.appendChild(el);
-    }
-    renderCard();
-    contentBox.querySelector("#nextCardBtn").addEventListener("click", () => { currentIndex = (currentIndex + 1) % FLASHCARDS.length; renderCard(); });
-  }
   drawTable();
 };

@@ -39,6 +39,20 @@ var QUOTES = [
   "Знание G-кода открывает любые станки."
 ];
 
+// Карточки для главной страницы
+var FLASHCARDS = [
+  { q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ (ISO 6983).", topic: "Основы" },
+  { q: "Что делает команда G00?", a: "Быстрое позиционирование (ускоренный ход).", topic: "G-коды" },
+  { q: "Что делает команда G01?", a: "Линейная интерполяция (рабочая подача по прямой).", topic: "G-коды" },
+  { q: "Что делает команда G02 и G03?", a: "G02 — дуга по часовой, G03 — против часовой.", topic: "G-коды" },
+  { q: "Что такое M03?", a: "Включение шпинделя по часовой стрелке (правое вращение).", topic: "M-коды" },
+  { q: "Какой командой задается подача?", a: "Буквой F (например, F0.15).", topic: "Основы" },
+  { q: "Какой командой задаются обороты шпинделя?", a: "Буквой S (например, S1200).", topic: "Основы" },
+  { q: "Что делает команда G71?", a: "Токарный черновой цикл (продольное точение).", topic: "Циклы" },
+  { q: "Что делает команда G76?", a: "Многопроходный цикл нарезания резьбы.", topic: "Циклы" },
+  { q: "Что такое M30?", a: "Конец программы с возвратом в начало.", topic: "M-коды" }
+];
+
 var ROLE_LABELS = {
   student: "🎓 Студент",
   admin:   "🛡 Администратор",
@@ -53,7 +67,7 @@ var state = {
   progress:    {},
   results:     {},
   selfResults: {},
-  practiceStatus: {},   /* {topicId:code} → "sent" | "checked" */
+  practiceStatus: {},
   activity:    [],
   lastSync:    ""
 };
@@ -600,22 +614,18 @@ function renderUserChip(){
   if (state.staff){
     if (avEl) avEl.textContent = "👨‍🏫";
     if (nameEl) nameEl.textContent = state.staff.name;
-    
     var roleName = ROLE_LABELS[state.staff.role] || state.staff.role;
     if (groupEl) groupEl.textContent = roleName + (state.staff.group ? " · " + state.staff.group : "");
-    
-    // Показываем кабинет только сотрудникам (не тестерам)
     if (cab) cab.hidden = !(state.staff.role === "admin" || state.staff.role === "teacher" || state.staff.role === "curator");
-    if (sync) sync.hidden = true; // Сотрудникам синхронизация не нужна
+    if (sync) sync.hidden = true;
     return;
   }
   if (state.student){
     if (avEl) avEl.textContent = getAvatar();
     if (nameEl) nameEl.textContent = state.student.name;
     if (groupEl) groupEl.textContent = "Гр. " + state.student.group + " · 🎓 Студент";
-    
-    if (cab) cab.hidden = true; // Студенту кабинет запрещен
-    if (sync) sync.hidden = false; // Студенту нужна кнопка синхронизации
+    if (cab) cab.hidden = true;
+    if (sync) sync.hidden = false;
     return;
   }
   if (avEl) avEl.textContent = "👨‍🎓";
@@ -743,6 +753,51 @@ function renderHome(){
       });
       app.appendChild(vidsBlock);
     }
+
+    // === НОВЫЙ БЛОК: КАРТОЧКИ НА ГЛАВНОЙ ===
+    var flashBlock = el(
+      '<section class="module">' +
+        '<div class="meta">Интерактив</div>' +
+        '<h2>🎴 Карточки проверки знаний</h2>' +
+        '<p class="sub">Нажмите на карточку, чтобы увидеть правильный ответ.</p>' +
+        '<div class="home-flashcards-wrap" id="homeFlashcardArea"></div>' +
+        '<div class="test-actions" style="justify-content:center; margin-top:20px">' +
+          '<button class="btn ghost" id="nextHomeCard">Следующая карточка →</button>' +
+        '</div>' +
+      '</section>'
+    );
+    app.appendChild(flashBlock);
+
+    var hArea = flashBlock.querySelector("#homeFlashcardArea");
+    var hIndex = 0;
+    function renderHomeCard() {
+      var card = FLASHCARDS[hIndex];
+      hArea.innerHTML = "";
+      var cEl = el(
+        '<div class="flashcard">' +
+          '<div class="flashcard-inner">' +
+            '<div class="flashcard-front">' +
+              '<div style="color:var(--accent);font-size:12px;text-transform:uppercase;margin-bottom:10px">' + card.topic + '</div>' +
+              '<h3>' + card.q + '</h3>' +
+              '<p style="color:var(--muted);font-size:12px;margin-top:20px">(Нажмите, чтобы перевернуть)</p>' +
+            '</div>' +
+            '<div class="flashcard-back">' +
+              '<h3>Ответ</h3>' +
+              '<p>' + card.a + '</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+      cEl.addEventListener("click", function(){ cEl.classList.toggle("flipped"); });
+      hArea.appendChild(cEl);
+    }
+    renderHomeCard();
+    flashBlock.querySelector("#nextHomeCard").addEventListener("click", function(){
+      hIndex = (hIndex + 1) % FLASHCARDS.length;
+      renderHomeCard();
+    });
+    // === КОНЕЦ БЛОКА КАРТОЧЕК ===
+
     if (window.renderCommentsBlock && state.student) app.appendChild(window.renderCommentsBlock());
   } catch (err){
     console.error("renderHome error:", err);
