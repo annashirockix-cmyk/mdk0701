@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v24.0 STABLE)
+   МДК 07.01 — script.js (v25.0 — TIMEOUT PROTECTION)
    ============================================================ */
 "use strict";
 
@@ -74,7 +74,7 @@ function initAuth(){
     });
   }
 
-  // 2. Кнопка Входа Сотрудника
+  // 2. Кнопка Входа Сотрудника (С ЗАЩИТОЙ ОТ ЗАВИСАНИЯ)
   var btnStaff = $("staffLoginBtn");
   if (btnStaff) {
     btnStaff.addEventListener("click", () => {
@@ -85,8 +85,13 @@ function initAuth(){
       btnStaff.textContent = "Проверяем...";
       btnStaff.disabled = true;
 
-      fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass))
+      // Создаем контроллер для отмены запроса через 10 секунд
+      var controller = new AbortController();
+      var timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass), { signal: controller.signal })
         .then(r => r.json()).then(d => {
+          clearTimeout(timeoutId);
           if (d && d.ok) { 
             state.staff = { role: d.role, name: d.name }; 
             sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
@@ -100,8 +105,14 @@ function initAuth(){
             btnStaff.disabled = false;
           }
         }).catch((err) => {
-          console.error(err);
-          window.showToast("Ошибка сети. Проверьте соединение.", "err");
+          clearTimeout(timeoutId);
+          console.error("Ошибка входа:", err);
+          
+          if (err.name === 'AbortError') {
+            window.showToast("Сервер Google не отвечает (таймаут 10 сек). Проверьте настройки развертывания Apps Script.", "err");
+          } else {
+            window.showToast("Ошибка сети. Проверьте подключение или доступ к скрипту.", "err");
+          }
           btnStaff.textContent = "Войти как сотрудник";
           btnStaff.disabled = false;
         });
@@ -140,7 +151,7 @@ function initDrawer(){
 // ГЛАВНАЯ СТРАНИЦА
 function renderHome(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; var c = getCourse();
-  if(!c) { app.innerHTML = "<p>Ошибка загрузки курса. Проверьте файл data.js</p>"; return; }
+  if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
   
   fetch(APPS_SCRIPT_URL+"?action=announcement").then(r=>r.json()).then(d=>{
     if(d.ok && d.text) app.prepend(el(`<div style="background:var(--accent);color:#fff;padding:16px;border-radius:8px;margin-bottom:24px;font-weight:bold;">📢 ${d.text}</div>`));
