@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (ПОЛНАЯ ВЕРСИЯ)
+   МДК 07.01 — script.js (ПОЛНАЯ ВЕРСИЯ + ЛИЧНЫЙ КАБИНЕТ)
    ============================================================ */
 "use strict";
 
@@ -274,11 +274,28 @@ function renderHome(){
     app.appendChild(list);
   });
 
-  if (c.videos && c.videos.length){
-    var vidsBlock = el('<section class="module"><div class="meta">Видеоматериалы</div><h2>Видеоуроки</h2><div class="videos"></div></section>');
-    var vwrap = vidsBlock.querySelector(".videos");
-    c.videos.forEach(v=>{ vwrap.appendChild(el('<div class="video-card"><video controls preload="metadata"><source src="'+v.src+'" type="video/mp4"></video><div class="v-cap">'+escapeHtml(v.title)+'</div></div>')); });
-    app.appendChild(vidsBlock);
+  // ВОССТАНОВЛЕННЫЙ БЛОК ПАСПОРТОВ
+  if (c.passports && c.passports.length){
+    app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
+    var block = el('<section class="module"><h2>Паспорта станков</h2><p class="sub">PDF-файлы. Открываются прямо на странице.</p><div class="doc-grid"></div></section>');
+    var grid = block.querySelector(".doc-grid");
+    c.passports.forEach(function(p){
+      var card = el('<div class="doc-card" role="button" tabindex="0"><div class="doc-code">'+escapeHtml(p.code)+'</div><div class="doc-title">'+escapeHtml(p.title)+'</div><div class="doc-summary">'+escapeHtml(p.summary)+'</div><div class="doc-action">Открыть PDF →</div></div>');
+      card.addEventListener("click", function(){ if(window.openPdfModal) window.openPdfModal(p.file, p.title); });
+      grid.appendChild(card);
+    });
+    app.appendChild(block);
+  }
+
+  // ВОССТАНОВЛЕННЫЙ БЛОК ОХРАНЫ ТРУДА
+  if (c.safety && c.safety.length){
+    app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
+    var block2 = el('<section class="module"><h2>Инструкции по охране труда</h2><p class="sub">DOCX-файлы. Скачиваются для ознакомления.</p><div class="doc-grid"></div></section>');
+    var grid2 = block2.querySelector(".doc-grid");
+    c.safety.forEach(function(s){
+      grid2.appendChild(el('<a class="doc-card" href="' + s.file + '" download><div class="doc-code">' + escapeHtml(s.code) + '</div><div class="doc-title">' + escapeHtml(s.title) + '</div><div class="doc-summary">' + escapeHtml(s.summary) + '</div><div class="doc-action">Скачать .docx →</div></a>'));
+    });
+    app.appendChild(block2);
   }
 
   var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div class="test-actions" style="justify-content:center"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
@@ -326,6 +343,7 @@ function route(){
   if (parts[0] === "staff"){ if(window.renderStaffPage) window.renderStaffPage(); else app.innerHTML=""; return; }
   
   var pages = {
+    profile: ()=>window.renderProfilePage && window.renderProfilePage(),
     comments: ()=>window.renderCommentsPage&&window.renderCommentsPage(), dashboard: ()=>window.renderDashboard&&window.renderDashboard(),
     chat: ()=>window.renderChatPage&&window.renderChatPage(), questions: ()=>window.renderQuestionsPage&&window.renderQuestionsPage(),
     gallery: ()=>window.renderGalleryPage&&window.renderGalleryPage(), calendar: ()=>window.renderCalendarPage&&window.renderCalendarPage(),
@@ -365,7 +383,8 @@ function renderTopic(id, tab, mode){
     panel.appendChild(el('<h2>Лекция</h2><p class="accent">Теория, схема, вопросы для самопроверки.</p>'));
     (t.topic.lectures||[]).forEach(l=>{
       panel.appendChild(el('<h3>'+l.code+'. '+l.title+'</h3>'));
-      panel.appendChild(el('<div>'+(l.content || '<p><i>Материал готовится.</i></p>')+'</div>'));
+      // ВОССТАНОВЛЕН ВЫВОД КОНТЕНТА ЛЕКЦИИ
+      panel.appendChild(el('<div class="lecture-content">'+(l.content || '<p><i>Материал готовится.</i></p>')+'</div>'));
     });
   }
   if (tab === "practice") {
