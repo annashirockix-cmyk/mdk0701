@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (ПОЛНАЯ ВЕРСИЯ)
+   МДК 07.01 — script.js (ФИНАЛ)
    ============================================================ */
 "use strict";
 
@@ -349,19 +349,30 @@ function goHome(e){ if(e) e.preventDefault(); location.hash="#/"; }
 function route(){
   document.querySelectorAll(".pdf-overlay, .theme-overlay, .user-menu, .more-menu").forEach(x=>x.remove());
   var hash = location.hash.replace(/^#/, "") || "/"; var parts = hash.split("/").filter(Boolean); var app = $("app"); if(!app) return;
+  
   if (!state.student && !state.staff){ app.innerHTML=""; return; }
   if (parts[0] === "staff"){ if(window.renderStaffPage) window.renderStaffPage(); else app.innerHTML=""; return; }
   
+  // ГЛАВНЫЙ РОУТЕР
   var pages = {
-    profile: ()=>window.renderProfilePage && window.renderProfilePage(),
-    comments: ()=>window.renderCommentsPage&&window.renderCommentsPage(), dashboard: ()=>window.renderDashboard&&window.renderDashboard(),
-    chat: ()=>window.renderChatPage&&window.renderChatPage(), questions: ()=>window.renderQuestionsPage&&window.renderQuestionsPage(),
-    gallery: ()=>window.renderGalleryPage&&window.renderGalleryPage(), calendar: ()=>window.renderCalendarPage&&window.renderCalendarPage(),
-    gosts: ()=>window.renderGostsPage&&window.renderGostsPage(), qr: ()=>window.renderQrPage&&window.renderQrPage(),
-    "final-training": ()=>window.renderFinalTrainingPage&&window.renderFinalTrainingPage(), "final-exam": ()=>window.renderFinalExamPage&&window.renderFinalExamPage(),
-    "gcode-reference": ()=>window.renderGCodeReferencePage&&window.renderGCodeReferencePage(), links: ()=>window.renderLinksPage&&window.renderLinksPage(),
-    rating: ()=>window.renderRatingPage&&window.renderRatingPage(), schedule: ()=>window.renderSchedulePage&&window.renderSchedulePage(),
-    journal: ()=>window.renderJournalPage&&window.renderJournalPage(), calculator: renderCalculatorPage, glossary: renderGlossaryPage
+    profile: ()=> { if(window.renderProfilePage) window.renderProfilePage(); else renderHome(); },
+    comments: ()=>window.renderCommentsPage&&window.renderCommentsPage(), 
+    dashboard: ()=>window.renderDashboard&&window.renderDashboard(),
+    chat: ()=>window.renderChatPage&&window.renderChatPage(), 
+    questions: ()=>window.renderQuestionsPage&&window.renderQuestionsPage(),
+    gallery: ()=>window.renderGalleryPage&&window.renderGalleryPage(), 
+    calendar: ()=>window.renderCalendarPage&&window.renderCalendarPage(),
+    gosts: ()=>window.renderGostsPage&&window.renderGostsPage(), 
+    qr: ()=>window.renderQrPage&&window.renderQrPage(),
+    "final-training": ()=>window.renderFinalTrainingPage&&window.renderFinalTrainingPage(), 
+    "final-exam": ()=>window.renderFinalExamPage&&window.renderFinalExamPage(),
+    "gcode-reference": ()=>window.renderGCodeReferencePage&&window.renderGCodeReferencePage(), 
+    links: ()=>window.renderLinksPage&&window.renderLinksPage(),
+    rating: ()=>window.renderRatingPage&&window.renderRatingPage(), 
+    schedule: ()=>window.renderSchedulePage&&window.renderSchedulePage(),
+    journal: ()=>window.renderJournalPage&&window.renderJournalPage(), 
+    calculator: renderCalculatorPage, 
+    glossary: renderGlossaryPage
   };
   
   if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2]||"passport", parts[3]||"control");
