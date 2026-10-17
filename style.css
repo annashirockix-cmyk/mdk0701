@@ -118,3 +118,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   body { background: #fff !important; color: #000 !important; }
   .panel { border: none !important; box-shadow: none !important; padding: 0 !important; }
 }
+/* ... Оставьте ваш style.css, но добавьте в конец этот код: ... */
+
+/* Печать портфолио */
+@media print {
+  body * { visibility: hidden; }
+  #portfolioPrint, #portfolioPrint * { visibility: visible; }
+  #portfolioPrint { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; }
+  .backlink, button, .topbar, .drawer { display: none !important; }
+}

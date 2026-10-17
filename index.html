@@ -2,30 +2,64 @@
 <html lang="ru" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>МДК 07.01</title>
 <link rel="manifest" href="manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
-<!-- ... (Шапка, шторка, логин - оставьте как было в v17) ... -->
-<main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v19.0</footer>
-<canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
-<script src="data.js?v=19"></script>
-<script src="data-extra.js?v=19"></script>
-<script src="info.js?v=19"></script>
-<script src="script.js?v=19"></script>
-<script src="extra.js?v=19"></script>
-<script src="final.js?v=19"></script>
-<script src="links.js?v=19"></script>
-<script src="rating.js?v=19"></script>
-<script src="schedule.js?v=19"></script>
-<script src="journal.js?v=19"></script>
-<script src="minigames.js?v=19"></script>
-<script src="easter-eggs.js?v=19"></script>
-<script src="assistant.js?v=19"></script>
+<div class="login-overlay" id="loginOverlay" hidden>
+  <div class="login-card">
+    <div class="login-brand"><span class="brand-badge">МДК 07.01</span><h1>Вход</h1></div>
+    <input id="loginName" type="text" placeholder="ФИО" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+    <input id="loginGroup" type="text" placeholder="Группа" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+    <button id="loginBtn" class="btn" style="width:100%">Войти как студент</button>
+    <p style="text-align:center;margin-top:10px;"><a href="#" id="loginStaffLink" style="color:var(--accent)">Вход для учителя</a></p>
+  </div>
+</div>
+
+<header class="topbar">
+  <button class="burger-btn" id="burgerBtn"><span></span><span></span><span></span></button>
+  <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
+  <div class="crumbs" id="crumbs"></div>
+  <div class="topbar-status"><span class="status-pill" id="xpCount">🌟 0 XP</span></div>
+</header>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-user"><span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span><div><div id="userChipName">Гость</div><div id="userChipGroup" style="font-size:12px;color:var(--muted)">Роль: Гость</div></div></div>
+    <button class="drawer-close" id="drawerClose">✕</button>
+  </div>
+  <nav class="drawer-nav">
+    <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
+    <a class="drawer-item" data-go="#/simulator">🖥️ <span>Симулятор G-кода</span></a>
+    <a class="drawer-item" data-go="#/shop">🛒 <span>Магазин XP</span></a>
+    <a class="drawer-item" data-go="#/portfolio">🎓 <span>Портфолио</span></a>
+    <a class="drawer-item" data-go="#/schedule">📅 <span>Расписание</span></a>
+    <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
+    <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
+    <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
+    <a class="drawer-item" data-go="#/gcode-reference">📖 <span>Справочник G/M</span></a>
+    <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
+  </nav>
+</aside>
+
+<main id="app"></main>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v20.0</footer>
+
+<script src="data.js?v=20"></script>
+<script src="data-extra.js?v=20"></script>
+<script src="info.js?v=20"></script>
+<script src="script.js?v=20"></script>
+<script src="extra.js?v=20"></script>
+<script src="final.js?v=20"></script>
+<script src="links.js?v=20"></script>
+<script src="rating.js?v=20"></script>
+<script src="schedule.js?v=20"></script>
+<script src="journal.js?v=20"></script>
+<script src="assistant.js?v=20"></script>
 </body>
 </html>
