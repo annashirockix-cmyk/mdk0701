@@ -1,12 +1,12 @@
 /* ============================================================
-   МДК 07.01 — script.js (С достижениями, печатью и тостами)
+   МДК 07.01 — script.js (Полный, с восстановленными темами)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
-var DEFAULT_AVATAR      = "👨‍🎓";
-var ACTIVITY_MAX        = 100;
-var ONLINE_TIMEOUT_SEC  = 90;
+var DEFAULT_AVATAR = "👨‍🎓";
+var ACTIVITY_MAX = 100;
+var ONLINE_TIMEOUT_SEC = 90;
 var TEST_TIME_LIMIT_SEC = 15 * 60;
 
 var AVATARS = ["👨‍🎓","👩‍🎓","🧑‍🎓","👨‍🔧","👩‍🔧","🧑‍🔧","👷","👨‍🏭","👩‍🏭","🧑‍🏭","🦾","🤖","⚙️","🔧","🛠️","🔩","🧰","📐","📏","✈️","🚀","🛰️","⚡","🔥","💡","🎓","🏆","🎯","🧠","🧑‍💻"];
@@ -60,7 +60,6 @@ function quoteOfDay(){ return QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.
 function fmtRel(iso){ var d = new Date(iso), diff = (Date.now() - d) / 1000; if (diff < 60) return "только что"; if (diff < 3600) return Math.floor(diff / 60) + " мин назад"; if (diff < 86400) return Math.floor(diff / 3600) + " ч назад"; return d.toLocaleDateString("ru-RU"); }
 function setSyncStatus(text){ var n = $("syncStatus"); if (!n) return; n.textContent = text; setTimeout(function(){ if (n.textContent === text) n.textContent = ""; }, 3000); }
 
-/* УВЕДОМЛЕНИЯ (TOASTS) */
 window.showToast = function(msg, type) {
   var container = document.querySelector(".toast-container");
   if (!container) {
@@ -275,7 +274,17 @@ function renderHome(){
     sec.topics.forEach(t=>{
       var done = (state.progress[t.id] && state.progress[t.id].done) || 0;
       var isFav = (state.favorites || []).indexOf(t.id) !== -1;
-      var card = el('<div class="topic"><div class="t-code">'+t.code+'</div><div class="t-body"><div class="t-title">'+t.title+'</div><div class="t-meta">'+t.hours.total+' ак.ч</div></div><div class="t-fav '+(isFav?'active':'')+'">★</div><div class="t-progress">'+done+'/5</div></div>');
+      // Исправленная верстка карточки (звездочка и прогресс в одном флекс-блоке)
+      var card = el(
+        '<div class="topic">' +
+          '<div class="t-code">'+t.code+'</div>' +
+          '<div class="t-body"><div class="t-title">'+t.title+'</div><div class="t-meta">'+t.hours.total+' ак.ч</div></div>' +
+          '<div class="t-right">' +
+            '<div class="t-progress">'+done+'/5</div>' +
+            '<div class="t-fav '+(isFav?'active':'')+'">★</div>' +
+          '</div>' +
+        '</div>'
+      );
       card.addEventListener("click", ()=>location.hash="#/topic/"+t.id);
       card.querySelector(".t-fav").addEventListener("click", e=>toggleFavorite(t.id, e));
       list.appendChild(card);
@@ -343,27 +352,47 @@ function route(){
   window.scrollTo(0, 0);
 }
 
+/* ПОЛНОЦЕННАЯ СТРАНИЦА ТЕМЫ (Восстановлены вкладки и контент) */
 function renderTopic(id, tab, mode){
-  tab = tab || "passport"; var t = findTopic(id); if(!t) return renderHome();
+  tab = tab || "passport"; mode = mode || "control"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = ""; $("crumbs").textContent = t.topic.code + " · " + t.topic.title;
-  app.appendChild(el('<a class="backlink" href="#/">← Назад</a><section class="topic-head"><h1>'+t.topic.title+'</h1><div class="meta">'+t.topic.hours.total+' ч</div></section>'));
-  var tabs = [["passport","01","Паспорт"],["lecture","02","Лекция"],["practice","03","Практика"],["self","04","Сам.работа"],["test","05","Тест"]];
+  app.appendChild(el('<a class="backlink" href="#/">← К программе</a><section class="topic-head"><div class="crumb">ПМ.07 · '+t.section.code+'</div><h1>'+t.topic.title+'</h1><div class="meta">'+t.topic.hours.total+' ак. ч / практ. '+t.topic.hours.practice+' ак. ч</div></section>'));
+  
+  var tabs = [["passport","01","Паспорт часов"],["lecture","02","Лекция"],["practice","03","Практические"],["self","04","Самостоятельная"],["test","05","Контроль темы"]];
   var tw = el('<div class="tabs"></div>');
   tabs.forEach(item=>{
     var b = el('<button class="tab '+(item[0]===tab?'active':'')+'"><span class="t-num">'+item[1]+'</span><span class="t-name">'+item[2]+'</span></button>');
     b.addEventListener("click", ()=>location.hash="#/topic/"+id+"/"+item[0]); tw.appendChild(b);
   });
   app.appendChild(tw); var panel = el('<section class="panel"></section>'); app.appendChild(panel);
-  
-  // Кнопка печати
-  var printBtn = el('<button class="btn ghost" style="margin-bottom:12px" onclick="window.print()">🖨 Распечатать тему</button>');
+
+  var printBtn = el('<button class="btn ghost" style="margin-bottom:12px; font-size:12px" onclick="window.print()">🖨 Распечатать</button>');
   panel.appendChild(printBtn);
 
-  if (tab === "passport") panel.appendChild(el('<h2>Паспорт часов</h2><p>Всего: <b>'+t.topic.hours.total+'</b> ч.</p><p>Теория: '+t.topic.hours.theory+' ч.</p><p>Практика: '+t.topic.hours.practice+' ч.</p>'));
-  if (tab === "lecture") { panel.appendChild(el('<h2>Лекция</h2>')); (t.topic.lectures||[]).forEach(l=>panel.appendChild(el('<h3>'+l.code+'. '+l.title+'</h3><div>'+l.content+'</div>'))); }
-  if (tab === "practice") { panel.appendChild(el('<h2>Практика</h2>')); (t.topic.practicals||[]).forEach(p=>panel.appendChild(el('<div class="practice"><h3>'+p.code+'. '+p.title+'</h3><p>'+p.task+'</p></div>'))); }
-  if (tab === "self") { panel.appendChild(el('<h2>Самостоятельная</h2>')); (t.topic.selfChecks||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>'))); }
-  if (tab === "test") { panel.appendChild(el('<h2>Тест</h2>')); (t.topic.test||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>'))); }
+  if (tab === "passport") {
+    panel.appendChild(el('<h2>Паспорт часов</h2><p>Тема <b>'+t.topic.code+'</b> — '+t.topic.title+'.</p><div class="kpi-row"><div class="kpi"><div class="k-label">Всего</div><div class="k-value">'+t.topic.hours.total+' ч</div></div><div class="kpi"><div class="k-label">Теория</div><div class="k-value">'+t.topic.hours.theory+' ч</div></div><div class="kpi"><div class="k-label">Практика</div><div class="k-value">'+t.topic.hours.practice+' ч</div></div></div>'));
+  }
+  if (tab === "lecture") {
+    panel.appendChild(el('<h2>Лекция</h2><p class="accent">Теория, схема, вопросы для самопроверки.</p>'));
+    (t.topic.lectures||[]).forEach(l=>{
+      panel.appendChild(el('<h3>'+l.code+'. '+l.title+'</h3>'));
+      panel.appendChild(el('<div>'+(l.content || '<p><i>Материал готовится.</i></p>')+'</div>'));
+    });
+  }
+  if (tab === "practice") {
+    panel.appendChild(el('<h2>Практические работы</h2>'));
+    (t.topic.practicals||[]).forEach(p=>{
+      panel.appendChild(el('<div class="practice"><div class="practice-head"><div class="p-code">'+p.code+'</div></div><div class="p-title">'+p.title+'</div><p>'+(p.task||'')+'</p><button class="btn" onclick="window.showToast(\'Загрузка файлов в демо-режиме\', \'ok\')">📎 Прикрепить работу</button></div>'));
+    });
+  }
+  if (tab === "self") {
+    panel.appendChild(el('<h2>Самостоятельная работа</h2>'));
+    (t.topic.selfChecks||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>')));
+  }
+  if (tab === "test") {
+    panel.appendChild(el('<h2>Контроль темы</h2>'));
+    (t.topic.test||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>')));
+  }
   window.scrollTo(0, 0);
 }
 
