@@ -1,16 +1,15 @@
 /* ============================================================
-   МДК 07.01 — script.js (v25.0 — TIMEOUT PROTECTION)
+   МДК 07.01 — script.js (v26.0 BULLETPROOF)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [] };
 
-// Восстановление данных из памяти
+// Восстановление данных
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
 
-// Утилиты
 function getCourse(){ try { return COURSE; } catch(e){} try { return window.COURSE; } catch(e){} return null; }
 function $(id){ return document.getElementById(id); }
 function el(html){ var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
@@ -27,7 +26,6 @@ window.showToast = function(msg, type) {
   setTimeout(function() { toast.classList.add("out"); setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300); }, 3000);
 };
 
-// Сохранение/Загрузка
 function loadStudentData(){
   var k = studentKey(); if (!k) return; var ek = encodeURIComponent(k);
   state.progress = JSON.parse(localStorage.getItem("mdk0701.progress." + ek) || "{}");
@@ -47,78 +45,62 @@ function saveStudentData(){
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
 }
 
-// АВТОРИЗАЦИЯ
-function initAuth(){
-  var overlay = $("loginOverlay");
-  if (!overlay) return;
+/* ====== ГЛОБАЛЬНЫЕ ФУНКЦИИ ВХОДА ====== */
 
-  if (!state.student && !state.staff) overlay.hidden = false; else overlay.hidden = true;
-  if (state.student) loadStudentData();
+window.doStudentLogin = function() {
+  var n = $("loginName") ? $("loginName").value.trim() : "";
+  var g = $("loginGroup") ? $("loginGroup").value.trim() : "";
+  if (!n || !g) { alert("Введите ФИО и Группу!"); return; }
+  
+  state.student = { name: n, group: g.toUpperCase() };
+  localStorage.setItem("mdk0701.student", JSON.stringify(state.student));
+  loadStudentData(); 
+  if($("loginOverlay")) $("loginOverlay").hidden = true; 
+  renderUserChip(); 
+  route();
+  window.showToast("Вы вошли как " + n, "ok");
+};
 
-  // 1. Кнопка Входа Студента
-  var btnStudent = $("loginBtn");
-  if (btnStudent) {
-    btnStudent.addEventListener("click", () => {
-      var n = $("loginName").value.trim();
-      var g = $("loginGroup").value.trim();
-      if (!n || !g) { window.showToast("Введите ФИО и группу", "err"); return; }
+window.doTeacherLogin = function() {
+  var user = $("loginStaffName") ? $("loginStaffName").value.trim() : "";
+  var pass = $("loginStaffPass") ? $("loginStaffPass").value.trim() : "";
+  var btn = $("staffLoginBtn");
+
+  if (!user || !pass) { alert("Введите логин и пароль!"); return; }
+  if(btn) { btn.textContent = "Проверяем..."; btn.disabled = true; }
+
+  var isFinished = false;
+  var timeout = setTimeout(() => {
+    if(isFinished) return; isFinished = true;
+    if(confirm("Сервер Google не отвечает (таймаут 10 сек).\n\nХотите проверить работу сервера напрямую в новой вкладке?")) {
+      window.open(APPS_SCRIPT_URL + "?action=login&username=" + user + "&password=" + pass, '_blank');
+    }
+    if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
+  }, 10000);
+
+  fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass))
+    .then(r => r.json()).then(d => {
+      if(isFinished) return; isFinished = true; clearTimeout(timeout);
       
-      state.student = { name: n, group: g.toUpperCase() };
-      localStorage.setItem("mdk0701.student", JSON.stringify(state.student));
-      
-      loadStudentData(); 
-      overlay.hidden = true; 
-      renderUserChip(); 
-      route();
-      window.showToast("Вы вошли как " + n, "ok");
+      if (d && d.ok) { 
+        state.staff = { role: d.role, name: d.name }; 
+        sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
+        if($("loginOverlay")) $("loginOverlay").hidden = true; 
+        renderUserChip(); route(); 
+        window.showToast("Добро пожаловать, " + d.name, "ok");
+      } else {
+        alert("ОШИБКА: " + (d.error || "Неверный логин или пароль"));
+        if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
+      }
+    }).catch((err) => {
+      if(isFinished) return; isFinished = true; clearTimeout(timeout);
+      console.error(err);
+      alert("ОШИБКА СЕТИ (CORS).\n\nСкорее всего, ваш Google Apps Script развернут неправильно.\nНужно: Развернуть -> Управление развертываниями -> Изменить -> Кто имеет доступ: 'Все' (Anyone).");
+      if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
     });
-  }
+};
 
-  // 2. Кнопка Входа Сотрудника (С ЗАЩИТОЙ ОТ ЗАВИСАНИЯ)
-  var btnStaff = $("staffLoginBtn");
-  if (btnStaff) {
-    btnStaff.addEventListener("click", () => {
-      var user = $("loginStaffName").value.trim();
-      var pass = $("loginStaffPass").value.trim();
-      if (!user || !pass) { window.showToast("Введите логин и пароль", "err"); return; }
-
-      btnStaff.textContent = "Проверяем...";
-      btnStaff.disabled = true;
-
-      // Создаем контроллер для отмены запроса через 10 секунд
-      var controller = new AbortController();
-      var timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass), { signal: controller.signal })
-        .then(r => r.json()).then(d => {
-          clearTimeout(timeoutId);
-          if (d && d.ok) { 
-            state.staff = { role: d.role, name: d.name }; 
-            sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
-            overlay.hidden = true; 
-            renderUserChip(); 
-            route(); 
-            window.showToast("Добро пожаловать, " + d.name, "ok");
-          } else {
-            window.showToast(d.error || "Неверный логин или пароль", "err");
-            btnStaff.textContent = "Войти как сотрудник";
-            btnStaff.disabled = false;
-          }
-        }).catch((err) => {
-          clearTimeout(timeoutId);
-          console.error("Ошибка входа:", err);
-          
-          if (err.name === 'AbortError') {
-            window.showToast("Сервер Google не отвечает (таймаут 10 сек). Проверьте настройки развертывания Apps Script.", "err");
-          } else {
-            window.showToast("Ошибка сети. Проверьте подключение или доступ к скрипту.", "err");
-          }
-          btnStaff.textContent = "Войти как сотрудник";
-          btnStaff.disabled = false;
-        });
-    });
-  }
-}
+/* ====== ОСТАЛЬНОЙ ФУНКЦИОНАЛ ====== */
 
 function renderUserChip(){
   if (state.staff) { 
@@ -132,23 +114,9 @@ function renderUserChip(){
   }
 }
 
-// МЕНЮ (ШТОРКА)
 function closeDrawer(){ if($("drawer")) $("drawer").classList.remove("open"); if($("drawerOverlay")) $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ if($("drawer")) $("drawer").classList.toggle("open"); if($("drawerOverlay")) $("drawerOverlay").classList.toggle("open"); }
-function initDrawer(){
-  if(!$("burgerBtn")) return;
-  $("burgerBtn").addEventListener("click", toggleDrawer);
-  if($("drawerOverlay")) $("drawerOverlay").addEventListener("click", closeDrawer);
-  if($("drawerClose")) $("drawerClose").addEventListener("click", closeDrawer);
-  
-  document.querySelectorAll("[data-go]").forEach(item => item.addEventListener("click", (e) => { 
-    e.preventDefault(); 
-    location.hash = item.dataset.go; 
-    closeDrawer(); 
-  }));
-}
 
-// ГЛАВНАЯ СТРАНИЦА
 function renderHome(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; var c = getCourse();
   if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
@@ -170,7 +138,6 @@ function renderHome(){
   });
 }
 
-// СТРАНИЦА ТЕМЫ
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); if (!app) return; app.innerHTML = "";
@@ -180,27 +147,24 @@ function renderTopic(id, tab){
   var tabs = [["lecture","01 Лекция"],["practice","02 Практика"],["self","03 Сам. работа"],["test","04 Тест"]];
   var tw = el('<div class="tabs" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;"></div>');
   tabs.forEach(item=>{
-    var b = el(`<button class="tab ${item[0]===tab?'active':''}">${item[1]}</button>`);
-    b.addEventListener("click", ()=>location.hash="#/topic/"+id+"/"+item[0]); tw.appendChild(b);
+    var b = el(`<button class="tab ${item[0]===tab?'active':''}" onclick="location.hash='#/topic/${id}/${item[0]}'">${item[1]}</button>`);
+    tw.appendChild(b);
   });
   app.appendChild(tw); 
   var panel = el('<section class="panel" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;"></section>'); app.appendChild(panel);
 
-  // 1. ЛЕКЦИЯ
   if (tab === "lecture") {
     if(t.topic.lectures && t.topic.lectures.length) {
       t.topic.lectures.forEach(l=>{
-        panel.appendChild(el(`<h3>${l.code}. ${l.title}</h3>`));
-        panel.appendChild(el(`<div class="lecture-content">${l.content || '<p>Материал готовится.</p>'}</div>`));
+        panel.appendChild(el(`<h3>${l.code}. ${l.title}</h3><div class="lecture-content">${l.content || '<p>Материал готовится.</p>'}</div>`));
       });
     } else panel.appendChild(el('<p>Лекция пока не добавлена.</p>'));
   }
   
-  // 2. ПРАКТИКА
   if (tab === "practice") {
     if(t.topic.practicals && t.topic.practicals.length) {
       t.topic.practicals.forEach(p=>{
-        var html = `<div class="practice" style="margin-bottom:16px;border:1px solid var(--border);padding:16px;border-radius:8px;">
+        panel.appendChild(el(`<div class="practice" style="margin-bottom:16px;border:1px solid var(--border);padding:16px;border-radius:8px;">
           <b style="color:var(--accent)">${p.code}</b>
           <div style="font-weight:bold;margin:4px 0">${p.title}</div>
           <div>${p.task}</div>
@@ -208,13 +172,11 @@ function renderTopic(id, tab){
             <input type="file" id="file_${p.code}" style="display:none" onchange="window.uploadFile(event, '${p.code}', '${p.title}')">
             <button class="btn" onclick="document.getElementById('file_${p.code}').click()">📎 Прикрепить работу</button>
           </div>
-        </div>`;
-        panel.appendChild(el(html));
+        </div>`));
       });
     } else panel.appendChild(el('<p>Практических работ нет.</p>'));
   }
 
-  // 3. САМОСТОЯТЕЛЬНАЯ
   if (tab === "self") {
     if(t.topic.selfChecks && t.topic.selfChecks.length) {
       var selfWrap = el('<div id="selfWrap"></div>'); panel.appendChild(selfWrap);
@@ -233,7 +195,6 @@ function renderTopic(id, tab){
     } else panel.appendChild(el('<p>Вопросов нет.</p>'));
   }
 
-  // 4. ТЕСТ (С таймером)
   if (tab === "test") {
     if(t.topic.test && t.topic.test.length) {
       var timerBox = el('<div style="font-size:20px;font-weight:bold;color:var(--err);margin-bottom:16px;">⏱ 15:00</div>');
@@ -274,7 +235,6 @@ function renderTopic(id, tab){
   }
 }
 
-// ЗАГРУЗКА ФАЙЛОВ
 window.uploadFile = function(event, code, title) {
   var file = event.target.files[0]; if (!file) return;
   if (file.size > 2 * 1024 * 1024) { window.showToast("Файл слишком большой (макс 2МБ)", "err"); return; }
@@ -284,15 +244,7 @@ window.uploadFile = function(event, code, title) {
   reader.onload = function(e) {
     var base64 = e.target.result.split(',')[1];
     var params = new URLSearchParams();
-    params.append("action", "uploadwork");
-    params.append("key", studentKey());
-    params.append("name", state.student.name);
-    params.append("group", state.student.group);
-    params.append("workCode", code);
-    params.append("workTitle", title);
-    params.append("fileName", file.name);
-    params.append("fileType", file.type);
-    params.append("fileData", base64);
+    params.append("action", "uploadwork"); params.append("key", studentKey()); params.append("name", state.student.name); params.append("group", state.student.group); params.append("workCode", code); params.append("workTitle", title); params.append("fileName", file.name); params.append("fileType", file.type); params.append("fileData", base64);
 
     fetch(APPS_SCRIPT_URL, { method: "POST", body: params })
     .then(r => r.json()).then(d => {
@@ -303,142 +255,53 @@ window.uploadFile = function(event, code, title) {
   reader.readAsDataURL(file);
 };
 
-// СИМУЛЯТОР G-КОДА
 function renderSimulatorPage(){
   var app = $("app"); app.innerHTML = ""; 
   app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   var block = el(`
     <section class="module">
       <h2>🖥️ Симулятор</h2>
-      <p class="sub">Введите G-код (G00, G01, X, Y). Пример: G01 X100 Y50</p>
-      <textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0
-G01 X50 Y50
-G01 X100 Y50
-G01 X100 Y0
-G01 X0 Y0</textarea>
+      <textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0\nG01 X50 Y50\nG01 X100 Y50\nG01 X100 Y0\nG01 X0 Y0</textarea>
       <button class="btn" id="runCodeBtn" style="width:100%;margin-bottom:10px;">▶ Выполнить</button>
-      <div style="background:var(--card-soft);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-        <canvas id="simCanvas" width="600" height="400" style="width:100%;height:auto;background:#fff;"></canvas>
-      </div>
+      <div style="background:var(--card-soft);border:1px solid var(--border);border-radius:8px;overflow:hidden;"><canvas id="simCanvas" width="600" height="400" style="width:100%;height:auto;background:#fff;"></canvas></div>
     </section>
   `);
   app.appendChild(block);
-  
   var canvas = block.querySelector("#simCanvas"), ctx = canvas.getContext("2d");
   var runBtn = block.querySelector("#runCodeBtn"), input = block.querySelector("#gcodeInput");
-
-  function drawGrid() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "#eee"; ctx.lineWidth = 1;
-    for (var i = 0; i < canvas.width; i += 20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
-    for (var j = 0; j < canvas.height; j += 20) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke(); }
-    ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
-  }
+  function drawGrid() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = "#eee"; for (var i = 0; i < canvas.width; i += 20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); } for (var j = 0; j < canvas.height; j += 20) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke(); } ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke(); }
   drawGrid();
-
   runBtn.addEventListener("click", () => {
-    drawGrid();
-    var lines = input.value.split("\n");
-    var curX = canvas.width/2, curY = canvas.height/2;
-    ctx.beginPath(); ctx.moveTo(curX, curY); ctx.strokeStyle = "red"; ctx.lineWidth = 3;
-    var isDown = false;
-
-    lines.forEach(line => {
-      line = line.trim().toUpperCase();
-      if(!line) return;
-      var gMatch = line.match(/G0[0-3]/);
-      if(!gMatch) return;
-      
-      var xMatch = line.match(/X(-?\d+(\.\d+)?)/);
-      var yMatch = line.match(/Y(-?\d+(\.\d+)?)/);
-      
-      if(xMatch) curX = canvas.width/2 + parseFloat(xMatch[1]) * 2;
-      if(yMatch) curY = canvas.height/2 - parseFloat(yMatch[1]) * 2;
-
-      if(gMatch[0] === "G00") { ctx.moveTo(curX, curY); }
-      else { ctx.lineTo(curX, curY); isDown = true; }
-    });
-    if(isDown) ctx.stroke();
-    window.showToast("Траектория построена!", "ok");
+    drawGrid(); var lines = input.value.split("\n"); var curX = canvas.width/2, curY = canvas.height/2; ctx.beginPath(); ctx.moveTo(curX, curY); ctx.strokeStyle = "red"; ctx.lineWidth = 3; var isDown = false;
+    lines.forEach(line => { line = line.trim().toUpperCase(); if(!line) return; var gMatch = line.match(/G0[0-3]/); if(!gMatch) return; var xMatch = line.match(/X(-?\d+(\.\d+)?)/); var yMatch = line.match(/Y(-?\d+(\.\d+)?)/); if(xMatch) curX = canvas.width/2 + parseFloat(xMatch[1]) * 2; if(yMatch) curY = canvas.height/2 - parseFloat(yMatch[1]) * 2; if(gMatch[0] === "G00") { ctx.moveTo(curX, curY); } else { ctx.lineTo(curX, curY); isDown = true; } });
+    if(isDown) ctx.stroke(); window.showToast("Траектория построена!", "ok");
   });
 }
 
-// МАГАЗИН
 function renderShopPage(){
-  var app = $("app"); app.innerHTML = ""; 
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   app.appendChild(el(`<section class="hero"><h1>Магазин XP</h1><p>У вас: 🌟 <b>${state.xp} XP</b></p></section>`));
-  
-  var items = [
-    { id: "golden", icon: "👑", title: "Золотой аватар", price: 100 },
-    { id: "exam_time", icon: "⏱", title: "+5 минут к экзамену", price: 150 },
-    { id: "theme", icon: "🌌", title: "Тема 'Космос'", price: 200 }
-  ];
-  
+  var items = [{ id: "golden", icon: "👑", title: "Золотой аватар", price: 100 }, { id: "exam_time", icon: "⏱", title: "+5 минут к экзамену", price: 150 }];
   var grid = el('<div class="shop-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"></div>');
-  items.forEach(it => {
-    var has = state.shop.includes(it.id);
-    var btn = el(`<button class="btn" style="width:100%;margin-top:10px;" ${has || state.xp < it.price ? 'disabled' : ''}>${has ? 'Куплено' : (state.xp < it.price ? 'Мало XP' : 'Купить за ' + it.price)}</button>`);
-    if (!has && state.xp >= it.price) {
-      btn.addEventListener("click", () => { 
-        state.xp -= it.price; 
-        state.shop.push(it.id); 
-        saveStudentData(); 
-        renderShopPage(); 
-        window.showToast("Покупка успешна!", "ok"); 
-      });
-    }
-    var card = el(`<div class="shop-item" style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;"><div style="font-size:40px;">${it.icon}</div><div style="font-weight:bold;margin:10px 0;">${it.title}</div></div>`);
-    card.appendChild(btn); 
-    grid.appendChild(card);
-  });
+  items.forEach(it => { var has = state.shop.includes(it.id); var btn = el(`<button class="btn" style="width:100%;margin-top:10px;" ${has || state.xp < it.price ? 'disabled' : ''}>${has ? 'Куплено' : (state.xp < it.price ? 'Мало XP' : 'Купить')}</button>`); if (!has && state.xp >= it.price) { btn.addEventListener("click", () => { state.xp -= it.price; state.shop.push(it.id); saveStudentData(); renderShopPage(); }); } var card = el(`<div class="shop-item" style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;"><div style="font-size:40px;">${it.icon}</div><div style="font-weight:bold;margin:10px 0;">${it.title}</div></div>`); card.appendChild(btn); grid.appendChild(card); });
   app.appendChild(grid);
 }
 
-// ПОРТФОЛИО
 function renderPortfolioPage(){
-  var app = $("app"); app.innerHTML = ""; 
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  var html = `
-    <div id="portfolioPrint" class="module" style="padding:40px;">
-      <h1 style="text-align:center;">ПОРТФОЛИО СТУДЕНТА</h1>
-      <p style="text-align:center;color:var(--muted);">МДК 07.01 — Технология обработки деталей на станках с ЧПУ</p>
-      <hr style="margin:20px 0;border:none;border-top:1px solid var(--border);">
-      <h3>Личные данные</h3>
-      <p><b>ФИО:</b> ${state.student.name}</p>
-      <p><b>Группа:</b> ${state.student.group}</p>
-      <p><b>Опыт (XP):</b> ${state.xp}</p>
-      <h3>Статистика</h3>
-      <p><b>Пройдено тем:</b> ${Object.keys(state.progress).length}</p>
-      <p><b>Сдано тестов:</b> ${Object.keys(state.results).length}</p>
-    </div>
-    <button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 Сохранить в PDF</button>
-  `;
-  app.appendChild(el(html));
+  var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  app.appendChild(el(`<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ${state.student.name}</p><p><b>Группа:</b> ${state.student.group}</p><p><b>XP:</b> ${state.xp}</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>`));
 }
 
-// КАЛЬКУЛЯТОР
 function renderCalculatorPage(){
-  var app = $("app"); app.innerHTML = ""; 
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  app.appendChild(el(`<section class="module"><h2>Калькулятор Vc</h2>
-    <input type="number" id="vc" value="180" placeholder="Vc" style="padding:10px;margin-bottom:10px;width:100%;border-radius:8px;border:1px solid var(--border);">
-    <input type="number" id="d" value="50" placeholder="Диаметр" style="padding:10px;margin-bottom:10px;width:100%;border-radius:8px;border:1px solid var(--border);">
-    <button class="btn" style="width:100%" onclick="var n=Math.round((1000*document.getElementById('vc').value)/(Math.PI*document.getElementById('d').value)); document.getElementById('res').innerText='n = '+n+' об/мин';">Рассчитать</button>
-    <div id="res" style="margin-top:15px;font-weight:bold;font-size:18px;"></div>
-  </section>`));
+  var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  app.appendChild(el(`<section class="module"><h2>Калькулятор</h2><input type="number" id="vc" value="180" style="padding:10px;width:100%;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);"><input type="number" id="d" value="50" style="padding:10px;width:100%;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);"><button class="btn" style="width:100%" onclick="var n=Math.round((1000*document.getElementById('vc').value)/(Math.PI*document.getElementById('d').value)); document.getElementById('res').innerText='n = '+n+' об/мин';">Рассчитать</button><div id="res" style="margin-top:15px;font-weight:bold;font-size:18px;"></div></section>`));
 }
 
-// РОУТИНГ
 function route(){
   closeDrawer();
-  document.querySelectorAll(".theme-overlay, .avatar-overlay, .search-overlay").forEach(x=>x.remove());
   var hash = location.hash.replace(/^#/, "") || "/"; 
   var parts = hash.split("/").filter(Boolean); 
   var app = $("app"); if(!app) return;
-  
   if (!state.student && !state.staff) { app.innerHTML = ""; return; }
   
   if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2]);
@@ -457,14 +320,18 @@ function route(){
   else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
   else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
   else renderHome();
-  
   window.scrollTo(0, 0);
 }
 
-// ИНИЦИАЛИЗАЦИЯ
 window.addEventListener("DOMContentLoaded", () => {
-  initAuth();
-  initDrawer();
+  if (!state.student && !state.staff) { if($("loginOverlay")) $("loginOverlay").hidden = false; } else { if($("loginOverlay")) $("loginOverlay").hidden = true; }
+  if (state.student) loadStudentData();
+  
+  if($("burgerBtn")) $("burgerBtn").addEventListener("click", toggleDrawer);
+  if($("drawerOverlay")) $("drawerOverlay").addEventListener("click", closeDrawer);
+  if($("drawerClose")) $("drawerClose").addEventListener("click", closeDrawer);
+  document.querySelectorAll("[data-go]").forEach(item => item.addEventListener("click", (e) => { e.preventDefault(); location.hash = item.dataset.go; closeDrawer(); }));
+  
   renderUserChip();
   route();
 });
