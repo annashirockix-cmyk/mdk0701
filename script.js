@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v23.0 FULL)
+   МДК 07.01 — script.js (v24.0 STABLE)
    ============================================================ */
 "use strict";
 
@@ -56,35 +56,57 @@ function initAuth(){
   if (state.student) loadStudentData();
 
   // 1. Кнопка Входа Студента
-  $("loginBtn").addEventListener("click", () => {
-    var n = $("loginName").value.trim();
-    var g = $("loginGroup").value.trim();
-    if (!n || !g) { window.showToast("Введите ФИО и группу", "err"); return; }
-    
-    state.student = { name: n, group: g.toUpperCase() };
-    localStorage.setItem("mdk0701.student", JSON.stringify(state.student));
-    loadStudentData(); overlay.hidden = true; renderUserChip(); route();
-    window.showToast("Вы вошли как " + n, "ok");
-  });
+  var btnStudent = $("loginBtn");
+  if (btnStudent) {
+    btnStudent.addEventListener("click", () => {
+      var n = $("loginName").value.trim();
+      var g = $("loginGroup").value.trim();
+      if (!n || !g) { window.showToast("Введите ФИО и группу", "err"); return; }
+      
+      state.student = { name: n, group: g.toUpperCase() };
+      localStorage.setItem("mdk0701.student", JSON.stringify(state.student));
+      
+      loadStudentData(); 
+      overlay.hidden = true; 
+      renderUserChip(); 
+      route();
+      window.showToast("Вы вошли как " + n, "ok");
+    });
+  }
 
   // 2. Кнопка Входа Сотрудника
-  $("staffLoginBtn").addEventListener("click", () => {
-    var user = $("loginStaffName").value.trim();
-    var pass = $("loginStaffPass").value.trim();
-    if (!user || !pass) { window.showToast("Введите логин и пароль", "err"); return; }
+  var btnStaff = $("staffLoginBtn");
+  if (btnStaff) {
+    btnStaff.addEventListener("click", () => {
+      var user = $("loginStaffName").value.trim();
+      var pass = $("loginStaffPass").value.trim();
+      if (!user || !pass) { window.showToast("Введите логин и пароль", "err"); return; }
 
-    fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass))
-      .then(r => r.json()).then(d => {
-        if (d.ok) { 
-          state.staff = { role: d.role, name: d.name }; 
-          sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
-          overlay.hidden = true; renderUserChip(); route(); 
-          window.showToast("Добро пожаловать, " + d.name, "ok");
-        } else {
-          window.showToast("Неверный логин или пароль", "err");
-        }
-      }).catch(() => window.showToast("Ошибка сети", "err"));
-  });
+      btnStaff.textContent = "Проверяем...";
+      btnStaff.disabled = true;
+
+      fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass))
+        .then(r => r.json()).then(d => {
+          if (d && d.ok) { 
+            state.staff = { role: d.role, name: d.name }; 
+            sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
+            overlay.hidden = true; 
+            renderUserChip(); 
+            route(); 
+            window.showToast("Добро пожаловать, " + d.name, "ok");
+          } else {
+            window.showToast(d.error || "Неверный логин или пароль", "err");
+            btnStaff.textContent = "Войти как сотрудник";
+            btnStaff.disabled = false;
+          }
+        }).catch((err) => {
+          console.error(err);
+          window.showToast("Ошибка сети. Проверьте соединение.", "err");
+          btnStaff.textContent = "Войти как сотрудник";
+          btnStaff.disabled = false;
+        });
+    });
+  }
 }
 
 function renderUserChip(){
@@ -105,11 +127,12 @@ function toggleDrawer(){ if($("drawer")) $("drawer").classList.toggle("open"); i
 function initDrawer(){
   if(!$("burgerBtn")) return;
   $("burgerBtn").addEventListener("click", toggleDrawer);
-  $("drawerOverlay").addEventListener("click", closeDrawer);
-  $("drawerClose").addEventListener("click", closeDrawer);
-  document.querySelectorAll("[data-go]").forEach(el => el.addEventListener("click", (e) => { 
+  if($("drawerOverlay")) $("drawerOverlay").addEventListener("click", closeDrawer);
+  if($("drawerClose")) $("drawerClose").addEventListener("click", closeDrawer);
+  
+  document.querySelectorAll("[data-go]").forEach(item => item.addEventListener("click", (e) => { 
     e.preventDefault(); 
-    location.hash = el.dataset.go; 
+    location.hash = item.dataset.go; 
     closeDrawer(); 
   }));
 }
@@ -117,6 +140,7 @@ function initDrawer(){
 // ГЛАВНАЯ СТРАНИЦА
 function renderHome(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; var c = getCourse();
+  if(!c) { app.innerHTML = "<p>Ошибка загрузки курса. Проверьте файл data.js</p>"; return; }
   
   fetch(APPS_SCRIPT_URL+"?action=announcement").then(r=>r.json()).then(d=>{
     if(d.ok && d.text) app.prepend(el(`<div style="background:var(--accent);color:#fff;padding:16px;border-radius:8px;margin-bottom:24px;font-weight:bold;">📢 ${d.text}</div>`));
@@ -128,7 +152,7 @@ function renderHome(){
     app.appendChild(el(`<div class="steps-title" style="margin:24px 0 10px;font-size:14px;color:var(--muted);text-transform:uppercase;">${sec.code} · ${sec.title}</div>`));
     var list = el('<div class="topics" style="display:flex;flex-direction:column;gap:12px;"></div>');
     sec.topics.forEach(t => {
-      var card = el(`<div class="topic" onclick="location.hash='#/topic/${t.id}'"><b style="color:var(--accent)">${t.code}</b> · ${t.title}</div>`);
+      var card = el(`<div class="topic" style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;cursor:pointer;" onclick="location.hash='#/topic/${t.id}'"><b style="color:var(--accent)">${t.code}</b> · ${t.title}</div>`);
       list.appendChild(card);
     });
     app.appendChild(list);
@@ -138,18 +162,18 @@ function renderHome(){
 // СТРАНИЦА ТЕМЫ
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
-  var app = $("app"); app.innerHTML = "";
+  var app = $("app"); if (!app) return; app.innerHTML = "";
   
-  app.appendChild(el(`<a class="backlink" href="#/">← К программе</a><section class="topic-head"><h1>${t.topic.title}</h1></section>`));
+  app.appendChild(el(`<a class="backlink" href="#/" style="color:var(--accent);display:block;margin-bottom:10px;">← К программе</a><section class="topic-head"><h1>${t.topic.title}</h1></section>`));
   
   var tabs = [["lecture","01 Лекция"],["practice","02 Практика"],["self","03 Сам. работа"],["test","04 Тест"]];
-  var tw = el('<div class="tabs"></div>');
+  var tw = el('<div class="tabs" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;"></div>');
   tabs.forEach(item=>{
     var b = el(`<button class="tab ${item[0]===tab?'active':''}">${item[1]}</button>`);
     b.addEventListener("click", ()=>location.hash="#/topic/"+id+"/"+item[0]); tw.appendChild(b);
   });
   app.appendChild(tw); 
-  var panel = el('<section class="panel"></section>'); app.appendChild(panel);
+  var panel = el('<section class="panel" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;"></section>'); app.appendChild(panel);
 
   // 1. ЛЕКЦИЯ
   if (tab === "lecture") {
@@ -184,7 +208,7 @@ function renderTopic(id, tab){
     if(t.topic.selfChecks && t.topic.selfChecks.length) {
       var selfWrap = el('<div id="selfWrap"></div>'); panel.appendChild(selfWrap);
       t.topic.selfChecks.forEach((q, i)=>{
-        selfWrap.appendChild(el(`<div class="question"><div class="q-text">${i+1}. ${q.q}</div><input type="text" class="self-input" data-idx="${i}" placeholder="Ваш ответ" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);margin:8px 0;"><div class="self-feedback" id="fb_${i}" style="font-size:13px;"></div></div>`));
+        selfWrap.appendChild(el(`<div class="question" style="margin-bottom:16px;"><div class="q-text">${i+1}. ${q.q}</div><input type="text" class="self-input" data-idx="${i}" placeholder="Ваш ответ" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);margin:8px 0;"><div class="self-feedback" id="fb_${i}" style="font-size:13px;"></div></div>`));
       });
       var checkBtn = el('<button class="btn" style="width:100%">Проверить все ответы</button>');
       checkBtn.addEventListener("click", ()=>{
@@ -206,8 +230,8 @@ function renderTopic(id, tab){
       var testWrap = el('<div id="testWrap"></div>'); panel.appendChild(testWrap);
       
       t.topic.test.forEach((q, qi)=>{
-        var qb = el(`<div class="question"><div class="q-text">${qi+1}. ${q.q}</div></div>`);
-        q.options.forEach((opt, oi)=>qb.appendChild(el(`<label class="option"><input type="radio" name="q${qi}" value="${oi}"><span>${opt}</span></label>`)));
+        var qb = el(`<div class="question" style="margin-bottom:16px;"><div class="q-text">${qi+1}. ${q.q}</div></div>`);
+        q.options.forEach((opt, oi)=>qb.appendChild(el(`<label class="option" style="display:flex;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;"><input type="radio" name="q${qi}" value="${oi}"><span>${opt}</span></label>`)));
         testWrap.appendChild(qb);
       });
       
@@ -276,7 +300,7 @@ function renderSimulatorPage(){
     <section class="module">
       <h2>🖥️ Симулятор</h2>
       <p class="sub">Введите G-код (G00, G01, X, Y). Пример: G01 X100 Y50</p>
-      <textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);color:var(--text);margin-bottom:10px;font-family:monospace;">G00 X0 Y0
+      <textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0
 G01 X50 Y50
 G01 X100 Y50
 G01 X100 Y0
