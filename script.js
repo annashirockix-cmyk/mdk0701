@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (Полная версия: калькулятор, избранное)
+   МДК 07.01 — script.js (С достижениями, печатью и тостами)
    ============================================================ */
 "use strict";
 
@@ -12,11 +12,11 @@ var TEST_TIME_LIMIT_SEC = 15 * 60;
 var AVATARS = ["👨‍🎓","👩‍🎓","🧑‍🎓","👨‍🔧","👩‍🔧","🧑‍🔧","👷","👨‍🏭","👩‍🏭","🧑‍🏭","🦾","🤖","⚙️","🔧","🛠️","🔩","🧰","📐","📏","✈️","🚀","🛰️","⚡","🔥","💡","🎓","🏆","🎯","🧠","🧑‍💻"];
 
 var THEMES = [
-  { id:"light",    name:"Светлая",  colors:["#f5f2ec","#ffffff","#c14a2a","#4a4a4a"] },
-  { id:"dark",     name:"Тёмная",   colors:["#0e0e10","#171719","#ff6b3d","#c8c5bd"] },
-  { id:"sepia",    name:"Сепия",    colors:["#f4ecd8","#fbf5e6","#a0522d","#5c4a32"] },
-  { id:"ocean",    name:"Океан",    colors:["#eef4f8","#ffffff","#1a6da8","#3c5361"] },
-  { id:"forest",   name:"Лес",      colors:["#eef3ec","#ffffff","#3d7a3d","#3f5238"] },
+  { id:"light", name:"Светлая", colors:["#f5f2ec","#ffffff","#c14a2a","#4a4a4a"] },
+  { id:"dark", name:"Тёмная", colors:["#0e0e10","#171719","#ff6b3d","#c8c5bd"] },
+  { id:"sepia", name:"Сепия", colors:["#f4ecd8","#fbf5e6","#a0522d","#5c4a32"] },
+  { id:"ocean", name:"Океан", colors:["#eef4f8","#ffffff","#1a6da8","#3c5361"] },
+  { id:"forest", name:"Лес", colors:["#eef3ec","#ffffff","#3d7a3d","#3f5238"] },
   { id:"contrast", name:"Контраст", colors:["#ffffff","#f5f5f5","#0033cc","#000000"] }
 ];
 
@@ -26,27 +26,24 @@ var FLASHCARDS = [
   { q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ (ISO 6983).", topic: "Основы" },
   { q: "Что делает команда G00?", a: "Быстрое позиционирование (ускоренный ход).", topic: "G-коды" },
   { q: "Что делает команда G01?", a: "Линейная интерполяция (рабочая подача по прямой).", topic: "G-коды" },
-  { q: "Что делает команда G02 и G03?", a: "G02 — дуга по часовой, G03 — против часовой.", topic: "G-коды" },
-  { q: "Что такое M03?", a: "Включение шпинделя по часовой стрелке (правое вращение).", topic: "M-коды" }
+  { q: "Что делают G02 и G03?", a: "G02 — дуга по часовой, G03 — против часовой.", topic: "G-коды" },
+  { q: "Что такое M03?", a: "Включение шпинделя по часовой стрелке.", topic: "M-коды" }
 ];
 
 var GLOSSARY = [
-  { term: "СОЖ", def: "Смазочно-охлаждающая жидкость. Применяется для отвода тепла, смазки и удаления стружки." },
-  { term: "Люнет", def: "Приспособление для поддержки длинных заготовок при токарной обработке." },
-  { term: "Борштанга", def: "Оправка для установки резца при растачивании внутренних отверстий." },
-  { term: "Шпиндель", def: "Вращающийся вал станка, на котором закрепляется заготовка (или инструмент)." },
-  { term: "Подача (S, F)", def: "Перемещение инструмента или заготовки за один оборот (мм/об) или за минуту (мм/мин)." },
-  { term: "Глубина резания (t)", def: "Толщина слоя металла, снимаемого за один проход. (D - d) / 2." },
-  { term: "Скорость резания (Vc)", def: "Скорость перемещения режущей кромки относительно заготовки. м/мин." },
-  { term: "УЧПУ", def: "Устройство числового программного управления. Компьютер станка." }
+  { term: "СОЖ", def: "Смазочно-охлаждающая жидкость." },
+  { term: "Люнет", def: "Приспособление для поддержки длинных заготовок." },
+  { term: "Борштанга", def: "Оправка для установки резца при растачивании." },
+  { term: "Шпиндель", def: "Вращающийся вал станка." },
+  { term: "Подача (S, F)", def: "Перемещение инструмента за оборот или минуту." },
+  { term: "Глубина резания (t)", def: "Толщина слоя металла за проход." },
+  { term: "Скорость резания (Vc)", def: "Скорость кромки относительно заготовки." },
+  { term: "УЧПУ", def: "Устройство числового программного управления." }
 ];
 
 var ROLE_LABELS = { student: "🎓 Студент", admin: "🛡 Администратор", teacher: "👨‍🏫 Преподаватель", curator: "🎓 Куратор группы", tester: "🧪 Тестировщик" };
 
-var state = {
-  student: null, staff: null, progress: {}, results: {}, selfResults: {},
-  practiceStatus: {}, activity: [], favorites: [], lastSync: ""
-};
+var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, practiceStatus: {}, activity: [], favorites: [], lastSync: "" };
 
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
@@ -63,14 +60,32 @@ function quoteOfDay(){ return QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.
 function fmtRel(iso){ var d = new Date(iso), diff = (Date.now() - d) / 1000; if (diff < 60) return "только что"; if (diff < 3600) return Math.floor(diff / 60) + " мин назад"; if (diff < 86400) return Math.floor(diff / 3600) + " ч назад"; return d.toLocaleDateString("ru-RU"); }
 function setSyncStatus(text){ var n = $("syncStatus"); if (!n) return; n.textContent = text; setTimeout(function(){ if (n.textContent === text) n.textContent = ""; }, 3000); }
 
+/* УВЕДОМЛЕНИЯ (TOASTS) */
+window.showToast = function(msg, type) {
+  var container = document.querySelector(".toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  var toast = document.createElement("div");
+  toast.className = "toast " + (type || "");
+  toast.innerHTML = (type === "ok" ? "✅ " : type === "err" ? "❌ " : "ℹ️ ") + escapeHtml(msg);
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.classList.add("out");
+    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
+  }, 3000);
+};
+
 function toggleFavorite(topicId, event) {
   if (event) event.stopPropagation();
   if (!state.favorites) state.favorites = [];
   var idx = state.favorites.indexOf(topicId);
-  if (idx >= 0) state.favorites.splice(idx, 1); else state.favorites.push(topicId);
+  if (idx >= 0) { state.favorites.splice(idx, 1); window.showToast("Удалено из избранного"); } 
+  else { state.favorites.push(topicId); window.showToast("Добавлено в избранное", "ok"); }
   saveStudentData();
-  if (location.hash === "#/" || location.hash === "") renderHome();
-  else renderTopic(topicId, "passport");
+  if (location.hash === "#/" || location.hash === "") renderHome(); else renderTopic(topicId, "passport");
 }
 
 function loadStudentData(){
@@ -171,7 +186,7 @@ function initDrawer(){
   $("drawerAssistant").addEventListener("click", ()=>{ closeDrawer(); if(window.openAssistant) window.openAssistant(); });
   document.querySelector('#drawer [data-act="role"]').addEventListener("click", ()=>{ closeDrawer(); openRoleModal(); });
   document.querySelector('#drawer [data-act="theme"]').addEventListener("click", ()=>{ closeDrawer(); openThemeModal(); });
-  $("drawerSyncBtn").addEventListener("click", ()=>{ closeDrawer(); cloudSave(false).then(ok=>{ if(ok) alert("Синхронизировано"); }); });
+  $("drawerSyncBtn").addEventListener("click", ()=>{ closeDrawer(); cloudSave(false).then(ok=>{ if(ok) window.showToast("Синхронизировано", "ok"); }); });
   $("drawerCabinetBtn").addEventListener("click", ()=>{ closeDrawer(); location.hash="#/staff"; });
   document.querySelector('#drawer [data-act="logout"]').addEventListener("click", ()=>{ closeDrawer(); handleLogout(); });
 }
@@ -283,7 +298,7 @@ function renderCalculatorPage(){
   app.appendChild(box);
   box.querySelector("#calcBtn").addEventListener("click", ()=>{
     var vc = parseFloat(box.querySelector("#calcVc").value), d = parseFloat(box.querySelector("#calcD").value);
-    if (!vc || !d) { box.querySelector("#calcResult").textContent = "Введите значения"; return; }
+    if (!vc || !d) { window.showToast("Введите значения", "err"); return; }
     var n = Math.round((1000 * vc) / (Math.PI * d));
     box.querySelector("#calcResult").innerHTML = "Частота: <b>" + n + " об/мин</b>";
   });
@@ -328,8 +343,6 @@ function route(){
   window.scrollTo(0, 0);
 }
 
-// Заглушка renderTopic, если он нужен в script.js (у вас он в extra или самом script)
-// Если он у вас не вынесен, я добавлю его сюда.
 function renderTopic(id, tab, mode){
   tab = tab || "passport"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = ""; $("crumbs").textContent = t.topic.code + " · " + t.topic.title;
@@ -342,11 +355,15 @@ function renderTopic(id, tab, mode){
   });
   app.appendChild(tw); var panel = el('<section class="panel"></section>'); app.appendChild(panel);
   
-  if (tab === "passport") panel.innerHTML = '<h2>Паспорт часов</h2><p>Всего: <b>'+t.topic.hours.total+'</b> ч.</p><p>Теория: '+t.topic.hours.theory+' ч.</p><p>Практика: '+t.topic.hours.practice+' ч.</p>';
-  if (tab === "lecture") { panel.innerHTML = '<h2>Лекция</h2>'; (t.topic.lectures||[]).forEach(l=>panel.appendChild(el('<h3>'+l.code+'. '+l.title+'</h3><div>'+l.content+'</div>'))); }
-  if (tab === "practice") { panel.innerHTML = '<h2>Практика</h2>'; (t.topic.practicals||[]).forEach(p=>panel.appendChild(el('<div class="practice"><h3>'+p.code+'. '+p.title+'</h3><p>'+p.task+'</p></div>'))); }
-  if (tab === "self") { panel.innerHTML = '<h2>Самостоятельная</h2>'; (t.topic.selfChecks||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>'))); }
-  if (tab === "test") { panel.innerHTML = '<h2>Тест</h2>'; (t.topic.test||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>'))); }
+  // Кнопка печати
+  var printBtn = el('<button class="btn ghost" style="margin-bottom:12px" onclick="window.print()">🖨 Распечатать тему</button>');
+  panel.appendChild(printBtn);
+
+  if (tab === "passport") panel.appendChild(el('<h2>Паспорт часов</h2><p>Всего: <b>'+t.topic.hours.total+'</b> ч.</p><p>Теория: '+t.topic.hours.theory+' ч.</p><p>Практика: '+t.topic.hours.practice+' ч.</p>'));
+  if (tab === "lecture") { panel.appendChild(el('<h2>Лекция</h2>')); (t.topic.lectures||[]).forEach(l=>panel.appendChild(el('<h3>'+l.code+'. '+l.title+'</h3><div>'+l.content+'</div>'))); }
+  if (tab === "practice") { panel.appendChild(el('<h2>Практика</h2>')); (t.topic.practicals||[]).forEach(p=>panel.appendChild(el('<div class="practice"><h3>'+p.code+'. '+p.title+'</h3><p>'+p.task+'</p></div>'))); }
+  if (tab === "self") { panel.appendChild(el('<h2>Самостоятельная</h2>')); (t.topic.selfChecks||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>'))); }
+  if (tab === "test") { panel.appendChild(el('<h2>Тест</h2>')); (t.topic.test||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>'))); }
   window.scrollTo(0, 0);
 }
 
