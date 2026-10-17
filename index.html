@@ -9,7 +9,7 @@
 <title>МДК 07.01 — Технология обработки деталей на станках с ЧПУ</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjYzE0YTJhIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI5NiIgcj0iNTIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI5NiIgY3k9Ijk2IiByPSIyOCIgZmlsbD0iI2MxNGEyYSIvPjwvc3ZnPg==">
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   (function(){
     try {
@@ -22,8 +22,7 @@
     } catch(e){}
   })();
 </script>
-
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 
@@ -34,51 +33,32 @@
       <h1>Вход студента</h1>
     </div>
     <p class="login-sub">Введите ФИО и группу. Прогресс сохранится в браузере и в облаке.</p>
-
     <label for="loginName">ФИО студента</label>
     <input id="loginName" type="text" placeholder="Иванов Иван Иванович" autocomplete="name">
     <div class="field-hint" id="nameHint"></div>
-
     <label for="loginGroup">Группа</label>
     <input id="loginGroup" type="text" placeholder="ТМ-21" autocomplete="off" list="groupList">
     <datalist id="groupList">
       <option value="ТМ-21"><option value="ТМ-22"><option value="ТМ-23">
-      <option value="ТС-21"><option value="ТС-22"><option value="ТМ-20">
-      <option value="ТМ-3">
+      <option value="ТС-21"><option value="ТС-22"><option value="ТМ-20"><option value="ТМ-3">
     </datalist>
     <div class="field-hint" id="groupHint"></div>
-
     <label>Аватар</label>
     <div class="avatar-picker-inline" id="loginAvatarPicker"></div>
-
     <button id="loginBtn" class="btn login-btn">Войти как студент</button>
-    <p class="login-hint">
-      Служебный вход для сотрудников —
-      <a href="#" id="loginStaffLink" style="color:var(--accent);text-decoration:underline">логин и пароль</a>
-    </p>
+    <p class="login-hint">Служебный вход для сотрудников — <a href="#" id="loginStaffLink" style="color:var(--accent);text-decoration:underline">логин и пароль</a></p>
   </div>
 </div>
 
 <header class="topbar">
-  <button class="burger-btn" id="burgerBtn" title="Меню" aria-label="Меню">
-    <span></span><span></span><span></span>
-  </button>
-
-  <a class="brand" href="#/" onclick="goHome(event)">
-    <span class="brand-badge">МДК 07.01</span>
-    <span class="brand-title">Оператор станков с ПУ</span>
-  </a>
-
+  <button class="burger-btn" id="burgerBtn" title="Меню" aria-label="Меню"><span></span><span></span><span></span></button>
+  <a class="brand" href="#/" onclick="goHome(event)"><span class="brand-badge">МДК 07.01</span><span class="brand-title">Оператор станков с ПУ</span></a>
   <div class="crumbs" id="crumbs"></div>
-
   <div class="topbar-status">
-    <span class="status-pill" id="onlineCount" title="Сейчас онлайн">🌐 —</span>
+    <span class="status-pill" id="xpCount" title="Опыт">🌟 0 XP</span>
     <span class="status-pill" id="netStatus" title="Соединение">📶</span>
   </div>
-
-  <button class="theme-toggle" id="themeToggle" title="Сменить тему" aria-label="Сменить тему">
-    <span class="theme-icon" id="themeIcon">🎨</span>
-  </button>
+  <button class="theme-toggle" id="themeToggle" title="Сменить тему" aria-label="Сменить тему"><span class="theme-icon" id="themeIcon">🎨</span></button>
 </header>
 
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -98,11 +78,10 @@
   <nav class="drawer-nav" id="drawerNav">
     <div class="drawer-section">Главное</div>
     <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
-    <!-- ВОЗВРАЩЕН ЛИЧНЫЙ КАБИНЕТ -->
     <a class="drawer-item" data-go="#/profile">👤 <span>Личный кабинет</span></a>
     <a class="drawer-item" data-go="#/schedule">📅 <span>Расписание</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
-    <a class="drawer-item" data-go="#/calendar">🗓 <span>Календарь</span></a>
+    <a class="drawer-item" data-go="#/events">🎉 <span>Ивенты</span></a>
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
 
     <div class="drawer-section">Обучение и контроль</div>
@@ -112,17 +91,19 @@
     <a class="drawer-item" data-go="#/gcode-reference">📖 <span>Справочник G/M</span></a>
     <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
 
+    <div class="drawer-section">Перемена (Игры)</div>
+    <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
+    <a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
+    <a class="drawer-item" data-go="#/crossword">📝 <span>Кроссворд</span></a>
+
     <div class="drawer-section">Общение</div>
     <a class="drawer-item" data-go="#/chat">💭 <span>Чат группы</span></a>
-    <a class="drawer-item" data-go="#/comments">💬 <span>Отзывы о курсе</span></a>
-    <a class="drawer-item" data-go="#/questions">❓ <span>Вопросы преподавателю</span></a>
     <a class="drawer-item" data-go="#/gallery">🖼 <span>Галерея работ</span></a>
 
     <div class="drawer-section">Справочно</div>
     <a class="drawer-item" data-go="#/calculator">🧮 <span>Калькулятор режимов</span></a>
     <a class="drawer-item" data-go="#/glossary">📖 <span>Глоссарий терминов</span></a>
     <a class="drawer-item" data-go="#/gosts">📐 <span>ГОСТы</span></a>
-    <a class="drawer-item" data-go="#/qr">📱 <span>QR-код</span></a>
   </nav>
 
   <div class="drawer-foot">
@@ -130,54 +111,36 @@
       <button class="drawer-action-btn" id="drawerSearch" title="Поиск (Ctrl+K)">🔍 <span>Поиск</span></button>
       <button class="drawer-action-btn" id="drawerAssistant" title="Помощник (Ctrl+/)">🤖 <span>Помощник</span></button>
     </div>
-    
     <button class="drawer-item drawer-item-btn" data-act="role">🎭 <span>Сменить роль</span></button>
     <button class="drawer-item drawer-item-btn" data-act="theme">🌈 <span>Сменить тему</span></button>
-    
     <button class="drawer-item drawer-item-btn" data-act="staffcab" hidden id="drawerCabinetBtn">🛠 <span>Кабинет преподавателя</span></button>
     <button class="drawer-item drawer-item-btn" data-act="sync" hidden id="drawerSyncBtn">☁ <span>Синхронизировать</span></button>
-    
     <button class="drawer-item drawer-item-btn danger" data-act="logout" style="margin-top:8px">🚪 <span>Выйти из аккаунта</span></button>
   </div>
 </aside>
 
-<div class="announce-bar" id="announceBar" hidden>
-  <span class="announce-icon">📣</span>
-  <span class="announce-text" id="announceText"></span>
-  <button class="announce-close" id="announceClose" aria-label="Закрыть">✕</button>
+<div id="pwaBanner" class="pwa-banner" hidden>
+  <div class="pwa-text">Установите МДК 07.01 на главный экран!</div>
+  <button class="btn pwa-install" id="pwaInstallBtn">Установить</button>
+  <button class="pwa-close" id="pwaCloseBtn">✕</button>
 </div>
 
 <main id="app"></main>
-
-<footer class="footer">
-  ГБПОУ МО «Луховицкий авиационный технический техникум» · Профессионалитет · 2024 · <b>v16.0</b>
-</footer>
-
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · Профессионалитет · 2024 · <b>v17.0</b></footer>
 <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
-<script src="data.js?v=16"></script>
-<script src="data-extra.js?v=16"></script>
-<script src="info.js?v=16"></script>
-<script src="script.js?v=16"></script>
-<script src="extra.js?v=16"></script>
-<script src="final.js?v=16"></script>
-<script src="links.js?v=16"></script>
-<script src="rating.js?v=16"></script>
-<script src="schedule.js?v=16"></script>
-<script src="journal.js?v=16"></script>
-<script src="assistant.js?v=16"></script>
+<script src="data.js?v=17"></script>
+<script src="data-extra.js?v=17"></script>
+<script src="info.js?v=17"></script>
+<script src="script.js?v=17"></script>
+<script src="extra.js?v=17"></script>
+<script src="final.js?v=17"></script>
+<script src="links.js?v=17"></script>
+<script src="rating.js?v=17"></script>
+<script src="schedule.js?v=17"></script>
+<script src="journal.js?v=17"></script>
+<script src="minigames.js?v=17"></script>
+<script src="easter-eggs.js?v=17"></script>
+<script src="assistant.js?v=17"></script>
 </body>
 </html>
-<!-- ВНУТРИ <nav class="drawer-nav" id="drawerNav"> -->
-<!-- Добавьте эти строки после "Календарь" и "Статистика": -->
-<a class="drawer-item" data-go="#/events">🎉 <span>Ивенты</span></a>
-
-<!-- А в самый низ меню (перед "Справочно" или после): -->
-<div class="drawer-section">Перемена (Игры)</div>
-<a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
-<a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
-<a class="drawer-item" data-go="#/crossword">📝 <span>Кроссворд</span></a>
-
-<!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ (в самом низу body): -->
-<script src="minigames.js?v=16"></script>
-<script src="easter-eggs.js?v=16"></script>
