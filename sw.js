@@ -1,10 +1,10 @@
-/* Service Worker МДК 07.01 — кэш оболочки + офлайн-фоллбэк */
-
-const CACHE = "mdk0701-v1";
+/* Service Worker МДК 07.01 */
+const CACHE = "mdk0701-v5-final"; // <--- ОБНОВЛЕНО
 const ASSETS = [
   "./", "./index.html",
   "./style.css",
-  "./data.js", "./info.js", "./script.js", "./extra.js",
+  "./data.js", "./info.js", "./script.js", "./extra.js", "./data-extra.js",
+  "./final.js", "./links.js", "./rating.js", "./schedule.js", "./journal.js", "./assistant.js",
   "./manifest.json"
 ];
 
@@ -25,15 +25,8 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   const url = new URL(req.url);
+  if (url.hostname.includes("script.google.com") || url.hostname.includes("api.qrserver.com") || url.hostname.includes("quickchart.io")) return;
 
-  // Не кэшируем запросы к Google Apps Script и внешним API
-  if (url.hostname.includes("script.google.com") ||
-      url.hostname.includes("open-meteo.com") ||
-      url.hostname.includes("api.qrserver.com")) {
-    return;
-  }
-
-  // Навигация — network-first с fallback на кэш
   if (req.mode === "navigate") {
     e.respondWith(
       fetch(req).then(res => {
@@ -45,7 +38,6 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Статика — cache-first
   e.respondWith(
     caches.match(req).then(hit => hit || fetch(req).then(res => {
       if (res.ok && req.method === "GET" && url.origin === location.origin) {

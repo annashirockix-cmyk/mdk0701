@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (Полный, с восстановленным Дашбордом)
+   МДК 07.01 — extra.js (ПОЛНЫЙ КОД)
    ============================================================ */
 "use strict";
 
@@ -70,13 +70,12 @@ window.openUploadModal = function(topicId, workCode, workTitle){
 
 window.renderTeacherPage = function(){ const app = document.getElementById("app"); app.innerHTML = "<h2>Панель преподавателя</h2><p>В разработке</p>"; };
 
-/* ДАШБОРД (ПОЛНОСТЬЮ ВОССТАНОВЛЕН) */
+/* ДАШБОРД (ВОССТАНОВЛЕН) */
 window.renderDashboard = function(){
   const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Статистика";
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
   app.appendChild(el(`<section class="hero"><div class="meta">Аналитика</div><h1>Мой прогресс</h1><p>Видно, что пройдено, что даётся сложнее, и ваша динамика.</p></section>`));
 
-  // ДОСТИЖЕНИЯ
   let topicsDone = 0;
   COURSE.sections.forEach(sec => sec.topics.forEach(t => { if ((state.progress[t.id]?.done || 0) >= 5) topicsDone++; }));
   const tests5 = Object.values(state.results).filter(r => r.grade === 5).length;
@@ -91,12 +90,9 @@ window.renderDashboard = function(){
 
   const achBlock = el(`<section class="module"><h2>🏆 Мои достижения</h2><div class="achievements-grid"></div></section>`);
   const grid = achBlock.querySelector(".achievements-grid");
-  achData.forEach(a => {
-    grid.appendChild(el(`<div class="ach-card ${a.unlocked ? 'unlocked' : ''}"><span class="ach-icon">${a.icon}</span><div class="ach-title">${a.title}</div><div class="ach-desc">${a.desc}</div></div>`));
-  });
+  achData.forEach(a => { grid.appendChild(el(`<div class="ach-card ${a.unlocked ? 'unlocked' : ''}"><span class="ach-icon">${a.icon}</span><div class="ach-title">${a.title}</div><div class="ach-desc">${a.desc}</div></div>`)); });
   app.appendChild(achBlock);
 
-  // ОБЩИЕ ПОКАЗАТЕЛИ
   const kpi = el(`<section class="module"><h2>Общие показатели</h2><div class="kpis"></div></section>`);
   const kgrid = kpi.querySelector(".kpis");
   kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Тем пройдено</div><div class="k-value">${topicsDone}</div></div>`));
@@ -104,7 +100,6 @@ window.renderDashboard = function(){
   kgrid.appendChild(el(`<div class="kpi"><div class="k-label">Достижений</div><div class="k-value">${achData.filter(a=>a.unlocked).length} / 4</div></div>`));
   app.appendChild(kpi);
 
-  // PIE CHART
   const pieSection = el(`<section class="module"><h2>Структура прогресса</h2><div class="pie-wrap"></div></section>`);
   const pw = pieSection.querySelector(".pie-wrap");
   const slices = [
@@ -117,14 +112,11 @@ window.renderDashboard = function(){
   pw.appendChild(legend);
   app.appendChild(pieSection);
 
-  // GRAPHIC
   const weeks = activityByWeek();
   const chart = el(`<section class="module"><h2>Активность по неделям</h2><div class="week-chart"></div></section>`);
   const bars = chart.querySelector(".week-chart");
   const maxC = Math.max(1, ...weeks.map(w => w.count));
-  weeks.forEach((w, i) => {
-    bars.appendChild(el(`<div class="week-bar"><div class="wb-count">${w.count}</div><div class="wb-bar" style="height:${Math.round(w.count / maxC * 100)}%"></div><div class="wb-label">${i === weeks.length - 1 ? "сейчас" : "−" + (weeks.length - i - 1) + "н"}</div></div>`));
-  });
+  weeks.forEach((w, i) => { bars.appendChild(el(`<div class="week-bar"><div class="wb-count">${w.count}</div><div class="wb-bar" style="height:${Math.round(w.count / maxC * 100)}%"></div><div class="wb-label">${i === weeks.length - 1 ? "сейчас" : "−" + (weeks.length - i - 1) + "н"}</div></div>`)); });
   app.appendChild(chart);
 };
 
@@ -149,7 +141,7 @@ function activityByWeek(){
   return weeks;
 }
 
-/* G-CODE С ВИЗУАЛИЗАТОРОМ */
+/* G-CODE ВИЗУАЛИЗАТОР */
 const GCODE_SAMPLES = {
   "ПЗ 4": `N10 G21 G40 G90\nN20 T0101\nN30 S1200 M3\nN40 G0 X42 Z2\nN50 G1 Z0 F0.15\nN60 X-0.5\nN70 G0 X42 Z2\nN80 T0202\nN90 S1400 M3\nN100 G1 X30 Z-40 F0.1\nN110 G3 X20 Z-45 R5\nN120 G0 X50 Z50\nN130 M5\nN140 M30`
 };
@@ -192,7 +184,7 @@ window.openGCodeModal = function(workCode){
 
 window.renderGCodeReferencePage = function(){ const app = document.getElementById("app"); app.innerHTML = "<h2>Справочник G/M</h2><button class='btn' onclick='openGCodeModal()'>Открыть визуализатор</button>"; };
 
-/* ЧАТ (ПОЛНОСТЬЮ ВОССТАНОВЛЕН) */
+/* ЧАТ (ВОССТАНОВЛЕН) */
 window.renderChatPage = function(){
   const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Чат группы " + state.student.group;
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));

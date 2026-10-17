@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (Полный, с восстановленными темами)
+   МДК 07.01 — script.js (ФИНАЛЬНАЯ СБОРКА)
    ============================================================ */
 "use strict";
 
@@ -62,19 +62,11 @@ function setSyncStatus(text){ var n = $("syncStatus"); if (!n) return; n.textCon
 
 window.showToast = function(msg, type) {
   var container = document.querySelector(".toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.className = "toast-container";
-    document.body.appendChild(container);
-  }
-  var toast = document.createElement("div");
-  toast.className = "toast " + (type || "");
+  if (!container) { container = document.createElement("div"); container.className = "toast-container"; document.body.appendChild(container); }
+  var toast = document.createElement("div"); toast.className = "toast " + (type || "");
   toast.innerHTML = (type === "ok" ? "✅ " : type === "err" ? "❌ " : "ℹ️ ") + escapeHtml(msg);
   container.appendChild(toast);
-  setTimeout(function() {
-    toast.classList.add("out");
-    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
-  }, 3000);
+  setTimeout(function() { toast.classList.add("out"); setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300); }, 3000);
 };
 
 function toggleFavorite(topicId, event) {
@@ -274,17 +266,7 @@ function renderHome(){
     sec.topics.forEach(t=>{
       var done = (state.progress[t.id] && state.progress[t.id].done) || 0;
       var isFav = (state.favorites || []).indexOf(t.id) !== -1;
-      // Исправленная верстка карточки (звездочка и прогресс в одном флекс-блоке)
-      var card = el(
-        '<div class="topic">' +
-          '<div class="t-code">'+t.code+'</div>' +
-          '<div class="t-body"><div class="t-title">'+t.title+'</div><div class="t-meta">'+t.hours.total+' ак.ч</div></div>' +
-          '<div class="t-right">' +
-            '<div class="t-progress">'+done+'/5</div>' +
-            '<div class="t-fav '+(isFav?'active':'')+'">★</div>' +
-          '</div>' +
-        '</div>'
-      );
+      var card = el('<div class="topic"><div class="t-code">'+t.code+'</div><div class="t-body"><div class="t-title">'+t.title+'</div><div class="t-meta">'+t.hours.total+' ак.ч</div></div><div class="t-right"><div class="t-progress">'+done+'/5</div><div class="t-fav '+(isFav?'active':'')+'">★</div></div></div>');
       card.addEventListener("click", ()=>location.hash="#/topic/"+t.id);
       card.querySelector(".t-fav").addEventListener("click", e=>toggleFavorite(t.id, e));
       list.appendChild(card);
@@ -292,10 +274,18 @@ function renderHome(){
     app.appendChild(list);
   });
 
+  if (c.videos && c.videos.length){
+    var vidsBlock = el('<section class="module"><div class="meta">Видеоматериалы</div><h2>Видеоуроки</h2><div class="videos"></div></section>');
+    var vwrap = vidsBlock.querySelector(".videos");
+    c.videos.forEach(v=>{ vwrap.appendChild(el('<div class="video-card"><video controls preload="metadata"><source src="'+v.src+'" type="video/mp4"></video><div class="v-cap">'+escapeHtml(v.title)+'</div></div>')); });
+    app.appendChild(vidsBlock);
+  }
+
   var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div class="test-actions" style="justify-content:center"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
   app.appendChild(flashBlock); var hArea = flashBlock.querySelector("#homeFlashcardArea"), hIndex = 0;
   function renderHomeCard() { var card = FLASHCARDS[hIndex]; hArea.innerHTML = '<div class="flashcard"><div class="flashcard-inner"><div class="flashcard-front"><div style="color:var(--accent);margin-bottom:10px">'+card.topic+'</div><h3>'+card.q+'</h3></div><div class="flashcard-back"><h3>Ответ</h3><p>'+card.a+'</p></div></div></div>'; hArea.querySelector(".flashcard").addEventListener("click", function(){ this.classList.toggle("flipped"); }); }
   renderHomeCard(); flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%FLASHCARDS.length; renderHomeCard(); });
+  
   if (window.renderCommentsBlock && state.student) app.appendChild(window.renderCommentsBlock());
 }
 
@@ -352,7 +342,7 @@ function route(){
   window.scrollTo(0, 0);
 }
 
-/* ПОЛНОЦЕННАЯ СТРАНИЦА ТЕМЫ (Восстановлены вкладки и контент) */
+/* ВОССТАНОВЛЕННЫЕ ВКЛАДКИ ТЕМЫ */
 function renderTopic(id, tab, mode){
   tab = tab || "passport"; mode = mode || "control"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = ""; $("crumbs").textContent = t.topic.code + " · " + t.topic.title;
@@ -382,16 +372,17 @@ function renderTopic(id, tab, mode){
   if (tab === "practice") {
     panel.appendChild(el('<h2>Практические работы</h2>'));
     (t.topic.practicals||[]).forEach(p=>{
-      panel.appendChild(el('<div class="practice"><div class="practice-head"><div class="p-code">'+p.code+'</div></div><div class="p-title">'+p.title+'</div><p>'+(p.task||'')+'</p><button class="btn" onclick="window.showToast(\'Загрузка файлов в демо-режиме\', \'ok\')">📎 Прикрепить работу</button></div>'));
+      var status = "none"; // Упрощено для стабильности
+      panel.appendChild(el('<div class="practice"><div class="p-code">'+p.code+'</div><div class="p-title">'+p.title+'</div><p>'+(p.task||'')+'</p><button class="btn" onclick="window.showToast(\'Функция загрузки файлов в демо-режиме\', \'ok\')">📎 Прикрепить работу</button></div>'));
     });
   }
   if (tab === "self") {
     panel.appendChild(el('<h2>Самостоятельная работа</h2>'));
-    (t.topic.selfChecks||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>')));
+    (t.topic.selfChecks||[]).forEach(q=>panel.appendChild(el('<div class="question"><div class="q-text">'+q.q+'</div></div>')));
   }
   if (tab === "test") {
     panel.appendChild(el('<h2>Контроль темы</h2>'));
-    (t.topic.test||[]).forEach(q=>panel.appendChild(el('<p>'+q.q+'</p>')));
+    (t.topic.test||[]).forEach(q=>panel.appendChild(el('<div class="question"><div class="q-text">'+q.q+'</div></div>')));
   }
   window.scrollTo(0, 0);
 }
