@@ -1,12 +1,12 @@
 /* ============================================================
-   МДК 07.01 — script.js (v26.0 BULLETPROOF)
+   МДК 07.01 — script.js (v28.0 — FINAL)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [] };
 
-// Восстановление данных
+// Восстановление сессии
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
 
@@ -45,7 +45,7 @@ function saveStudentData(){
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
 }
 
-/* ====== ГЛОБАЛЬНЫЕ ФУНКЦИИ ВХОДА ====== */
+/* ====== ВХОД ====== */
 
 window.doStudentLogin = function() {
   var n = $("loginName") ? $("loginName").value.trim() : "";
@@ -54,6 +54,7 @@ window.doStudentLogin = function() {
   
   state.student = { name: n, group: g.toUpperCase() };
   localStorage.setItem("mdk0701.student", JSON.stringify(state.student));
+  
   loadStudentData(); 
   if($("loginOverlay")) $("loginOverlay").hidden = true; 
   renderUserChip(); 
@@ -67,18 +68,21 @@ window.doTeacherLogin = function() {
   var btn = $("staffLoginBtn");
 
   if (!user || !pass) { alert("Введите логин и пароль!"); return; }
+  
   if(btn) { btn.textContent = "Проверяем..."; btn.disabled = true; }
 
   var isFinished = false;
   var timeout = setTimeout(() => {
-    if(isFinished) return; isFinished = true;
-    if(confirm("Сервер Google не отвечает (таймаут 10 сек).\n\nХотите проверить работу сервера напрямую в новой вкладке?")) {
-      window.open(APPS_SCRIPT_URL + "?action=login&username=" + user + "&password=" + pass, '_blank');
-    }
+    if(isFinished) return; 
+    isFinished = true;
+    alert("❌ Сервер не ответил за 10 секунд.\nВозможно, блокировщик рекламы (AdBlock) мешает запросу. Отключите его для этого сайта.");
     if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
   }, 10000);
 
-  fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass))
+  // КЛЮЧЕВОЕ: cache: 'no-store' отключает любое кэширование этого запроса
+  var url = APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass);
+  
+  fetch(url, { cache: 'no-store' })
     .then(r => r.json()).then(d => {
       if(isFinished) return; isFinished = true; clearTimeout(timeout);
       
@@ -86,21 +90,20 @@ window.doTeacherLogin = function() {
         state.staff = { role: d.role, name: d.name }; 
         sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
         if($("loginOverlay")) $("loginOverlay").hidden = true; 
-        renderUserChip(); route(); 
+        renderUserChip(); 
+        route(); 
         window.showToast("Добро пожаловать, " + d.name, "ok");
       } else {
-        alert("ОШИБКА: " + (d.error || "Неверный логин или пароль"));
+        alert("ОШИБКА: Неверный логин или пароль.");
         if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
       }
     }).catch((err) => {
       if(isFinished) return; isFinished = true; clearTimeout(timeout);
-      console.error(err);
-      alert("ОШИБКА СЕТИ (CORS).\n\nСкорее всего, ваш Google Apps Script развернут неправильно.\nНужно: Развернуть -> Управление развертываниями -> Изменить -> Кто имеет доступ: 'Все' (Anyone).");
+      console.error("Ошибка Fetch:", err);
+      alert("❌ ОШИБКА СЕТИ (CORS).\n\nБраузер заблокировал запрос. Попробуйте открыть сайт в режиме Инкогнито (чтобы отключить расширения).");
       if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
     });
 };
-
-/* ====== ОСТАЛЬНОЙ ФУНКЦИОНАЛ ====== */
 
 function renderUserChip(){
   if (state.staff) { 
@@ -117,14 +120,12 @@ function renderUserChip(){
 function closeDrawer(){ if($("drawer")) $("drawer").classList.remove("open"); if($("drawerOverlay")) $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ if($("drawer")) $("drawer").classList.toggle("open"); if($("drawerOverlay")) $("drawerOverlay").classList.toggle("open"); }
 
+/* ====== СТРАНИЦЫ ====== */
+
 function renderHome(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; var c = getCourse();
   if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
   
-  fetch(APPS_SCRIPT_URL+"?action=announcement").then(r=>r.json()).then(d=>{
-    if(d.ok && d.text) app.prepend(el(`<div style="background:var(--accent);color:#fff;padding:16px;border-radius:8px;margin-bottom:24px;font-weight:bold;">📢 ${d.text}</div>`));
-  }).catch(()=>{});
-
   app.appendChild(el(`<section class="hero"><h1>${c.title}</h1><p>${c.module}</p></section>`));
   
   c.sections.forEach(sec => {
