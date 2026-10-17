@@ -34,7 +34,7 @@
       <span class="brand-badge">МДК 07.01</span>
       <h1>Вход студента</h1>
     </div>
-    <p class="login-sub">Введите ФИО и группу, чтобы начать работу. Прогресс сохранится в браузере и в облаке.</p>
+    <p class="login-sub">Введите ФИО и группу. Прогресс сохранится в браузере и в облаке.</p>
 
     <label for="loginName">ФИО студента</label>
     <input id="loginName" type="text" placeholder="Иванов Иван Иванович" autocomplete="name">
@@ -83,7 +83,6 @@
   </button>
 </header>
 
-<!-- ЗАТЕМНЕНИЕ ПОД ШТОРКОЙ -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
 
 <!-- БОКОВАЯ ШТОРКА -->
@@ -102,6 +101,11 @@
   <nav class="drawer-nav" id="drawerNav">
     <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
 
+    <div class="drawer-section">Учебный процесс</div>
+    <a class="drawer-item" data-go="#/schedule">📅 <span>Расписание</span></a>
+    <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
+    <a class="drawer-item" data-go="#/calendar">🗓 <span>Календарь</span></a>
+
     <div class="drawer-section">Итоговые блоки</div>
     <a class="drawer-item" data-go="#/final-training">🏋️ <span>Итоговая тренировка</span></a>
     <a class="drawer-item" data-go="#/final-exam">🎓 <span>Итоговый экзамен</span></a>
@@ -117,13 +121,13 @@
     <a class="drawer-item" data-go="#/gallery">🖼 <span>Галерея работ</span></a>
 
     <div class="drawer-section">Справочно</div>
-    <a class="drawer-item" data-go="#/calendar">📅 <span>Календарь</span></a>
     <a class="drawer-item" data-go="#/gosts">📐 <span>ГОСТы</span></a>
     <a class="drawer-item" data-go="#/qr">📱 <span>QR-код</span></a>
   </nav>
 
   <div class="drawer-foot">
     <button class="drawer-item drawer-item-btn" id="drawerSearch">🔍 <span>Поиск (Ctrl+K)</span></button>
+    <button class="drawer-item drawer-item-btn" id="drawerAssistant">🤖 <span>Помощник (Ctrl+/)</span></button>
     <button class="drawer-item drawer-item-btn" data-act="role">🎭 <span>Сменить роль</span></button>
     <button class="drawer-item drawer-item-btn" data-act="theme">🌈 <span>Сменить тему</span></button>
     <button class="drawer-item drawer-item-btn" data-act="staffcab" hidden id="drawerCabinetBtn">🛠 <span>Открыть кабинет</span></button>
@@ -132,7 +136,6 @@
   </div>
 </aside>
 
-<!-- БАННЕР ОБЪЯВЛЕНИЙ -->
 <div class="announce-bar" id="announceBar" hidden>
   <span class="announce-icon">📣</span>
   <span class="announce-text" id="announceText"></span>
@@ -155,5 +158,8 @@
 <script src="final.js"></script>
 <script src="links.js"></script>
 <script src="rating.js"></script>
+<script src="schedule.js"></script>
+<script src="journal.js"></script>
+<script src="assistant.js"></script>
 </body>
 </html>

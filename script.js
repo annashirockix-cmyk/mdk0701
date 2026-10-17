@@ -1,7 +1,7 @@
 /* ============================================================
    МДК 07.01 — script.js
-   Ядро: темы, видео, аватары, авторизация студента, смена роли,
-   облако, страницы тем, тесты, отчёты, роутер, боковая шторка.
+   Ядро: темы, видео, аватары, авторизация, роли, облако,
+   страницы тем, тесты, отчёты, роутер, шторка, статусы практических.
    ============================================================ */
 
 "use strict";
@@ -49,13 +49,13 @@ var ROLE_LABELS = {
   tester:  "🧪 Тестировщик"
 };
 
-/* ---------- Состояние ---------- */
 var state = {
   student: null,
   staff:   null,
   progress:    {},
   results:     {},
   selfResults: {},
+  practiceStatus: {},   /* {topicId:code} → "sent" | "checked" */
   activity:    [],
   lastSync:    ""
 };
@@ -64,43 +64,27 @@ try {
   var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null");
   if (_s && _s.name && _s.group) state.student = _s;
 } catch (e){}
-
 try {
   var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null");
   if (_st && _st.role) state.staff = _st;
 } catch (e){}
 
-/* ============================================================
-   Доступ к COURSE
-   ============================================================ */
+/* ---------- COURSE ---------- */
 function getCourse(){
   try { if (typeof COURSE !== "undefined" && COURSE && COURSE.sections) return COURSE; } catch (e){}
   try { if (typeof window !== "undefined" && window.COURSE && window.COURSE.sections) return window.COURSE; } catch (e){}
   return null;
 }
 
-/* ============================================================
-   Утилиты
-   ============================================================ */
+/* ---------- Утилиты ---------- */
 function $(id){ return document.getElementById(id); }
-
-function el(html){
-  var t = document.createElement("template");
-  t.innerHTML = String(html).trim();
-  return t.content.firstChild;
-}
-
+function el(html){ var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
 function escapeHtml(s){
   return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
-    if (c === "&") return "&amp;";
-    if (c === "<") return "&lt;";
-    if (c === ">") return "&gt;";
-    if (c === '"') return "&quot;";
-    if (c === "'") return "&#39;";
-    return c;
+    if (c === "&") return "&amp;"; if (c === "<") return "&lt;"; if (c === ">") return "&gt;";
+    if (c === '"') return "&quot;"; if (c === "'") return "&#39;"; return c;
   });
 }
-
 function findTopic(id){
   var c = getCourse();
   if (!c || !c.sections) return null;
@@ -113,17 +97,12 @@ function findTopic(id){
   }
   return null;
 }
-
 function studentKey(s){
   s = s || state.student;
   if (!s || !s.name || !s.group) return null;
   return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase());
 }
-
-function getAvatar(){
-  return (state.student && state.student.avatar) || DEFAULT_AVATAR;
-}
-
+function getAvatar(){ return (state.student && state.student.avatar) || DEFAULT_AVATAR; }
 function shuffled(a){
   var r = a.slice();
   for (var i = r.length - 1; i > 0; i--){
@@ -132,17 +111,10 @@ function shuffled(a){
   }
   return r;
 }
-
-function quoteOfDay(){
-  return QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length];
-}
-
+function quoteOfDay(){ return QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length]; }
 function fmtDate(d){
-  return new Date(d).toLocaleString("ru-RU", {
-    day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"
-  });
+  return new Date(d).toLocaleString("ru-RU", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
 }
-
 function fmtRel(iso){
   var d = new Date(iso), diff = (Date.now() - d) / 1000;
   if (diff < 60) return "только что";
@@ -151,28 +123,45 @@ function fmtRel(iso){
   if (diff < 86400 * 7) return Math.floor(diff / 86400) + " дн назад";
   return d.toLocaleDateString("ru-RU");
 }
-
 function setSyncStatus(text){
-  var n = $("syncStatus");
-  if (!n) return;
+  var n = $("syncStatus"); if (!n) return;
   n.textContent = text;
   n.className = "sync-status";
   setTimeout(function(){ if (n.textContent === text) n.textContent = ""; }, 3000);
 }
 
-/* ============================================================
-   Хранилище
-   ============================================================ */
+/* ---------- Практические: статусы ---------- */
+function practiceKey(topicId, pCode){ return topicId + ":" + pCode; }
+function getPracticeStatus(topicId, pCode){
+  return state.practiceStatus[practiceKey(topicId, pCode)] || "";
+}
+function setPracticeStatus(topicId, pCode, status){
+  var k = practiceKey(topicId, pCode);
+  if (status) state.practiceStatus[k] = status;
+  else delete state.practiceStatus[k];
+  saveStudentData();
+  scheduleCloudSave();
+}
+function canCheckPractice(){
+  return !!(state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator"));
+}
+function isStudentRole(){
+  return !!state.student && !state.staff;
+}
+
+/* ---------- Хранилище ---------- */
 function loadStudentData(){
   var k = studentKey();
   if (!k){
-    state.progress = {}; state.results = {}; state.selfResults = {}; state.activity = [];
+    state.progress = {}; state.results = {}; state.selfResults = {};
+    state.practiceStatus = {}; state.activity = [];
     return;
   }
   var ek = encodeURIComponent(k);
   state.progress    = JSON.parse(localStorage.getItem("mdk0701.progress."    + ek) || "{}");
   state.results     = JSON.parse(localStorage.getItem("mdk0701.results."     + ek) || "{}");
   state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
+  state.practiceStatus = JSON.parse(localStorage.getItem("mdk0701.practiceStatus." + ek) || "{}");
   state.activity    = JSON.parse(localStorage.getItem("mdk0701.activity."    + ek) || "[]");
   state.lastSync    = localStorage.getItem("mdk0701.lastSync." + ek) || "";
 }
@@ -182,6 +171,7 @@ function saveStudentData(){
   localStorage.setItem("mdk0701.progress."    + ek, JSON.stringify(state.progress));
   localStorage.setItem("mdk0701.results."     + ek, JSON.stringify(state.results));
   localStorage.setItem("mdk0701.selfResults." + ek, JSON.stringify(state.selfResults));
+  localStorage.setItem("mdk0701.practiceStatus." + ek, JSON.stringify(state.practiceStatus));
   localStorage.setItem("mdk0701.activity."    + ek, JSON.stringify(state.activity));
   if (state.lastSync) localStorage.setItem("mdk0701.lastSync." + ek, state.lastSync);
 }
@@ -193,35 +183,28 @@ function saveStaffSession(){
   if (state.staff) sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff));
   else sessionStorage.removeItem("mdk0701.staff");
 }
-
 function logActivity(type, text){
   state.activity = state.activity || [];
   state.activity.push({ type: type, text: text, date: new Date().toISOString() });
   if (state.activity.length > ACTIVITY_MAX) state.activity = state.activity.slice(-ACTIVITY_MAX);
   saveStudentData();
 }
-
 function saveProgress(){ saveStudentData(); scheduleCloudSave(); }
 function saveResults(){ saveStudentData(); scheduleCloudSave(); }
 function saveSelfResults(){ saveStudentData(); scheduleCloudSave(); }
 
-/* ============================================================
-   Облако
-   ============================================================ */
+/* ---------- Облако ---------- */
 var cloudTimer = null;
 var cloudBusy = false;
-
 function scheduleCloudSave(){
   if (cloudTimer) clearTimeout(cloudTimer);
   cloudTimer = setTimeout(function(){ cloudSave(true); }, 3000);
 }
-
 function cloudSave(silent){
   if (!state.student || cloudBusy || !APPS_SCRIPT_URL) return Promise.resolve(false);
   if (!navigator.onLine) return Promise.resolve(false);
   cloudBusy = true;
   if (!silent) setSyncStatus("Отправляем…");
-
   var params = new URLSearchParams();
   params.append("action", "save");
   params.append("key",    studentKey());
@@ -231,9 +214,9 @@ function cloudSave(silent){
     avatar: state.student.avatar || DEFAULT_AVATAR,
     progress: state.progress,
     results: state.results,
-    selfResults: state.selfResults
+    selfResults: state.selfResults,
+    practiceStatus: state.practiceStatus
   }));
-
   return fetch(APPS_SCRIPT_URL, { method:"POST", body: params })
     .then(function(res){ return res.json(); })
     .then(function(data){
@@ -242,15 +225,12 @@ function cloudSave(silent){
         var k = studentKey();
         if (k) localStorage.setItem("mdk0701.lastSync." + encodeURIComponent(k), state.lastSync);
         if (!silent) setSyncStatus("✔ Синхронизировано");
-        cloudBusy = false;
-        return true;
+        cloudBusy = false; return true;
       }
-      cloudBusy = false;
-      return false;
+      cloudBusy = false; return false;
     })
     .catch(function(){ cloudBusy = false; return false; });
 }
-
 function cloudLoad(){
   if (!state.student || !APPS_SCRIPT_URL) return Promise.resolve(null);
   var params = new URLSearchParams();
@@ -266,51 +246,40 @@ function cloudLoad(){
     })
     .catch(function(){ return null; });
 }
-
 function applyCloudPayload(p){
   state.progress    = p.progress    || {};
   state.results     = p.results     || {};
   state.selfResults = p.selfResults || {};
+  state.practiceStatus = p.practiceStatus || {};
 }
 
-/* ============================================================
-   Тема оформления
-   ============================================================ */
+/* ---------- Тема оформления ---------- */
 function applyTheme(theme){
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem("mdk0701.theme", theme);
   var meta = document.querySelector('meta[name="theme-color"]');
   if (meta){
-    var map = {
-      light:"#c14a2a", dark:"#0e0e10", sepia:"#a0522d",
-      ocean:"#1a6da8", forest:"#3d7a3d", contrast:"#0033cc"
-    };
+    var map = { light:"#c14a2a", dark:"#0e0e10", sepia:"#a0522d", ocean:"#1a6da8", forest:"#3d7a3d", contrast:"#0033cc" };
     meta.setAttribute("content", map[theme] || "#c14a2a");
   }
 }
-
 function initTheme(){
   var saved = localStorage.getItem("mdk0701.theme");
   if (saved && THEMES.some(function(t){ return t.id === saved; })) applyTheme(saved);
   var btn = $("themeToggle");
   if (btn) btn.addEventListener("click", openThemeModal);
 }
-
 function openThemeModal(){
   document.querySelectorAll(".theme-overlay").forEach(function(x){ x.remove(); });
   var current = document.documentElement.getAttribute("data-theme") || "light";
-
   var modal = el(
-    '<div class="theme-overlay">' +
-      '<div class="theme-modal">' +
-        '<h3>Цветовая тема</h3>' +
-        '<p class="theme-sub">Выберите оформление — оно сохранится на этом устройстве.</p>' +
-        '<div class="theme-grid"></div>' +
-        '<div class="theme-actions"><button class="btn ghost" id="themeClose">Закрыть</button></div>' +
-      '</div>' +
-    '</div>'
+    '<div class="theme-overlay"><div class="theme-modal">' +
+      '<h3>Цветовая тема</h3>' +
+      '<p class="theme-sub">Выберите оформление.</p>' +
+      '<div class="theme-grid"></div>' +
+      '<div class="theme-actions"><button class="btn ghost" id="themeClose">Закрыть</button></div>' +
+    '</div></div>'
   );
-
   var grid = modal.querySelector(".theme-grid");
   THEMES.forEach(function(t){
     var selectedClass = (t.id === current) ? "selected" : "";
@@ -332,15 +301,12 @@ function openThemeModal(){
     });
     grid.appendChild(card);
   });
-
   document.body.appendChild(modal);
   modal.querySelector("#themeClose").addEventListener("click", function(){ modal.remove(); });
   modal.addEventListener("click", function(e){ if (e.target === modal) modal.remove(); });
 }
 
-/* ============================================================
-   Аватары
-   ============================================================ */
+/* ---------- Аватары ---------- */
 function buildAvatarPicker(selected, onPick){
   var wrap = el('<div class="avatar-picker-inline"></div>');
   AVATARS.forEach(function(a){
@@ -356,9 +322,7 @@ function buildAvatarPicker(selected, onPick){
   return wrap;
 }
 
-/* ============================================================
-   Валидация
-   ============================================================ */
+/* ---------- Валидация ---------- */
 function normalizeName(v){
   return v.trim().split(/\s+/).map(function(p){
     return p ? p[0].toUpperCase() + p.slice(1).toLowerCase() : "";
@@ -376,42 +340,31 @@ function validateGroup(v){
   return { ok:true, msg:"", normalized: t };
 }
 
-/* ============================================================
-   Боковая шторка
-   ============================================================ */
+/* ---------- Шторка ---------- */
 function openDrawer(){
-  var d = $("drawer");
-  var ov = $("drawerOverlay");
+  var d = $("drawer"); var ov = $("drawerOverlay");
   if (d){ d.classList.add("open"); d.setAttribute("aria-hidden", "false"); }
   if (ov) ov.classList.add("open");
   document.body.style.overflow = "hidden";
 }
 function closeDrawer(){
-  var d = $("drawer");
-  var ov = $("drawerOverlay");
+  var d = $("drawer"); var ov = $("drawerOverlay");
   if (d){ d.classList.remove("open"); d.setAttribute("aria-hidden", "true"); }
   if (ov) ov.classList.remove("open");
   document.body.style.overflow = "";
 }
 function toggleDrawer(){
   var d = $("drawer");
-  if (d && d.classList.contains("open")) closeDrawer();
-  else openDrawer();
+  if (d && d.classList.contains("open")) closeDrawer(); else openDrawer();
 }
-
 function initDrawer(){
-  var burger = $("burgerBtn");
-  var overlay = $("drawerOverlay");
-  var close = $("drawerClose");
+  var burger = $("burgerBtn"); var overlay = $("drawerOverlay"); var close = $("drawerClose");
   if (burger) burger.addEventListener("click", toggleDrawer);
   if (overlay) overlay.addEventListener("click", closeDrawer);
   if (close) close.addEventListener("click", closeDrawer);
-
   document.addEventListener("keydown", function(e){
     if (e.key === "Escape" && $("drawer") && $("drawer").classList.contains("open")) closeDrawer();
   });
-
-  // Навигация — закрываем шторку при клике по ссылке
   document.querySelectorAll("#drawerNav [data-go]").forEach(function(item){
     item.addEventListener("click", function(e){
       e.preventDefault();
@@ -420,37 +373,28 @@ function initDrawer(){
       setTimeout(function(){ location.hash = go; }, 120);
     });
   });
-
-  // Действия в подвале шторки
   var search = $("drawerSearch");
   if (search) search.addEventListener("click", function(){ closeDrawer(); if (window.openSearch) window.openSearch(); });
-
+  var asBtn = $("drawerAssistant");
+  if (asBtn) asBtn.addEventListener("click", function(){ closeDrawer(); if (window.openAssistant) window.openAssistant(); });
   var role = document.querySelector('#drawer [data-act="role"]');
   if (role) role.addEventListener("click", function(){ closeDrawer(); openRoleModal(); });
-
   var theme = document.querySelector('#drawer [data-act="theme"]');
   if (theme) theme.addEventListener("click", function(){ closeDrawer(); openThemeModal(); });
-
   var sync = $("drawerSyncBtn");
   if (sync) sync.addEventListener("click", function(){
     closeDrawer();
     cloudSave(false).then(function(ok){ if (ok) alert("Прогресс отправлен в облако."); });
   });
-
   var cab = $("drawerCabinetBtn");
   if (cab) cab.addEventListener("click", function(){ closeDrawer(); location.hash = "#/staff"; });
-
   var logout = document.querySelector('#drawer [data-act="logout"]');
   if (logout) logout.addEventListener("click", function(){ closeDrawer(); handleLogout(); });
 }
-
 function handleLogout(){
   if (state.staff){
-    state.staff = null;
-    saveStaffSession();
-    renderUserChip();
-    location.hash = "#/";
-    route();
+    state.staff = null; saveStaffSession(); renderUserChip();
+    location.hash = "#/"; route();
     return;
   }
   if (state.student){
@@ -469,9 +413,7 @@ function handleLogout(){
   }
 }
 
-/* ============================================================
-   Авторизация студента
-   ============================================================ */
+/* ---------- Авторизация ---------- */
 function initAuth(){
   var overlay    = $("loginOverlay");
   var nameInput  = $("loginName");
@@ -480,86 +422,56 @@ function initAuth(){
   var groupHint  = $("groupHint");
   var btn        = $("loginBtn");
   var staffLink  = $("loginStaffLink");
-
   var loginAvatar = DEFAULT_AVATAR;
   var picker = $("loginAvatarPicker");
   if (picker) picker.appendChild(buildAvatarPicker(loginAvatar, function(a){ loginAvatar = a; }));
-
   function showLogin(){
     if (!overlay) return;
-    overlay.hidden = false;
-    document.body.style.overflow = "hidden";
+    overlay.hidden = false; document.body.style.overflow = "hidden";
     if (nameInput) setTimeout(function(){ nameInput.focus(); }, 50);
   }
   function hideLogin(){
     if (!overlay) return;
-    overlay.hidden = true;
-    document.body.style.overflow = "";
+    overlay.hidden = true; document.body.style.overflow = "";
   }
-
-  if (!state.student && !state.staff) showLogin();
-  else hideLogin();
-
+  if (!state.student && !state.staff) showLogin(); else hideLogin();
   if (state.student){
     loadStudentData();
     cloudLoad().then(function(cloud){
       if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
-        if (cloud.payload.avatar && !state.student.avatar){
-          state.student.avatar = cloud.payload.avatar;
-          saveStudent();
-        }
+        if (cloud.payload.avatar && !state.student.avatar){ state.student.avatar = cloud.payload.avatar; saveStudent(); }
         applyCloudPayload(cloud.payload);
-        state.lastSync = cloud.savedAt;
-        saveStudentData();
-        route();
+        state.lastSync = cloud.savedAt; saveStudentData(); route();
       }
     });
   }
-
   if (nameInput) nameInput.addEventListener("input", function(){
     var r = validateName(nameInput.value);
     if (!nameHint) return;
     nameHint.textContent = !nameInput.value.trim() ? "" : (r.ok ? "✔ " + r.msg : "✘ " + r.msg);
     nameHint.className = "field-hint " + (r.ok ? "ok" : "bad");
   });
-
   if (groupInput) groupInput.addEventListener("input", function(){
     var r = validateGroup(groupInput.value);
     if (!groupHint) return;
     groupHint.textContent = !groupInput.value.trim() ? "" : (r.ok ? "✔ ОК" : "✘ " + r.msg);
     groupHint.className = "field-hint " + (r.ok ? "ok" : "bad");
   });
-
   if (btn) btn.addEventListener("click", function(){
     var rn = validateName(nameInput.value);
     var rg = validateGroup(groupInput.value);
     if (!rn.ok){ nameInput.focus(); return; }
     if (!rg.ok){ groupInput.focus(); return; }
-
-    if (state.staff){
-      state.staff = null;
-      saveStaffSession();
-    }
-
+    if (state.staff){ state.staff = null; saveStaffSession(); }
     if (state.student) saveStudentData();
-    state.student = {
-      name: rn.normalized,
-      group: rg.normalized,
-      avatar: loginAvatar,
-      loginAt: new Date().toISOString()
-    };
+    state.student = { name: rn.normalized, group: rg.normalized, avatar: loginAvatar, loginAt: new Date().toISOString() };
     saveStudent();
     loadStudentData();
     hideLogin();
     renderUserChip();
-
     cloudLoad().then(function(cloud){
       if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync || "")){
-        if (cloud.payload.avatar){
-          state.student.avatar = cloud.payload.avatar;
-          saveStudent();
-          renderUserChip();
-        }
+        if (cloud.payload.avatar){ state.student.avatar = cloud.payload.avatar; saveStudent(); renderUserChip(); }
         applyCloudPayload(cloud.payload);
         state.lastSync = cloud.savedAt;
         saveStudentData();
@@ -568,78 +480,53 @@ function initAuth(){
       route();
     });
   });
-
   if (nameInput)  nameInput.addEventListener("keydown",  function(e){ if (e.key === "Enter") btn.click(); });
   if (groupInput) groupInput.addEventListener("keydown", function(e){ if (e.key === "Enter") btn.click(); });
-
-  if (staffLink){
-    staffLink.addEventListener("click", function(e){
-      e.preventDefault();
-      openRoleModal();
-    });
-  }
+  if (staffLink) staffLink.addEventListener("click", function(e){ e.preventDefault(); openRoleModal(); });
 }
 
-/* ============================================================
-   Смена роли
-   ============================================================ */
+/* ---------- Роли ---------- */
 function openRoleModal(){
   document.querySelectorAll(".avatar-overlay").forEach(function(x){ x.remove(); });
-
   var currentRole = state.staff ? state.staff.role : (state.student ? "student" : "none");
-
   var modal = el(
-    '<div class="avatar-overlay" id="roleModal">' +
-      '<div class="avatar-modal" style="max-width:520px">' +
-        '<h3>Выбор роли</h3>' +
-        '<p class="avatar-sub">Студент входит по ФИО и группе. Служебные роли — по логину и паролю.</p>' +
-        '<div class="role-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">' +
-          Object.keys(ROLE_LABELS).map(function(r){
-            var active = (r === currentRole) ? 'style="border-color:var(--accent);color:var(--accent)"' : '';
-            var extra  = (r === currentRole) ? " · текущая" : "";
-            return '<button class="btn ghost role-pick" data-role="' + r + '" ' + active + '>' +
-                     ROLE_LABELS[r] + extra +
-                   '</button>';
-          }).join("") +
-        '</div>' +
-        '<div id="roleForm"></div>' +
-        '<div class="avatar-modal-actions" style="margin-top:14px">' +
-          '<button class="btn ghost" id="roleCancel">Закрыть</button>' +
-        '</div>' +
+    '<div class="avatar-overlay" id="roleModal"><div class="avatar-modal" style="max-width:520px">' +
+      '<h3>Выбор роли</h3>' +
+      '<p class="avatar-sub">Студент входит по ФИО и группе. Служебные роли — по логину и паролю.</p>' +
+      '<div class="role-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">' +
+        Object.keys(ROLE_LABELS).map(function(r){
+          var active = (r === currentRole) ? 'style="border-color:var(--accent);color:var(--accent)"' : '';
+          var extra  = (r === currentRole) ? " · текущая" : "";
+          return '<button class="btn ghost role-pick" data-role="' + r + '" ' + active + '>' + ROLE_LABELS[r] + extra + '</button>';
+        }).join("") +
       '</div>' +
-    '</div>'
+      '<div id="roleForm"></div>' +
+      '<div class="avatar-modal-actions" style="margin-top:14px">' +
+        '<button class="btn ghost" id="roleCancel">Закрыть</button>' +
+      '</div>' +
+    '</div></div>'
   );
   document.body.appendChild(modal);
-
   var formBox = modal.querySelector("#roleForm");
   modal.querySelector("#roleCancel").addEventListener("click", function(){ modal.remove(); });
   modal.addEventListener("click", function(e){ if (e.target === modal) modal.remove(); });
 
   function renderStudentForm(){
     formBox.innerHTML = "";
-    var html =
-      '<div>' +
-        '<p class="sub">Студент входит без пароля. Введите ФИО и группу.</p>' +
-        '<div class="test-actions" style="margin-top:10px">' +
-          '<button class="btn" id="switchToStudent">Перейти к вводу ФИО</button>' +
-        '</div>';
+    var html = '<div><p class="sub">Студент входит без пароля.</p>' +
+      '<div class="test-actions" style="margin-top:10px"><button class="btn" id="switchToStudent">Перейти к вводу ФИО</button></div>';
     if (state.student){
-      html += '<p class="sub" style="margin-top:10px">Сейчас активен: <b>' +
-              escapeHtml(state.student.name) + '</b>, гр. ' +
-              escapeHtml(state.student.group) + '</p>';
+      html += '<p class="sub" style="margin-top:10px">Сейчас активен: <b>' + escapeHtml(state.student.name) + '</b>, гр. ' + escapeHtml(state.student.group) + '</p>';
     }
     html += '</div>';
     var block = el(html);
     formBox.appendChild(block);
     block.querySelector("#switchToStudent").addEventListener("click", function(){
       modal.remove();
-      state.staff = null;
-      saveStaffSession();
-      var ov = $("loginOverlay");
-      if (ov) ov.hidden = false;
+      state.staff = null; saveStaffSession();
+      var ov = $("loginOverlay"); if (ov) ov.hidden = false;
       document.body.style.overflow = "hidden";
-      var li = $("loginName");
-      if (li) setTimeout(function(){ li.focus(); }, 60);
+      var li = $("loginName"); if (li) setTimeout(function(){ li.focus(); }, 60);
     });
   }
 
@@ -647,15 +534,11 @@ function openRoleModal(){
     formBox.innerHTML = "";
     var html =
       '<form>' +
-        '<p class="sub">Введите логин и пароль для роли «' + ROLE_LABELS[role] + '».</p>' +
+        '<p class="sub">Логин и пароль для роли «' + ROLE_LABELS[role] + '».</p>' +
         '<label style="font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Логин</label>' +
-        '<input type="text" id="roleUser" autocomplete="username" required ' +
-          'style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;' +
-          'background:var(--card-soft);color:var(--text);font:inherit;margin:6px 0 12px">' +
+        '<input type="text" id="roleUser" autocomplete="username" required style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card-soft);color:var(--text);font:inherit;margin:6px 0 12px">' +
         '<label style="font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Пароль</label>' +
-        '<input type="password" id="rolePass" autocomplete="current-password" required ' +
-          'style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;' +
-          'background:var(--card-soft);color:var(--text);font:inherit;margin:6px 0 0">' +
+        '<input type="password" id="rolePass" autocomplete="current-password" required style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card-soft);color:var(--text);font:inherit;margin:6px 0 0">' +
         '<div class="test-actions" style="margin-top:14px">' +
           '<button type="submit" class="btn">Войти</button>' +
           (state.staff ? '<button type="button" class="btn ghost" id="roleLogout">Выйти из служебной роли</button>' : '') +
@@ -664,7 +547,6 @@ function openRoleModal(){
       '</form>';
     var form = el(html);
     formBox.appendChild(form);
-
     form.addEventListener("submit", function(e){
       e.preventDefault();
       var u = form.querySelector("#roleUser").value.trim().toLowerCase();
@@ -672,40 +554,30 @@ function openRoleModal(){
       var st = form.querySelector("#roleStatus");
       if (!u || !p){ st.textContent = "Заполните оба поля."; st.className = "comment-status bad"; return; }
       st.textContent = "Проверяем…"; st.className = "comment-status";
-
       var url = APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(u) + "&password=" + encodeURIComponent(p);
-      fetch(url)
-        .then(function(res){ return res.json(); })
-        .then(function(d){
-          if (d && d.ok){
-            state.staff = { username: u, role: d.role, name: d.name, group: d.group || "" };
-            saveStaffSession();
-            st.textContent = "✔ " + d.name + " · роль: " + d.role;
-            st.className = "comment-status ok";
-            modal.remove();
-            var ov = $("loginOverlay");
-            if (ov) ov.hidden = true;
-            document.body.style.overflow = "";
-            renderUserChip();
-            route();
-          } else {
-            st.textContent = "✘ " + ((d && d.error) || "Не удалось войти");
-            st.className = "comment-status bad";
-          }
-        })
-        .catch(function(){
-          st.textContent = "Нет связи с сервером";
+      fetch(url).then(function(res){ return res.json(); }).then(function(d){
+        if (d && d.ok){
+          state.staff = { username: u, role: d.role, name: d.name, group: d.group || "" };
+          saveStaffSession();
+          st.textContent = "✔ " + d.name + " · роль: " + d.role;
+          st.className = "comment-status ok";
+          modal.remove();
+          var ov = $("loginOverlay"); if (ov) ov.hidden = true;
+          document.body.style.overflow = "";
+          renderUserChip();
+          route();
+        } else {
+          st.textContent = "✘ " + ((d && d.error) || "Не удалось войти");
           st.className = "comment-status bad";
-        });
+        }
+      }).catch(function(){
+        st.textContent = "Нет связи с сервером";
+        st.className = "comment-status bad";
+      });
     });
-
     var logout = form.querySelector("#roleLogout");
     if (logout) logout.addEventListener("click", function(){
-      state.staff = null;
-      saveStaffSession();
-      modal.remove();
-      renderUserChip();
-      route();
+      state.staff = null; saveStaffSession(); modal.remove(); renderUserChip(); route();
     });
   }
 
@@ -714,113 +586,82 @@ function openRoleModal(){
       modal.querySelectorAll(".role-pick").forEach(function(x){ x.style.borderColor = ""; });
       b.style.borderColor = "var(--accent)";
       var role = b.dataset.role;
-      if (role === "student") renderStudentForm();
-      else renderStaffForm(role);
+      if (role === "student") renderStudentForm(); else renderStaffForm(role);
     });
   });
-
   if (currentRole === "student") renderStudentForm();
   else if (currentRole === "none") formBox.innerHTML = '<p class="sub">Выберите роль сверху.</p>';
   else renderStaffForm(currentRole);
 }
 
-/* ============================================================
-   Чип (в шторке)
-   ============================================================ */
+/* ---------- Чип ---------- */
 function renderUserChip(){
-  var nameEl  = $("userChipName");
-  var groupEl = $("userChipGroup");
-  var avEl    = $("userChipAvatar");
-  var cab = $("drawerCabinetBtn");
-  var sync = $("drawerSyncBtn");
-
+  var nameEl  = $("userChipName"); var groupEl = $("userChipGroup"); var avEl = $("userChipAvatar");
+  var cab = $("drawerCabinetBtn"); var sync = $("drawerSyncBtn");
   if (state.staff){
-    if (avEl)    avEl.textContent = "👤";
-    if (nameEl)  nameEl.textContent = state.staff.name;
-    if (groupEl) groupEl.textContent = "[" + (state.staff.role || "staff") +
-      (state.staff.group ? " · " + state.staff.group : "") + "]";
-    if (cab)  cab.hidden = false;
+    if (avEl) avEl.textContent = "👤";
+    if (nameEl) nameEl.textContent = state.staff.name;
+    if (groupEl) groupEl.textContent = "[" + (state.staff.role || "staff") + (state.staff.group ? " · " + state.staff.group : "") + "]";
+    if (cab) cab.hidden = false;
     if (sync) sync.hidden = true;
     return;
   }
   if (state.student){
-    if (avEl)    avEl.textContent = getAvatar();
-    if (nameEl)  nameEl.textContent = state.student.name;
+    if (avEl) avEl.textContent = getAvatar();
+    if (nameEl) nameEl.textContent = state.student.name;
     if (groupEl) groupEl.textContent = "Гр. " + state.student.group;
-    if (cab)  cab.hidden = true;
+    if (cab) cab.hidden = true;
     if (sync) sync.hidden = false;
     return;
   }
-  if (avEl)    avEl.textContent = "👨‍🎓";
-  if (nameEl)  nameEl.textContent = "Гость";
+  if (avEl) avEl.textContent = "👨‍🎓";
+  if (nameEl) nameEl.textContent = "Гость";
   if (groupEl) groupEl.textContent = "—";
-  if (cab)  cab.hidden = true;
+  if (cab) cab.hidden = true;
   if (sync) sync.hidden = true;
 }
 
-/* ============================================================
-   Главная
-   ============================================================ */
+/* ---------- Главная ---------- */
 function renderHome(){
   var app = $("app");
   if (!app) return;
   app.innerHTML = "";
   var crumbs = $("crumbs"); if (crumbs) crumbs.textContent = "";
   setActiveTopBtn("");
-
   var c = getCourse();
   if (!c || !c.sections){
-    app.appendChild(el(
-      '<section class="module">' +
-        '<h2>Не удалось загрузить курс</h2>' +
-        '<p>Файл <code>data.js</code> не подключён или содержит ошибку. Проверьте консоль браузера.</p>' +
-      '</section>'
-    ));
+    app.appendChild(el('<section class="module"><h2>Не удалось загрузить курс</h2><p>Файл <code>data.js</code> не подключён.</p></section>'));
     return;
   }
-
   try {
     var heroHtml =
       '<section class="hero">' +
         '<div class="meta">' + escapeHtml(c.specialty || "") + ' · набор 2024</div>' +
         '<h1>' + escapeHtml(c.title || "МДК 07.01") + '</h1>' +
         '<p>' + escapeHtml(c.module || "") + '</p>';
-
     if (state.student){
       heroHtml +=
-        '<div class="hello">' +
-          '<span class="hello-avatar">' + getAvatar() + '</span>' +
-          '<span>Вы вошли как <b>' + escapeHtml(state.student.name) + '</b>, группа <b>' +
-          escapeHtml(state.student.group) + '</b>.<span class="sync-status" id="syncStatus"></span></span>' +
-        '</div>';
+        '<div class="hello"><span class="hello-avatar">' + getAvatar() + '</span>' +
+        '<span>Вы вошли как <b>' + escapeHtml(state.student.name) + '</b>, группа <b>' +
+        escapeHtml(state.student.group) + '</b>.<span class="sync-status" id="syncStatus"></span></span></div>';
     }
-
     if (state.staff){
       heroHtml +=
-        '<div class="hello">' +
-          '<span class="hello-avatar">👤</span>' +
-          '<span>Служебный вход: <b>' + escapeHtml(state.staff.name) +
-          '</b> · роль <b>' + escapeHtml(state.staff.role) + '</b>.</span>' +
-        '</div>';
+        '<div class="hello"><span class="hello-avatar">👤</span>' +
+        '<span>Служебный вход: <b>' + escapeHtml(state.staff.name) + '</b> · роль <b>' + escapeHtml(state.staff.role) + '</b>.</span></div>';
     }
-
     heroHtml += '<div class="hero-quote">' + quoteOfDay() + '</div></section>';
     app.appendChild(el(heroHtml));
 
-    app.appendChild(el('<div class="steps-title">Итоговые блоки</div>'));
+    app.appendChild(el('<div class="steps-title">Учебный процесс и итоговые блоки</div>'));
     var finals = el('<div class="steps"></div>');
-    [["🏋️","Итоговая тренировка","#/final-training"],
+    [["📅","Расписание","#/schedule"],
+     ["📔","Журнал","#/journal"],
+     ["🏋️","Итоговая тренировка","#/final-training"],
      ["🎓","Итоговый экзамен","#/final-exam"],
-     ["📖","G- и M-коды","#/gcode-reference"],
-     ["📚","Полезные материалы","#/links"],
-     ["📊","Статистика","#/dashboard"]]
+     ["🏆","Рейтинг","#/rating"]]
       .forEach(function(item){
-        var card = el(
-          '<div class="step" style="cursor:pointer">' +
-            '<div class="num">' + item[0] + '</div>' +
-            '<div class="name">' + item[1] + '</div>' +
-          '</div>'
-        );
+        var card = el('<div class="step" style="cursor:pointer"><div class="num">' + item[0] + '</div><div class="name">' + item[1] + '</div></div>');
         card.addEventListener("click", function(){ location.hash = item[2]; });
         finals.appendChild(card);
       });
@@ -830,27 +671,20 @@ function renderHome(){
     var stepsWrap = el('<div class="steps"></div>');
     [["01","Паспорт часов"],["02","Лекция"],["03","Практические"],["04","Самостоятельная"],["05","Контроль темы"]]
       .forEach(function(pair){
-        stepsWrap.appendChild(el(
-          '<div class="step"><div class="num">' + pair[0] + '</div><div class="name">' + pair[1] + '</div></div>'
-        ));
+        stepsWrap.appendChild(el('<div class="step"><div class="num">' + pair[0] + '</div><div class="name">' + pair[1] + '</div></div>'));
       });
     app.appendChild(stepsWrap);
 
     c.sections.forEach(function(sec){
-      app.appendChild(el(
-        '<div class="steps-title">' + escapeHtml(sec.code) + ' · ' + escapeHtml(sec.title) +
-        ' · ' + escapeHtml(sec.hours) + ' ак. ч</div>'
-      ));
+      app.appendChild(el('<div class="steps-title">' + escapeHtml(sec.code) + ' · ' + escapeHtml(sec.title) + ' · ' + escapeHtml(sec.hours) + ' ак. ч</div>'));
       var list = el('<div class="topics"></div>');
       (sec.topics || []).forEach(function(t){
         var done = (state.progress[t.id] && state.progress[t.id].done) || 0;
         var card = el(
           '<div class="topic">' +
             '<div class="t-code">' + escapeHtml(t.code) + '</div>' +
-            '<div class="t-body">' +
-              '<div class="t-title">' + escapeHtml(t.title) + '</div>' +
-              '<div class="t-meta">' + t.hours.total + ' ак. ч / практ. ' + t.hours.practice + ' ак. ч</div>' +
-            '</div>' +
+            '<div class="t-body"><div class="t-title">' + escapeHtml(t.title) + '</div>' +
+            '<div class="t-meta">' + t.hours.total + ' ак. ч / практ. ' + t.hours.practice + ' ак. ч</div></div>' +
             '<div class="t-hours">' + t.hours.total + '\\' + t.hours.practice + '</div>' +
             '<div class="t-progress">' + done + '/5</div>' +
           '</div>'
@@ -863,13 +697,7 @@ function renderHome(){
 
     if (c.passports && c.passports.length){
       app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
-      var block = el(
-        '<section class="module">' +
-          '<h2>Паспорта станков</h2>' +
-          '<p class="sub">PDF-файлы. Открываются прямо на странице.</p>' +
-          '<div class="doc-grid"></div>' +
-        '</section>'
-      );
+      var block = el('<section class="module"><h2>Паспорта станков</h2><p class="sub">PDF-файлы. Открываются прямо на странице.</p><div class="doc-grid"></div></section>');
       var grid = block.querySelector(".doc-grid");
       c.passports.forEach(function(p){
         var card = el(
@@ -885,80 +713,42 @@ function renderHome(){
       });
       app.appendChild(block);
     }
-
     if (c.safety && c.safety.length){
       app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
-      var block2 = el(
-        '<section class="module">' +
-          '<h2>Инструкции по охране труда</h2>' +
-          '<p class="sub">DOCX-файлы. Скачиваются на компьютер.</p>' +
-          '<div class="doc-grid"></div>' +
-        '</section>'
-      );
+      var block2 = el('<section class="module"><h2>Инструкции по охране труда</h2><p class="sub">DOCX-файлы.</p><div class="doc-grid"></div></section>');
       var grid2 = block2.querySelector(".doc-grid");
       c.safety.forEach(function(s){
-        grid2.appendChild(el(
-          '<a class="doc-card" href="' + s.file + '" download>' +
-            '<div class="doc-code">' + escapeHtml(s.code) + '</div>' +
-            '<div class="doc-title">' + escapeHtml(s.title) + '</div>' +
-            '<div class="doc-summary">' + escapeHtml(s.summary) + '</div>' +
-            '<div class="doc-action">Скачать .docx →</div>' +
-          '</a>'
-        ));
+        grid2.appendChild(el('<a class="doc-card" href="' + s.file + '" download>' +
+          '<div class="doc-code">' + escapeHtml(s.code) + '</div>' +
+          '<div class="doc-title">' + escapeHtml(s.title) + '</div>' +
+          '<div class="doc-summary">' + escapeHtml(s.summary) + '</div>' +
+          '<div class="doc-action">Скачать .docx →</div></a>'));
       });
       app.appendChild(block2);
     }
-
     if (c.videos && c.videos.length){
       app.appendChild(el('<div class="steps-title">История робототехники СССР</div>'));
-      var vidsBlock = el(
-        '<section class="module">' +
-          '<div class="meta">Модуль 4 · Видеоматериалы</div>' +
-          '<h2>История робототехники СССР</h2>' +
-          '<p class="sub">Видеоматериалы к разделу. Просмотр — прямо на странице.</p>' +
-          '<div class="videos"></div>' +
-        '</section>'
-      );
+      var vidsBlock = el('<section class="module"><div class="meta">Модуль 4 · Видеоматериалы</div><h2>История робототехники СССР</h2><div class="videos"></div></section>');
       var vwrap = vidsBlock.querySelector(".videos");
       c.videos.forEach(function(v){
-        vwrap.appendChild(el(
-          '<div class="video-card">' +
-            '<video controls preload="metadata">' +
-              '<source src="' + v.src + '" type="video/mp4">' +
-            '</video>' +
-            '<div class="v-cap">' + escapeHtml(v.title) + '</div>' +
-          '</div>'
-        ));
+        vwrap.appendChild(el('<div class="video-card"><video controls preload="metadata"><source src="' + v.src + '" type="video/mp4"></video><div class="v-cap">' + escapeHtml(v.title) + '</div></div>'));
       });
       app.appendChild(vidsBlock);
     }
-
-    if (window.renderCommentsBlock && state.student){
-      app.appendChild(window.renderCommentsBlock());
-    }
+    if (window.renderCommentsBlock && state.student) app.appendChild(window.renderCommentsBlock());
   } catch (err){
     console.error("renderHome error:", err);
-    app.appendChild(el(
-      '<section class="module">' +
-        '<h2>Ошибка при отрисовке</h2>' +
-        '<pre style="white-space:pre-wrap;color:var(--err)">' +
-        escapeHtml(String(err && err.stack ? err.stack : err)) +
-        '</pre>' +
-      '</section>'
-    ));
+    app.appendChild(el('<section class="module"><h2>Ошибка</h2><pre style="white-space:pre-wrap;color:var(--err)">' + escapeHtml(String(err && err.stack ? err.stack : err)) + '</pre></section>'));
   }
 }
 
-/* ============================================================
-   Страница темы
-   ============================================================ */
+/* ---------- Тема ---------- */
 function renderTopic(id, tab, mode){
   tab  = tab  || "passport";
   mode = mode || "control";
   var found = findTopic(id);
   if (!found) return renderHome();
   var section = found.section, topic = found.topic;
-
   var app = $("app");
   if (!app) return;
   app.innerHTML = "";
@@ -968,31 +758,20 @@ function renderTopic(id, tab, mode){
 
   app.appendChild(el(
     '<a class="backlink" href="#/" onclick="goHome(event)">← К программе</a>' +
-    '<section class="topic-head">' +
-      '<div class="crumb">ПМ.07 · ' + escapeHtml(topic.code) + ' · ' + escapeHtml(section.title) + '</div>' +
-      '<h1>' + escapeHtml(topic.title) + '</h1>' +
-      '<div class="meta">' + topic.hours.total + '\\' + topic.hours.practice +
-      ' · ' + topic.hours.total + ' ак. ч / практ. ' + topic.hours.practice + ' ак. ч</div>' +
-    '</section>'
+    '<section class="topic-head"><div class="crumb">ПМ.07 · ' + escapeHtml(topic.code) + ' · ' + escapeHtml(section.title) + '</div>' +
+    '<h1>' + escapeHtml(topic.title) + '</h1>' +
+    '<div class="meta">' + topic.hours.total + '\\' + topic.hours.practice + ' · ' + topic.hours.total + ' ак. ч / практ. ' + topic.hours.practice + ' ак. ч</div></section>'
   ));
 
   var tabs = [
-    ["passport","01","Паспорт часов"],
-    ["lecture","02","Лекция"],
-    ["practice","03","Практические"],
-    ["self","04","Самостоятельная"],
-    ["test","05","Контроль темы"]
+    ["passport","01","Паспорт часов"],["lecture","02","Лекция"],
+    ["practice","03","Практические"],["self","04","Самостоятельная"],["test","05","Контроль темы"]
   ];
   var tw = el('<div class="tabs"></div>');
   tabs.forEach(function(item){
     var k = item[0], n = item[1], name = item[2];
     var active = (k === tab) ? "active" : "";
-    var t = el(
-      '<button class="tab ' + active + '">' +
-        '<span class="t-num">' + n + '</span>' +
-        '<span class="t-name">' + name + '</span>' +
-      '</button>'
-    );
+    var t = el('<button class="tab ' + active + '"><span class="t-num">' + n + '</span><span class="t-name">' + name + '</span></button>');
     t.addEventListener("click", function(){ location.hash = "#/topic/" + id + "/" + k; });
     tw.appendChild(t);
   });
@@ -1009,7 +788,6 @@ function renderTopic(id, tab, mode){
 
   markDone(topic.id, tab);
 }
-
 function markDone(topicId, tab){
   state.progress[topicId] = state.progress[topicId] || { done:0, tabs:{} };
   if (!state.progress[topicId].tabs[tab]){
@@ -1020,15 +798,9 @@ function markDone(topicId, tab){
     if (t) logActivity("topic", "Тема " + t.topic.code + " — вкладка " + tab);
   }
 }
-
 function renderPassport(panel, t){
-  var lecturesList = (t.lectures || []).map(function(l){
-    return '<li><b>' + escapeHtml(l.code) + '</b> ' + escapeHtml(l.title) + '</li>';
-  }).join("");
-  var practicalsList = (t.practicals || []).map(function(p){
-    return '<li><b>' + escapeHtml(p.code) + '</b> ' + escapeHtml(p.title) + '</li>';
-  }).join("");
-
+  var lL = (t.lectures || []).map(function(l){ return '<li><b>' + escapeHtml(l.code) + '</b> ' + escapeHtml(l.title) + '</li>'; }).join("");
+  var pL = (t.practicals || []).map(function(p){ return '<li><b>' + escapeHtml(p.code) + '</b> ' + escapeHtml(p.title) + '</li>'; }).join("");
   panel.innerHTML =
     '<h2>Паспорт часов</h2>' +
     '<p>Тема <b>' + escapeHtml(t.code) + '</b> — ' + escapeHtml(t.title) + '.</p>' +
@@ -1036,13 +808,8 @@ function renderPassport(panel, t){
       '<div class="kpi"><div class="k-label">Всего</div><div class="k-value">' + t.hours.total + ' ч</div></div>' +
       '<div class="kpi"><div class="k-label">Теория</div><div class="k-value">' + t.hours.theory + ' ч</div></div>' +
       '<div class="kpi"><div class="k-label">Практика</div><div class="k-value">' + t.hours.practice + ' ч</div></div>' +
-    '</div>' +
-    '<h3>Содержание по рабочей программе</h3>' +
-    '<ul>' + lecturesList + '</ul>' +
-    '<h3>Практические занятия</h3>' +
-    '<ul>' + practicalsList + '</ul>';
+    '</div><h3>Содержание</h3><ul>' + lL + '</ul><h3>Практические занятия</h3><ul>' + pL + '</ul>';
 }
-
 function renderLecture(panel, t){
   panel.innerHTML = '<h2>Лекция</h2><p class="accent">Теория, схема, вопросы для самопроверки.</p>';
   (t.lectures || []).forEach(function(l){
@@ -1051,49 +818,94 @@ function renderLecture(panel, t){
   });
 }
 
+/* ---------- ПРАКТИЧЕСКИЕ С ЗНАЧКАМИ ---------- */
+function practiceStatusBadge(status){
+  if (status === "checked") return '<span class="practice-status checked">✅ Проверено</span>';
+  if (status === "sent")    return '<span class="practice-status sent">🕓 На проверке</span>';
+  return '<span class="practice-status none">📄 Не сдано</span>';
+}
 function renderPractice(panel, t){
   panel.innerHTML = '<h2>Практические работы</h2><p class="accent">' + t.hours.practice + ' ч практической подготовки.</p>';
   (t.practicals || []).forEach(function(p){
+    var status = getPracticeStatus(t.id, p.code);
     var html =
       '<div class="practice">' +
-        '<div class="p-code">' + escapeHtml(p.code) + '</div>' +
+        '<div class="practice-head">' +
+          '<div class="p-code">' + escapeHtml(p.code) + '</div>' +
+          practiceStatusBadge(status) +
+        '</div>' +
         '<div class="p-title">' + escapeHtml(p.title) + '</div>';
-
     if (p.goal)    html += '<div class="p-goal">Цель: ' + escapeHtml(p.goal) + '</div>';
     if (p.task)    html += '<div class="p-task"><b>Задание:</b> ' + escapeHtml(p.task) + '</div>';
     if (p.example) html += '<div class="p-example"><b>Пример:</b> ' + escapeHtml(p.example) + '</div>';
-
     if (p.solution && p.solution.length){
       html += '<div class="p-solution"><h4>Ход решения по этапам</h4><ol>';
       p.solution.forEach(function(s){ html += '<li>' + s + '</li>'; });
       html += '</ol></div>';
     }
-
-    html +=
-      '<div class="test-actions">' +
-        '<button class="btn ghost work-upload-btn">📎 Прикрепить работу</button>' +
-      '</div>';
-
+    html += '<div class="test-actions practice-actions"></div>';
     html += '</div>';
-
     var box = el(html);
-    box.querySelector(".work-upload-btn").addEventListener("click", function(){
+    var actions = box.querySelector(".practice-actions");
+
+    var uploadBtn = el('<button class="btn ghost work-upload-btn">📎 Прикрепить работу</button>');
+    uploadBtn.addEventListener("click", function(){
       if (window.openUploadModal) window.openUploadModal(t.id, p.code, p.title);
     });
+    actions.appendChild(uploadBtn);
+
+    if (isStudentRole() && status !== "sent" && status !== "checked"){
+      var sendBtn = el('<button class="btn send-check-btn">📤 Отправить на проверку</button>');
+      sendBtn.addEventListener("click", function(){
+        setPracticeStatus(t.id, p.code, "sent");
+        logActivity("topic", "Практическая " + p.code + " отправлена на проверку");
+        renderTopic(t.id, "practice");
+      });
+      actions.appendChild(sendBtn);
+    }
+
+    if (isStudentRole() && (status === "sent" || status === "checked")){
+      var cancelBtn = el('<button class="btn ghost cancel-check-btn">↩ Отменить отправку</button>');
+      cancelBtn.addEventListener("click", function(){
+        if (!confirm("Снять статус «" + (status === "sent" ? "На проверке" : "Проверено") + "»?")) return;
+        setPracticeStatus(t.id, p.code, "");
+        renderTopic(t.id, "practice");
+      });
+      actions.appendChild(cancelBtn);
+    }
+
+    if (canCheckPractice()){
+      if (status === "sent"){
+        var checkBtn = el('<button class="btn check-ok-btn">✅ Отметить проверенным</button>');
+        checkBtn.addEventListener("click", function(){
+          setPracticeStatus(t.id, p.code, "checked");
+          logActivity("topic", "Практическая " + p.code + " проверена");
+          renderTopic(t.id, "practice");
+        });
+        actions.appendChild(checkBtn);
+
+        var rejectBtn = el('<button class="btn ghost check-reject-btn">✖ Вернуть на доработку</button>');
+        rejectBtn.addEventListener("click", function(){
+          setPracticeStatus(t.id, p.code, "");
+          renderTopic(t.id, "practice");
+        });
+        actions.appendChild(rejectBtn);
+      } else if (status === "checked"){
+        var undoBtn = el('<button class="btn ghost undo-check-btn">↺ Снять отметку</button>');
+        undoBtn.addEventListener("click", function(){
+          setPracticeStatus(t.id, p.code, "sent");
+          renderTopic(t.id, "practice");
+        });
+        actions.appendChild(undoBtn);
+      }
+    }
 
     if (p.variants && p.variants.rows && p.variants.rows.length){
-      var v = el(
-        '<div class="variants">' +
-          '<div class="v-title">Варианты (1–' + p.variants.rows.length + ')</div>' +
-          '<div class="v-scroll"></div>' +
-        '</div>'
-      );
+      var v = el('<div class="variants"><div class="v-title">Варианты (1–' + p.variants.rows.length + ')</div><div class="v-scroll"></div></div>');
       var tbl = el('<table class="v-table"></table>');
       if (p.variants.header){
         var th = el('<thead><tr></tr></thead>');
-        p.variants.header.forEach(function(h){
-          th.firstChild.appendChild(el('<th>' + escapeHtml(h) + '</th>'));
-        });
+        p.variants.header.forEach(function(h){ th.firstChild.appendChild(el('<th>' + escapeHtml(h) + '</th>')); });
         tbl.appendChild(th);
       }
       var tb = el('<tbody></tbody>');
@@ -1110,31 +922,18 @@ function renderPractice(panel, t){
   });
 }
 
+/* ---------- Самостоятельная ---------- */
 function renderSelf(panel, t){
-  panel.innerHTML =
-    '<h2>Самостоятельная работа</h2>' +
-    '<p>Закрепление материала темы <b>' + escapeHtml(t.code) + '</b> «' + escapeHtml(t.title) + '».</p>' +
-    '<p class="accent">Введите ответ. Регистр и лишние пробелы не важны.</p>';
-
-  var tasks = (t.selfChecks && t.selfChecks.length)
-    ? t.selfChecks
-    : [{ q:"Как называется главное движение при точении?", a:"вращение заготовки", accept:["вращение детали"] }];
-
+  panel.innerHTML = '<h2>Самостоятельная работа</h2><p>Закрепление материала темы <b>' + escapeHtml(t.code) + '</b> «' + escapeHtml(t.title) + '».</p><p class="accent">Введите ответ.</p>';
+  var tasks = (t.selfChecks && t.selfChecks.length) ? t.selfChecks : [{ q:"Как называется главное движение при точении?", a:"вращение заготовки", accept:["вращение детали"] }];
   var form = el('<form></form>');
   tasks.forEach(function(task, i){
     var block = el(
-      '<div class="question self-q">' +
-        '<div class="q-text">' + (i+1) + '. ' + escapeHtml(task.q) + '</div>' +
-        '<div class="self-row">' +
-          '<input type="text" class="self-input" placeholder="Ваш ответ">' +
-          '<button type="button" class="btn ghost self-check">Проверить</button>' +
-        '</div>' +
-        '<div class="self-feedback"></div>' +
-      '</div>'
+      '<div class="question self-q"><div class="q-text">' + (i+1) + '. ' + escapeHtml(task.q) + '</div>' +
+      '<div class="self-row"><input type="text" class="self-input" placeholder="Ваш ответ"><button type="button" class="btn ghost self-check">Проверить</button></div>' +
+      '<div class="self-feedback"></div></div>'
     );
-    var inp = block.querySelector(".self-input");
-    var btn = block.querySelector(".self-check");
-    var fb  = block.querySelector(".self-feedback");
+    var inp = block.querySelector(".self-input"), btn = block.querySelector(".self-check"), fb = block.querySelector(".self-feedback");
     btn.addEventListener("click", function(){
       var ua = (inp.value || "").trim().toLowerCase();
       var correct = task.a.trim().toLowerCase();
@@ -1146,51 +945,32 @@ function renderSelf(panel, t){
     inp.addEventListener("keydown", function(e){ if (e.key === "Enter"){ e.preventDefault(); btn.click(); } });
     form.appendChild(block);
   });
-
   var result = el('<div class="test-result"></div>');
-  var actions = el(
-    '<div class="test-actions">' +
-      '<button type="button" class="btn" id="selfCount">Подвести итог</button>' +
-      '<button type="button" class="btn ghost" id="selfReset">Сбросить</button>' +
-    '</div>'
-  );
-  form.appendChild(actions);
-  form.appendChild(result);
-
+  var actions = el('<div class="test-actions"><button type="button" class="btn" id="selfCount">Подвести итог</button><button type="button" class="btn ghost" id="selfReset">Сбросить</button></div>');
+  form.appendChild(actions); form.appendChild(result);
   form.querySelector("#selfCount").addEventListener("click", function(){
     var ok = 0;
-    form.querySelectorAll(".self-q").forEach(function(q){
-      if (q.querySelector(".self-feedback").classList.contains("ok")) ok++;
-    });
-    var total = tasks.length;
-    var pct = Math.round(ok / total * 100);
+    form.querySelectorAll(".self-q").forEach(function(q){ if (q.querySelector(".self-feedback").classList.contains("ok")) ok++; });
+    var total = tasks.length, pct = Math.round(ok / total * 100);
     var g = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
     result.textContent = "Верных: " + ok + " из " + total + " (" + pct + "%). Оценка: " + g + ".";
     result.className = "test-result " + (g >= 3 ? "ok" : "bad");
     state.selfResults[t.id] = { ok: ok, total: total, pct: pct, grade: g, date: new Date().toISOString() };
     saveSelfResults();
-    logActivity("self", "Сам. работа " + t.code + ": " + ok + "/" + total);
+    logActivity("self", "Сам. работа " + t.code);
     if (g === 5 && window.celebrate) window.celebrate();
   });
-
   form.querySelector("#selfReset").addEventListener("click", function(){
     form.querySelectorAll(".self-input").forEach(function(i){ i.value = ""; });
     form.querySelectorAll(".self-feedback").forEach(function(f){ f.textContent = ""; f.className = "self-feedback"; });
     result.textContent = ""; result.className = "test-result";
   });
-
   panel.appendChild(form);
 }
 
-/* ============================================================
-   Тесты по теме
-   ============================================================ */
+/* ---------- Тесты ---------- */
 var testTimerId = null;
-
-function clearTestTimer(){
-  if (testTimerId){ clearInterval(testTimerId); testTimerId = null; }
-}
-
+function clearTestTimer(){ if (testTimerId){ clearInterval(testTimerId); testTimerId = null; } }
 function startTestTimer(sec, display, onEnd){
   clearTestTimer();
   var r = sec;
@@ -1201,58 +981,41 @@ function startTestTimer(sec, display, onEnd){
     if (r <= 0){ clearTestTimer(); onEnd(); return; }
     r--;
   }
-  tick();
-  testTimerId = setInterval(tick, 1000);
+  tick(); testTimerId = setInterval(tick, 1000);
 }
-
 function renderTest(panel, t, mode){
   mode = mode || "control";
   panel.innerHTML = "";
   panel.appendChild(el(
     '<h2>Контроль темы</h2>' +
-    '<p class="accent">🎯 <b>Контроль</b> — с таймером и разбором ошибок, идёт в отчёт. ' +
-    '🎓 <b>Тренировка</b> — мгновенная проверка, без оценки.</p>' +
+    '<p class="accent">🎯 <b>Контроль</b> — с таймером и разбором. 🎓 <b>Тренировка</b> — без оценки.</p>' +
     '<div class="test-mode-tabs">' +
       '<button class="test-mode-tab ' + (mode === "control" ? "active" : "") + '" data-mode="control">🎯 Контроль</button>' +
       '<button class="test-mode-tab ' + (mode === "training" ? "active" : "") + '" data-mode="training">🎓 Тренировка</button>' +
     '</div>'
   ));
   panel.querySelectorAll(".test-mode-tab").forEach(function(b){
-    b.addEventListener("click", function(){
-      location.hash = "#/topic/" + t.id + "/test/" + b.dataset.mode;
-    });
+    b.addEventListener("click", function(){ location.hash = "#/topic/" + t.id + "/test/" + b.dataset.mode; });
   });
   var body = el('<div></div>');
   panel.appendChild(body);
-  if (!t.test || !t.test.length){
-    body.appendChild(el('<p><i>Тест готовится.</i></p>'));
-    return;
-  }
-  if (mode === "training") renderTestTraining(body, t);
-  else renderTestControl(body, t);
+  if (!t.test || !t.test.length){ body.appendChild(el('<p><i>Тест готовится.</i></p>')); return; }
+  if (mode === "training") renderTestTraining(body, t); else renderTestControl(body, t);
 }
-
 function renderTestTraining(body, t){
   body.innerHTML = "";
-  body.appendChild(el('<p class="accent">Отвечайте в любом порядке. После выбора сразу увидите правильный ответ.</p>'));
+  body.appendChild(el('<p class="accent">Отвечайте в любом порядке.</p>'));
   var items = shuffled(t.test.map(function(q){ return { q: q }; }));
   items.forEach(function(it){
     var opts = it.q.options.map(function(opt, oi){ return { opt: opt, oi: oi }; });
-    it.s = shuffled(opts);
-    it.correctIdx = -1;
+    it.s = shuffled(opts); it.correctIdx = -1;
     for (var k = 0; k < it.s.length; k++) if (it.s[k].oi === it.q.correct){ it.correctIdx = k; break; }
   });
-
   var form = el('<form></form>');
   items.forEach(function(item, qi){
     var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + escapeHtml(item.q.q) + '</div></div>');
     item.s.forEach(function(o, oi){
-      qb.appendChild(el(
-        '<label class="option">' +
-          '<input type="radio" name="t' + qi + '" value="' + oi + '">' +
-          '<span>' + escapeHtml(o.opt) + '</span>' +
-        '</label>'
-      ));
+      qb.appendChild(el('<label class="option"><input type="radio" name="t' + qi + '" value="' + oi + '"><span>' + escapeHtml(o.opt) + '</span></label>'));
     });
     var fb = el('<div class="train-feedback"></div>');
     qb.appendChild(fb);
@@ -1263,13 +1026,11 @@ function renderTestTraining(body, t){
         var idx = Number(inp.value);
         if (idx === item.correctIdx){
           all[idx].classList.add("correct");
-          fb.textContent = "✔ Верно!";
-          fb.className = "train-feedback ok";
+          fb.textContent = "✔ Верно!"; fb.className = "train-feedback ok";
         } else {
           all[idx].classList.add("wrong");
           all[item.correctIdx].classList.add("correct");
-          fb.textContent = "✘ Неверно.";
-          fb.className = "train-feedback bad";
+          fb.textContent = "✘ Неверно."; fb.className = "train-feedback bad";
         }
       });
     });
@@ -1277,57 +1038,35 @@ function renderTestTraining(body, t){
   });
   body.appendChild(form);
 }
-
 function renderTestControl(body, t){
   body.innerHTML = "";
   var items = shuffled(t.test.map(function(q){ return { q: q }; }));
   items.forEach(function(it){
     var opts = it.q.options.map(function(opt, oi){ return { opt: opt, oi: oi }; });
-    it.s = shuffled(opts);
-    it.correctIdx = -1;
+    it.s = shuffled(opts); it.correctIdx = -1;
     for (var k = 0; k < it.s.length; k++) if (it.s[k].oi === it.q.correct){ it.correctIdx = k; break; }
   });
-
   var timer = el('<div class="test-timer">⏱ --:--</div>');
   body.appendChild(timer);
-  body.appendChild(el('<p class="accent">Вопросы и варианты перемешаны. Время — 15 минут.</p>'));
-
+  body.appendChild(el('<p class="accent">Время — 15 минут.</p>'));
   var form = el('<form></form>');
   items.forEach(function(item, qi){
     var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + escapeHtml(item.q.q) + '</div></div>');
     item.s.forEach(function(o, oi){
-      qb.appendChild(el(
-        '<label class="option">' +
-          '<input type="radio" name="q' + qi + '" value="' + oi + '">' +
-          '<span>' + escapeHtml(o.opt) + '</span>' +
-        '</label>'
-      ));
+      qb.appendChild(el('<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + escapeHtml(o.opt) + '</span></label>'));
     });
     form.appendChild(qb);
   });
-
   var result = el('<div class="test-result"></div>');
   var report = el('<div class="test-report"></div>');
-  var actions = el(
-    '<div class="test-actions">' +
-      '<button type="button" class="btn" id="gradeBtn">Подвести итог</button>' +
-      '<button type="button" class="btn ghost" id="resetTest">Сбросить</button>' +
-    '</div>'
-  );
-  form.appendChild(actions);
-  form.appendChild(result);
-  form.appendChild(report);
+  var actions = el('<div class="test-actions"><button type="button" class="btn" id="gradeBtn">Подвести итог</button><button type="button" class="btn ghost" id="resetTest">Сбросить</button></div>');
+  form.appendChild(actions); form.appendChild(result); form.appendChild(report);
   body.appendChild(form);
-
   var graded = false;
-
   function grade(){
     if (graded) return;
-    graded = true;
-    clearTestTimer();
-    var ok = 0;
-    var wrong = [];
-
+    graded = true; clearTestTimer();
+    var ok = 0, wrong = [];
     items.forEach(function(item, qi){
       var ch = form.querySelector('input[name="q' + qi + '"]:checked');
       var qb = form.querySelectorAll(".question")[qi];
@@ -1335,10 +1074,8 @@ function renderTestControl(body, t){
       if (ch){
         var idx = Number(ch.value);
         var opt = qb.querySelectorAll(".option")[idx];
-        if (idx === item.correctIdx){
-          ok++;
-          opt.classList.add("correct");
-        } else {
+        if (idx === item.correctIdx){ ok++; opt.classList.add("correct"); }
+        else {
           opt.classList.add("wrong");
           qb.querySelectorAll(".option")[item.correctIdx].classList.add("correct");
           wrong.push({ q: item.q.q, u: item.s[idx].opt, c: item.q.options[item.q.correct] });
@@ -1348,29 +1085,20 @@ function renderTestControl(body, t){
         wrong.push({ q: item.q.q, u: "(нет ответа)", c: item.q.options[item.q.correct] });
       }
     });
-
-    var total = items.length;
-    var pct = Math.round(ok / total * 100);
-    var g = 2;
-    if (pct >= 90) g = 5; else if (pct >= 75) g = 4; else if (pct >= 60) g = 3;
-
+    var total = items.length, pct = Math.round(ok / total * 100);
+    var g = 2; if (pct >= 90) g = 5; else if (pct >= 75) g = 4; else if (pct >= 60) g = 3;
     result.textContent = "Верных: " + ok + " из " + total + " (" + pct + "%). Оценка: " + g + ".";
     result.className = "test-result " + (g >= 3 ? "ok" : "bad");
     state.results[t.id] = { ok: ok, total: total, pct: pct, grade: g, date: new Date().toISOString() };
     saveResults();
-    logActivity("test", "Тест " + t.code + ": " + ok + "/" + total + " (оценка " + g + ")");
+    logActivity("test", "Тест " + t.code);
     if (g === 5 && window.celebrate) window.celebrate();
-
     if (wrong.length){
       report.appendChild(el('<h3>Разбор ошибок</h3>'));
       wrong.forEach(function(w){
-        report.appendChild(el(
-          '<div class="error-item">' +
-            '<div class="error-q">' + escapeHtml(w.q) + '</div>' +
-            '<div class="error-line error-bad">Ваш ответ: ' + escapeHtml(w.u) + '</div>' +
-            '<div class="error-line error-ok">Верно: ' + escapeHtml(w.c) + '</div>' +
-          '</div>'
-        ));
+        report.appendChild(el('<div class="error-item"><div class="error-q">' + escapeHtml(w.q) + '</div>' +
+          '<div class="error-line error-bad">Ваш ответ: ' + escapeHtml(w.u) + '</div>' +
+          '<div class="error-line error-ok">Верно: ' + escapeHtml(w.c) + '</div></div>'));
       });
       report.appendChild(el('<a class="backlink" href="#/topic/' + t.id + '/lecture">📖 Перечитать лекцию →</a>'));
     } else {
@@ -1378,42 +1106,32 @@ function renderTestControl(body, t){
     }
     actions.querySelector("#gradeBtn").disabled = true;
   }
-
   form.querySelector("#gradeBtn").addEventListener("click", grade);
   form.querySelector("#resetTest").addEventListener("click", function(){
     clearTestTimer();
     form.querySelectorAll("input[type=radio]").forEach(function(i){ i.checked = false; });
     form.querySelectorAll(".option").forEach(function(o){ o.classList.remove("correct"); o.classList.remove("wrong"); });
-    result.textContent = ""; result.className = "test-result";
-    report.innerHTML = "";
-    graded = false;
-    actions.querySelector("#gradeBtn").disabled = false;
+    result.textContent = ""; result.className = "test-result"; report.innerHTML = "";
+    graded = false; actions.querySelector("#gradeBtn").disabled = false;
     startTestTimer(TEST_TIME_LIMIT_SEC, timer, grade);
   });
-
   startTestTimer(TEST_TIME_LIMIT_SEC, timer, grade);
 }
 
-/* ============================================================
-   PDF
-   ============================================================ */
+/* ---------- PDF ---------- */
 function openPdfModal(file, title){
   document.querySelectorAll(".pdf-overlay").forEach(function(x){ x.remove(); });
   var modal = el(
-    '<div class="pdf-overlay">' +
-      '<div class="pdf-modal">' +
-        '<div class="pdf-head">' +
-          '<div class="pdf-title">' + escapeHtml(title) + '</div>' +
-          '<div class="pdf-actions">' +
-            '<button class="btn ghost" id="pdfDark">🌙 Тема</button>' +
-            '<a class="btn ghost" href="' + file + '" download>⬇ Скачать</a>' +
-            '<a class="btn ghost" href="' + file + '" target="_blank" rel="noopener">↗ Новая вкладка</a>' +
-            '<button class="btn" id="pdfClose">✕ Закрыть</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="pdf-body"><iframe src="' + file + '#view=FitH" title="' + escapeHtml(title) + '"></iframe></div>' +
-      '</div>' +
-    '</div>'
+    '<div class="pdf-overlay"><div class="pdf-modal">' +
+      '<div class="pdf-head"><div class="pdf-title">' + escapeHtml(title) + '</div>' +
+      '<div class="pdf-actions">' +
+        '<button class="btn ghost" id="pdfDark">🌙 Тема</button>' +
+        '<a class="btn ghost" href="' + file + '" download>⬇ Скачать</a>' +
+        '<a class="btn ghost" href="' + file + '" target="_blank" rel="noopener">↗ Новая вкладка</a>' +
+        '<button class="btn" id="pdfClose">✕ Закрыть</button>' +
+      '</div></div>' +
+      '<div class="pdf-body"><iframe src="' + file + '#view=FitH" title="' + escapeHtml(title) + '"></iframe></div>' +
+    '</div></div>'
   );
   document.body.appendChild(modal);
   document.body.style.overflow = "hidden";
@@ -1425,9 +1143,7 @@ function openPdfModal(file, title){
   document.addEventListener("keydown", onEsc);
 }
 
-/* ============================================================
-   Подсветка активного пункта в шторке
-   ============================================================ */
+/* ---------- Подсветка активного пункта ---------- */
 function setActiveTopBtn(which){
   document.querySelectorAll(".drawer-item[data-go]").forEach(function(item){
     var go = item.dataset.go;
@@ -1436,38 +1152,23 @@ function setActiveTopBtn(which){
   });
 }
 
-/* ============================================================
-   Роутер
-   ============================================================ */
+/* ---------- Роутер ---------- */
 function goHome(e){ if (e) e.preventDefault(); location.hash = "#/"; }
-
 function route(){
   clearTestTimer();
   document.querySelectorAll(".pdf-overlay, .theme-overlay, .user-menu, .more-menu").forEach(function(x){ x.remove(); });
   if (typeof closeSearch === "function") closeSearch();
-
   var hash = location.hash.replace(/^#/, "") || "/";
   var parts = hash.split("/").filter(Boolean);
-
   var app = $("app");
   if (!app) return;
-
   if (parts[0] === "staff"){
-    if (state.staff && window.renderStaffPage){
-      window.renderStaffPage();
-    } else {
-      openRoleModal();
-      app.innerHTML = "";
-    }
+    if (state.staff && window.renderStaffPage) window.renderStaffPage();
+    else { openRoleModal(); app.innerHTML = ""; }
     window.scrollTo(0, 0);
     return;
   }
-
-  if (!state.student){
-    app.innerHTML = "";
-    return;
-  }
-
+  if (!state.student && !state.staff){ app.innerHTML = ""; return; }
   var pages = {
     comments:  function(){ if (window.renderCommentsPage)  window.renderCommentsPage();  },
     dashboard: function(){ if (window.renderDashboard)     window.renderDashboard();     },
@@ -1480,9 +1181,11 @@ function route(){
     "final-training":  function(){ if (window.renderFinalTrainingPage) window.renderFinalTrainingPage(); },
     "final-exam":      function(){ if (window.renderFinalExamPage)     window.renderFinalExamPage();     },
     "gcode-reference": function(){ if (window.renderGCodeReferencePage) window.renderGCodeReferencePage(); },
-    links:             function(){ if (window.renderLinksPage)         window.renderLinksPage();         }
+    links:             function(){ if (window.renderLinksPage)         window.renderLinksPage();         },
+    rating:            function(){ if (window.renderRatingPage)        window.renderRatingPage();        },
+    schedule:          function(){ if (window.renderSchedulePage)      window.renderSchedulePage();      },
+    journal:           function(){ if (window.renderJournalPage)       window.renderJournalPage();       }
   };
-
   if (parts[0] === "topic" && parts[1]){
     renderTopic(parts[1], parts[2] || "passport", parts[3] || "control");
   } else if (pages[parts[0]]){
@@ -1493,9 +1196,7 @@ function route(){
   window.scrollTo(0, 0);
 }
 
-/* ============================================================
-   Объявления / heartbeat / сеть
-   ============================================================ */
+/* ---------- Объявления / heartbeat / сеть ---------- */
 function loadAnnouncement(){
   var bar = $("announceBar");
   if (!bar || !APPS_SCRIPT_URL) return;
@@ -1516,9 +1217,7 @@ function loadAnnouncement(){
     })
     .catch(function(){});
 }
-
 var heartbeatTimer = null;
-
 function sendHeartbeat(){
   if (!state.student || !APPS_SCRIPT_URL) return;
   var p = new URLSearchParams();
@@ -1528,7 +1227,6 @@ function sendHeartbeat(){
   p.append("group", state.student.group);
   fetch(APPS_SCRIPT_URL, { method:"POST", body: p }).catch(function(){});
 }
-
 function refreshOnline(){
   var node = $("onlineCount");
   if (!node || !APPS_SCRIPT_URL) return;
@@ -1537,57 +1235,36 @@ function refreshOnline(){
     .then(function(data){ if (data && data.ok) node.textContent = "🌐 " + data.count; })
     .catch(function(){});
 }
-
 function startHeartbeat(){
-  sendHeartbeat();
-  refreshOnline();
+  sendHeartbeat(); refreshOnline();
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   heartbeatTimer = setInterval(function(){ sendHeartbeat(); refreshOnline(); }, 60000);
 }
-
 function updateNetStatus(){
-  var n = $("netStatus");
-  if (!n) return;
+  var n = $("netStatus"); if (!n) return;
   if (!navigator.onLine){ n.textContent = "📶 Офлайн"; n.classList.add("offline"); }
   else { n.textContent = "📶 Онлайн"; n.classList.remove("offline"); }
 }
 
-/* ============================================================
-   Инициализация
-   ============================================================ */
+/* ---------- Инициализация ---------- */
 window.goHome = goHome;
 window.openRoleModal = openRoleModal;
-
-window.addEventListener("hashchange", function(){
-  closeDrawer();
-  route();
-});
+window.addEventListener("hashchange", function(){ closeDrawer(); route(); });
 window.addEventListener("online",  function(){ updateNetStatus(); if (window.OfflineQueue) window.OfflineQueue.flush(); });
 window.addEventListener("offline", updateNetStatus);
 
 window.addEventListener("DOMContentLoaded", function(){
   try {
-    initTheme();
-    initAuth();
-    initDrawer();
-    renderUserChip();
-    updateNetStatus();
-
+    initTheme(); initAuth(); initDrawer(); renderUserChip(); updateNetStatus();
     var _course = getCourse();
     if (!_course || !_course.sections){
       var app = $("app");
       if (app){
         app.innerHTML = "";
-        app.appendChild(el(
-          '<section class="module">' +
-            '<h2>Курс не загружен</h2>' +
-            '<p>Файл <code>data.js</code> не подключён или повреждён. Проверьте, что он лежит рядом с <code>index.html</code>.</p>' +
-          '</section>'
-        ));
+        app.appendChild(el('<section class="module"><h2>Курс не загружен</h2><p>Файл <code>data.js</code> не подключён.</p></section>'));
       }
       return;
     }
-
     route();
     loadAnnouncement();
     startHeartbeat();
@@ -1596,14 +1273,7 @@ window.addEventListener("DOMContentLoaded", function(){
     var app2 = $("app");
     if (app2){
       app2.innerHTML = "";
-      app2.appendChild(el(
-        '<section class="module">' +
-          '<h2>Ошибка инициализации</h2>' +
-          '<pre style="white-space:pre-wrap;color:var(--err)">' +
-          escapeHtml(String(err && err.stack ? err.stack : err)) +
-          '</pre>' +
-        '</section>'
-      ));
+      app2.appendChild(el('<section class="module"><h2>Ошибка инициализации</h2><pre style="white-space:pre-wrap;color:var(--err)">' + escapeHtml(String(err && err.stack ? err.stack : err)) + '</pre></section>'));
     }
   }
 });
