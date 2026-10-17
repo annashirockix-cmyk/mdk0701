@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v17.0 — CORE)
+   МДК 07.01 — script.js (v17.1 — FIX CORS & UI)
    ============================================================ */
 "use strict";
 
@@ -27,10 +27,7 @@ var GLOSSARY = [
   { term: "СОЖ", def: "Смазочно-охлаждающая жидкость." },
   { term: "Люнет", def: "Приспособление для поддержки длинных заготовок." },
   { term: "Борштанга", def: "Оправка для установки резца." },
-  { term: "Шпиндель", def: "Вращающийся вал станка." },
-  { term: "Подача (S, F)", def: "Перемещение инструмента." },
-  { term: "Глубина резания (t)", def: "Толщина слоя металла за проход." },
-  { term: "Скорость резания (Vc)", def: "Скорость кромки относительно заготовки." }
+  { term: "Шпиндель", def: "Вращающийся вал станка." }
 ];
 var ROLE_LABELS = { student: "🎓 Студент", admin: "🛡 Админ", teacher: "👨‍🏫 Преподаватель", curator: "🎓 Куратор", tester: "🧪 Тестировщик" };
 
@@ -67,7 +64,6 @@ function toggleFavorite(topicId, event) {
   if (location.hash === "#/" || location.hash === "") renderHome(); else renderTopic(topicId, "passport");
 }
 
-/* --- Стрик, XP и Достижения --- */
 function updateStreakAndBonus() {
   if (!state.student) return;
   var today = new Date().toDateString();
@@ -79,8 +75,6 @@ function updateStreakAndBonus() {
     var yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
     if (lastVisit === yesterday.toDateString()) streak++;
     else streak = 1;
-    
-    // Ежедневный бонус
     xp += 10;
     localStorage.setItem("mdk0701.lastVisit", today);
     localStorage.setItem("mdk0701.streak", streak);
@@ -105,7 +99,6 @@ function checkAchievements() {
   if(c) c.sections.forEach(sec => sec.topics.forEach(t => { if ((state.progress[t.id]?.done || 0) >= 5) doneCount++; }));
   if (doneCount >= 5 && !state.achievements["worker"]) { state.achievements["worker"] = true; changed = true; window.showToast("🏆 Достижение: Трудяга", "ok"); }
 
-  // Новые ачивки
   var hour = new Date().getHours();
   if (hour >= 0 && hour < 5 && !state.achievements["night_turner"]) { state.achievements["night_turner"] = true; changed = true; window.showToast("🏆 Достижение: Ночной токарь", "ok"); }
   
@@ -116,7 +109,6 @@ function checkAchievements() {
   if (changed) saveStudentData();
 }
 
-/* --- Данные --- */
 function loadStudentData(){
   var k = studentKey(); if (!k){ state.progress = {}; state.favorites = []; state.achievements = {}; return; }
   var ek = encodeURIComponent(k);
@@ -169,15 +161,12 @@ function applyCloudPayload(p){
   state.practiceStatus = p.practiceStatus || {}; state.favorites = p.favorites || [];
 }
 
-/* --- Авторизация --- */
-function applyTheme(theme){
-  document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme);
-}
+function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function initTheme(){ var saved = localStorage.getItem("mdk0701.theme"); if (saved && THEMES.some(t=>t.id===saved)) applyTheme(saved); var btn = $("themeToggle"); if (btn) btn.addEventListener("click", openThemeModal); }
 function openThemeModal(){
   document.querySelectorAll(".theme-overlay").forEach(x=>x.remove());
   var current = document.documentElement.getAttribute("data-theme") || "light";
-  var modal = el('<div class="theme-overlay" style="background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;top:0;left:0;right:0;bottom:0;"><div class="theme-modal" style="background:var(--card);padding:24px;border-radius:16px;max-width:400px;width:90%;"><h3>Цветовая тема</h3><div class="theme-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;"></div><button class="btn ghost" id="themeClose" style="width:100%">Закрыть</button></div></div>');
+  var modal = el('<div class="theme-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;"><div style="background:var(--card);padding:24px;border-radius:16px;max-width:400px;width:90%;"><h3>Цветовая тема</h3><div class="theme-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;"></div><button class="btn ghost" id="themeClose" style="width:100%">Закрыть</button></div></div>');
   var grid = modal.querySelector(".theme-grid");
   THEMES.forEach(t=>{
     var card = el('<button type="button" class="theme-card ' + (t.id===current?'selected':'') + '" style="padding:10px;border:2px solid var(--border);border-radius:8px;text-align:center;"><div style="height:20px;background:'+t.colors[0]+';border-radius:4px;margin-bottom:6px;"></div><div>'+t.name+'</div></button>');
@@ -246,7 +235,7 @@ function initAuth(){
 
 function openRoleModal(){
   document.querySelectorAll(".avatar-overlay").forEach(x=>x.remove());
-  var modal = el('<div class="avatar-overlay" style="background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;top:0;left:0;right:0;bottom:0;"><div style="background:var(--card);padding:24px;border-radius:16px;width:90%;max-width:400px;"><h3>Выбор роли</h3><div class="role-list" style="display:flex;flex-direction:column;gap:8px;margin:16px 0">'+
+  var modal = el('<div class="avatar-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;"><div style="background:var(--card);padding:24px;border-radius:16px;width:90%;max-width:400px;"><h3>Выбор роли</h3><div class="role-list" style="display:flex;flex-direction:column;gap:8px;margin:16px 0">'+
     Object.keys(ROLE_LABELS).map(r=>'<button class="btn ghost role-pick" data-role="'+r+'">'+ROLE_LABELS[r]+'</button>').join("")+
     '</div><div id="roleForm"></div><button class="btn ghost" id="roleCancel" style="width:100%;margin-top:16px;">Закрыть</button></div></div>');
   document.body.appendChild(modal); modal.querySelector("#roleCancel").addEventListener("click", ()=>modal.remove());
@@ -262,7 +251,7 @@ function openRoleModal(){
           .then(r=>r.json()).then(d=>{
             if(d && d.ok){ state.staff={username:formBox.querySelector("#rUser").value, role:d.role, name:d.name, group:d.group||""}; saveStaffSession(); modal.remove(); $("loginOverlay").hidden=true; renderUserChip(); route(); }
             else { formBox.querySelector("#rStatus").textContent="Ошибка входа"; formBox.querySelector("#rStatus").style.color="var(--err)"; }
-          });
+          }).catch(()=>{ formBox.querySelector("#rStatus").textContent="Ошибка CORS/Сети"; formBox.querySelector("#rStatus").style.color="var(--err)"; });
         });
       }
     });
@@ -273,25 +262,14 @@ function renderUserChip(){
   if(!$("userChipAvatar")) return;
   if (state.staff){ $("userChipAvatar").textContent="👨‍🏫"; $("userChipName").textContent=state.staff.name; $("userChipGroup").textContent=ROLE_LABELS[state.staff.role]; $("drawerCabinetBtn").hidden=false; $("drawerSyncBtn").hidden=true; return; }
   if (state.student){ $("userChipAvatar").textContent=getAvatar(); $("userChipName").textContent=state.student.name; $("userChipGroup").textContent="Гр. "+state.student.group; $("drawerCabinetBtn").hidden=true; $("drawerSyncBtn").hidden=false; return; }
-  $("userChipAvatar").textContent="👨‍🎓"; $("userChipName").textContent="Гость"; $("userChipGroup").textContent="Роль: Гость"; $("drawerCabinetBtn").hidden=true; $("drawerSyncBtn").hidden=true;
 }
 
-/* --- Главная --- */
 function renderHome(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; var c = getCourse(); if (!c) return;
   app.appendChild(el(`<section class="hero"><div class="meta">${c.specialty}</div><h1>${c.title}</h1><p>${c.module}</p><div class="hero-quote">${quoteOfDay()}</div></section>`));
   
-  if (state.favorites && state.favorites.length){
-    var favBlock = el('<section class="module"><h2>⭐ Избранные темы</h2><div class="fav-list" style="display:flex;flex-direction:column;gap:8px;"></div></section>');
-    state.favorites.forEach(id=>{
-      var t = findTopic(id); if(!t) return;
-      favBlock.querySelector(".fav-list").appendChild(el(`<div class="fav-item" style="padding:12px;background:var(--card-soft);border:1px solid var(--gold);border-radius:8px;cursor:pointer;" onclick="location.hash='#/topic/${id}'"><b style="color:var(--gold)">${t.topic.code}</b> · ${t.topic.title}</div>`));
-    });
-    app.appendChild(favBlock);
-  }
-
   c.sections.forEach(sec=>{
-    app.appendChild(el(`<div class="steps-title">${sec.code} · ${sec.title}</div>`));
+    app.appendChild(el(`<div class="steps-title" style="margin:32px 4px 12px;font-size:15px;color:var(--muted);text-transform:uppercase;">${sec.code} · ${sec.title}</div>`));
     var list = el('<div class="topics" style="display:flex;flex-direction:column;gap:12px;"></div>');
     sec.topics.forEach(t=>{
       var done = (state.progress[t.id] && state.progress[t.id].done) || 0;
@@ -308,8 +286,7 @@ function renderHome(){
     app.appendChild(list);
   });
 
-  // Блок карточек (ИСПРАВЛЕНО)
-  var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div style="text-align:center;"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
+  var flashBlock = el('<section class="module" style="margin-top:24px;"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div style="text-align:center;"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
   app.appendChild(flashBlock); var hArea = flashBlock.querySelector("#homeFlashcardArea"), hIndex = 0;
   
   function renderHomeCard() { 
@@ -321,9 +298,9 @@ function renderHome(){
   flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%FLASHCARDS.length; renderHomeCard(); });
 }
 
-/* --- Роутинг --- */
 function goHome(e){ if(e) e.preventDefault(); location.hash="#/"; }
 function route(){
+  closeDrawer(); // Принудительно закрываем меню при смене страницы
   document.querySelectorAll(".theme-overlay, .avatar-overlay, .search-overlay").forEach(x=>x.remove());
   var hash = location.hash.replace(/^#/, "") || "/"; var parts = hash.split("/").filter(Boolean); var app = $("app"); if(!app) return;
   if (!state.student && !state.staff){ app.innerHTML=""; return; }
@@ -356,7 +333,6 @@ function route(){
   window.scrollTo(0, 0);
 }
 
-/* --- Страница темы --- */
 function renderTopic(id, tab){
   tab = tab || "passport"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = ""; $("crumbs").textContent = t.topic.code + " · " + t.topic.title;
@@ -381,7 +357,7 @@ function renderTopic(id, tab){
   panel.appendChild(el('<button class="btn ghost" style="margin-bottom:12px;font-size:12px" onclick="window.print()">🖨 Распечатать</button>'));
 
   if (tab === "passport") {
-    panel.appendChild(el(`<h2>Паспорт часов</h2><p>Тема <b>${t.topic.code}</b> — ${t.topic.title}.</p><div class="kpi-row"><div class="kpi"><div class="k-label">Всего</div><div class="k-value">${h.total} ч</div></div><div class="kpi"><div class="k-label">Теория</div><div class="k-value">${h.theory} ч</div></div><div class="kpi"><div class="k-label">Практика</div><div class="k-value">${h.practice} ч</div></div></div>`));
+    panel.appendChild(el(`<h2>Паспорт часов</h2><p>Тема <b>${t.topic.code}</b> — ${t.topic.title}.</p><div class="kpi-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 20px;"><div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--card-soft);"><div class="k-label" style="font-size:12px;color:var(--muted);margin-bottom:4px;">Всего</div><div class="k-value" style="font-size:18px;font-weight:600;">${h.total} ч</div></div><div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--card-soft);"><div class="k-label" style="font-size:12px;color:var(--muted);margin-bottom:4px;">Теория</div><div class="k-value" style="font-size:18px;font-weight:600;">${h.theory} ч</div></div><div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--card-soft);"><div class="k-label" style="font-size:12px;color:var(--muted);margin-bottom:4px;">Практика</div><div class="k-value" style="font-size:18px;font-weight:600;">${h.practice} ч</div></div></div>`));
   }
   
   if (tab === "lecture") {
@@ -408,7 +384,6 @@ function renderTopic(id, tab){
       var block = el(`<div class="question"><div class="q-text">${i+1}. ${q.q}</div><input type="text" class="self-input" data-idx="${i}" placeholder="Ваш ответ" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);margin-bottom:8px;"><div class="self-feedback" id="fb_${i}" style="font-size:13px;"></div></div>`);
       selfWrap.appendChild(block);
     });
-    // ЕДИНАЯ КНОПКА ПРОВЕРКИ
     var checkBtn = el('<button class="btn" style="width:100%">Проверить все ответы</button>');
     checkBtn.addEventListener("click", ()=>{
       var inputs = selfWrap.querySelectorAll(".self-input");
@@ -443,7 +418,6 @@ function renderTopic(id, tab){
     var finishBtn = el('<button class="btn" style="width:100%">Подвести итог</button>');
     panel.appendChild(finishBtn);
 
-    // ТАЙМЕР ТЕСТА
     var timeLeft = 15 * 60;
     var timerId = setInterval(() => {
       if (!document.body.contains(timerBox)) { clearInterval(timerId); return; }
@@ -473,11 +447,10 @@ function renderTopic(id, tab){
   window.scrollTo(0, 0);
 }
 
-/* Загрузка файлов */
 window.uploadFile = function(event, code, title) {
   var file = event.target.files[0]; if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { window.showToast("Файл больше 5 МБ", "err"); return; }
-  window.showToast("Загрузка файла... Пожалуйста, подождите.", "info");
+  if (file.size > 1 * 1024 * 1024) { window.showToast("Файл больше 1 МБ (ограничение Google)", "err"); return; }
+  window.showToast("Загрузка...", "info");
   var reader = new FileReader();
   reader.onload = function(e) {
     var base64 = e.target.result.split(',')[1];
@@ -495,25 +468,33 @@ window.uploadFile = function(event, code, title) {
 
     fetch(APPS_SCRIPT_URL, { method: "POST", body: params })
     .then(r => r.json()).then(d => {
-      if (d.ok) window.showToast("Файл успешно загружен!", "ok");
-      else window.showToast("Ошибка загрузки: " + (d.error||""), "err");
-    }).catch(() => window.showToast("Ошибка сети", "err"));
+      if (d.ok) window.showToast("Файл загружен!", "ok");
+      else window.showToast("Ошибка: " + (d.error||""), "err");
+    }).catch(() => window.showToast("Ошибка CORS. Проверьте доступ в Apps Script", "err"));
   };
   reader.readAsDataURL(file);
 };
 
-/* PWA Install */
-var deferredPrompt;
+// ЛОГИКА PWA БАННЕРА (ИСПРАВЛЕНО)
+var deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault(); deferredPrompt = e;
-  if ($("pwaBanner")) $("pwaBanner").hidden = false;
+  e.preventDefault(); 
+  deferredPrompt = e;
+  // Показываем баннер только если он существует и браузер реально готов к установке
+  if ($("pwaBanner")) {
+    $("pwaBanner").hidden = false;
+    $("pwaInstallBtn").onclick = () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') { $("pwaBanner").hidden = true; }
+          deferredPrompt = null;
+        });
+      }
+    };
+    $("pwaCloseBtn").onclick = () => { $("pwaBanner").hidden = true; };
+  }
 });
-if ($("pwaInstallBtn")) {
-  $("pwaInstallBtn").addEventListener("click", () => {
-    if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { $("pwaBanner").hidden = true; deferredPrompt = null; }); }
-  });
-  $("pwaCloseBtn").addEventListener("click", () => { $("pwaBanner").hidden = true; });
-}
 
 function renderCalculatorPage(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; $("crumbs").textContent = "Калькулятор";
