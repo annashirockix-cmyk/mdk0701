@@ -1,7 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js
-   Ядро: темы, видео, аватары, авторизация, роли, облако,
-   страницы тем, тесты, отчёты, роутер, шторка, статусы практических.
+   МДК 07.01 — script.js (Полная обновленная версия)
    ============================================================ */
 
 "use strict";
@@ -594,29 +592,35 @@ function openRoleModal(){
   else renderStaffForm(currentRole);
 }
 
-/* ---------- Чип ---------- */
+/* ---------- Чип пользователя (в шторке) ---------- */
 function renderUserChip(){
   var nameEl  = $("userChipName"); var groupEl = $("userChipGroup"); var avEl = $("userChipAvatar");
   var cab = $("drawerCabinetBtn"); var sync = $("drawerSyncBtn");
+
   if (state.staff){
-    if (avEl) avEl.textContent = "👤";
+    if (avEl) avEl.textContent = "👨‍🏫";
     if (nameEl) nameEl.textContent = state.staff.name;
-    if (groupEl) groupEl.textContent = "[" + (state.staff.role || "staff") + (state.staff.group ? " · " + state.staff.group : "") + "]";
-    if (cab) cab.hidden = false;
-    if (sync) sync.hidden = true;
+    
+    var roleName = ROLE_LABELS[state.staff.role] || state.staff.role;
+    if (groupEl) groupEl.textContent = roleName + (state.staff.group ? " · " + state.staff.group : "");
+    
+    // Показываем кабинет только сотрудникам (не тестерам)
+    if (cab) cab.hidden = !(state.staff.role === "admin" || state.staff.role === "teacher" || state.staff.role === "curator");
+    if (sync) sync.hidden = true; // Сотрудникам синхронизация не нужна
     return;
   }
   if (state.student){
     if (avEl) avEl.textContent = getAvatar();
     if (nameEl) nameEl.textContent = state.student.name;
-    if (groupEl) groupEl.textContent = "Гр. " + state.student.group;
-    if (cab) cab.hidden = true;
-    if (sync) sync.hidden = false;
+    if (groupEl) groupEl.textContent = "Гр. " + state.student.group + " · 🎓 Студент";
+    
+    if (cab) cab.hidden = true; // Студенту кабинет запрещен
+    if (sync) sync.hidden = false; // Студенту нужна кнопка синхронизации
     return;
   }
   if (avEl) avEl.textContent = "👨‍🎓";
   if (nameEl) nameEl.textContent = "Гость";
-  if (groupEl) groupEl.textContent = "—";
+  if (groupEl) groupEl.textContent = "Роль: Гость";
   if (cab) cab.hidden = true;
   if (sync) sync.hidden = true;
 }
@@ -636,20 +640,24 @@ function renderHome(){
   try {
     var heroHtml =
       '<section class="hero">' +
-        '<div class="meta">' + escapeHtml(c.specialty || "") + ' · набор 2024</div>' +
+        '<div class="meta">' + escapeHtml(c.specialty || "") + '</div>' + /* Убран набор 2024 */
         '<h1>' + escapeHtml(c.title || "МДК 07.01") + '</h1>' +
         '<p>' + escapeHtml(c.module || "") + '</p>';
+        
     if (state.student){
       heroHtml +=
         '<div class="hello"><span class="hello-avatar">' + getAvatar() + '</span>' +
         '<span>Вы вошли как <b>' + escapeHtml(state.student.name) + '</b>, группа <b>' +
-        escapeHtml(state.student.group) + '</b>.<span class="sync-status" id="syncStatus"></span></span></div>';
+        escapeHtml(state.student.group) + '</b> <span style="font-size:13px;color:var(--muted);margin-left:6px">(Роль: Студент)</span>.<span class="sync-status" id="syncStatus"></span></span></div>';
     }
+    
     if (state.staff){
+      var roleName = ROLE_LABELS[state.staff.role] || state.staff.role;
       heroHtml +=
         '<div class="hello"><span class="hello-avatar">👤</span>' +
-        '<span>Служебный вход: <b>' + escapeHtml(state.staff.name) + '</b> · роль <b>' + escapeHtml(state.staff.role) + '</b>.</span></div>';
+        '<span>Служебный вход: <b>' + escapeHtml(state.staff.name) + '</b> · роль: <b>' + escapeHtml(roleName) + '</b>.</span></div>';
     }
+    
     heroHtml += '<div class="hero-quote">' + quoteOfDay() + '</div></section>';
     app.appendChild(el(heroHtml));
 

@@ -1,119 +1,171 @@
 /* ============================================================
-   МДК 07.01 — journal.js
+   МДК 07.01 — journal.js (Обновленная версия)
    ============================================================ */
 "use strict";
 
-function jEl(html){ var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
-function jState(){ try { return state; } catch(e){ return null; } }
+const DEFAULT_STUDENTS = [
+  "Абрамов Олег", "Баладзе Давид", "Галкин Арсений", "Гладский Константин", "Дадашев Павел", 
+  "Дубынин Дмитрий", "Дятлов Даниил", "Евлан Даниил", "Измайлов Рашит", "Калкатинге Генадие", 
+  "Калугин Иван", "Карташов Павел", "Костылев Александр", "Кулиш Денис", "Луканов Артём", 
+  "Мелешко Антон", "Миронов Артём", "Надина Алиса", "Новиков Арсений", "Орлов Сергей", 
+  "Пятышев Артём", "Смирнов Олег", "Соломатин Артём", "Харитонов Максим", "Целилов Антон", 
+  "Шлыков Леонид", "Якунин Игорь"
+];
 
-async function loadJournal() {
-  const st = jState();
-  if (!st || !st.student) return [];
-  const p = new URLSearchParams();
-  p.append("action", "journalload");
-  p.append("group", st.student.group);
-  try {
-    const res = await fetch(APPS_SCRIPT_URL + "?" + p.toString());
-    const d = await res.json();
-    return d.ok ? d.journal : [];
-  } catch(e) { return []; }
-}
+const DEFAULT_DATES = ["05.11", "11.11", "12.11", "18.11", "19.11", "25.11", "26.11", "02.12", "03.12", "09.12", "10.12", "16.12", "17.12"];
 
-async function saveJournalEntry(group, student, subject, grade, teacher) {
-  const st = jState();
-  const p = new URLSearchParams();
-  p.append("action", "journalsave");
-  p.append("userRole", st.staff.role);
-  p.append("username", st.staff.username);
-  p.append("group", group);
-  p.append("student", student);
-  p.append("subject", subject);
-  p.append("grade", grade);
-  p.append("teacher", teacher);
-  try {
-    const res = await fetch(APPS_SCRIPT_URL, { method: "POST", body: p });
-    const d = await res.json();
-    return d.ok;
-  } catch(e) { return false; }
-}
+const FLASHCARDS = [
+  { q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ (ISO 6983).", topic: "Основы" },
+  { q: "Что делает команда G00?", a: "Быстрое позиционирование (ускоренный ход).", topic: "G-коды" },
+  { q: "Что делает команда G01?", a: "Линейная интерполяция (рабочая подача по прямой).", topic: "G-коды" },
+  { q: "Что делает команда G02 и G03?", a: "G02 — дуга по часовой, G03 — против часовой.", topic: "G-коды" },
+  { q: "Что такое M03?", a: "Включение шпинделя по часовой стрелке (правое вращение).", topic: "M-коды" }
+];
+
+function jEl(html) { var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
+function jEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 window.renderJournalPage = function() {
-  const app = document.getElementById("app");
+  var app = document.getElementById("app");
+  if (!app) return;
   app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Журнал";
-  
-  const st = jState();
-  const isStaff = st && st.staff && (st.staff.role === "teacher" || st.staff.role === "admin");
-  const group = st.student ? st.student.group : (st.staff.group || "ТМ-3");
+  document.getElementById("crumbs").textContent = "Журнал успеваемости";
+
+  var isAdmin = state.staff && state.staff.role === "admin";
+  var isTeacher = state.staff && state.staff.role === "teacher";
+  var isCurator = state.staff && state.staff.role === "curator";
+  var isStudent = !state.staff && state.student;
+  var canEdit = isAdmin || isTeacher;
+
+  var targetGroup = "ТМ-3"; 
+  if (isCurator) targetGroup = state.staff.group || "ТМ-3";
+  if (isStudent) targetGroup = state.student.group;
+  if (canEdit) targetGroup = localStorage.getItem("mdk0701.journal.group") || "ТМ-3";
 
   app.appendChild(jEl('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
-  
-  const block = jEl(`<section class="module">
-    <div class="meta">Успеваемость</div>
-    <h2>Журнал группы ${group}</h2>
-    <p class="sub">${isStaff ? "Вы можете выставлять оценки." : "Ваши оценки и оценки одногруппников."}</p>
-    
-    ${isStaff ? `
-    <form id="addGradeForm" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;background:var(--card-soft);padding:14px;border-radius:10px;border:1px solid var(--border)">
-      <input type="text" id="jStudent" placeholder="ФИО студента" required style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
-      <input type="text" id="jSubject" placeholder="Предмет" required style="flex:1;min-width:150px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
-      <input type="number" id="jGrade" placeholder="Оценка" min="1" max="5" required style="width:90px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text)">
-      <button type="submit" class="btn">Выставить</button>
-    </form>` : ''}
-    
-    <div id="journalContent"><div class="comment-empty">Загружаем журнал…</div></div>
-  </section>`);
-  app.appendChild(block);
+  app.appendChild(jEl('<section class="hero"><div class="meta">Успеваемость</div><h1>Журнал группы ' + jEsc(targetGroup) + '</h1><p>Дисциплина: Программирование для автоматизированного оборудования.</p></section>'));
 
-  const content = block.querySelector("#journalContent");
+  var tabs = jEl('<div class="test-mode-tabs" style="margin-bottom:20px"><button class="test-mode-tab active" data-tab="table">📖 Журнал</button><button class="test-mode-tab" data-tab="cards">🎴 Карточки знаний</button></div>');
+  app.appendChild(tabs);
+  var contentBox = jEl('<div id="journalContent"></div>');
+  app.appendChild(contentBox);
 
-  async function refresh() {
-    const data = await loadJournal();
-    content.innerHTML = "";
-    
-    if (!data.length) {
-      content.appendChild(jEl('<div class="comment-empty">Оценок пока нет.</div>'));
-      return;
+  tabs.querySelectorAll(".test-mode-tab").forEach(btn => {
+    btn.addEventListener("click", function() {
+      tabs.querySelectorAll(".test-mode-tab").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      if (btn.dataset.tab === "table") drawTable(); else drawFlashcards();
+    });
+  });
+
+  function drawTable() {
+    contentBox.innerHTML = "";
+    var topPanel = jEl('<div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px"></div>');
+
+    if (canEdit) {
+      var groupSelector = jEl('<div style="display:flex; align-items:center; gap:10px"><label>Группа:</label><select id="groupSelect" class="login-card" style="margin:0; padding:8px"><option value="ТМ-3">ТМ-3</option><option value="ТМП 5-2">ТМП 5-2</option></select></div>');
+      topPanel.appendChild(groupSelector);
+      groupSelector.querySelector("#groupSelect").value = targetGroup;
+      groupSelector.querySelector("#groupSelect").addEventListener("change", e => {
+        targetGroup = e.target.value; localStorage.setItem("mdk0701.journal.group", targetGroup);
+        document.querySelector(".hero h1").textContent = "Журнал группы " + targetGroup; drawTable();
+      });
+    } else if (isCurator) {
+      var reportBtn = jEl('<button class="btn" style="background:var(--blue); color:#fff">📧 Отправить отчет по группе</button>');
+      reportBtn.addEventListener("click", e => sendReportEmail(targetGroup, null, e.target));
+      topPanel.appendChild(reportBtn);
     }
+    contentBox.appendChild(topPanel);
 
-    const table = jEl(`<table class="teacher-table">
-      <thead><tr><th>Дата</th><th>Студент</th><th>Предмет</th><th>Оценка</th><th>Преподаватель</th></tr></thead>
-      <tbody></tbody>
-    </table>`);
-    const tbody = table.querySelector("tbody");
+    var tableWrap = jEl('<div class="journal-container"><div class="comment-empty">Загружаем данные…</div></div>');
+    contentBox.appendChild(tableWrap);
 
-    // Сортируем по дате (новые сверху)
-    data.sort((a, b) => new Date(b.date) - new Date(a.date));
+    var url = new URL(APPS_SCRIPT_URL);
+    url.searchParams.append("action", "journalload");
+    url.searchParams.append("group", targetGroup);
+    url.searchParams.append("userRole", state.staff ? state.staff.role : "student");
+    if (state.staff) url.searchParams.append("username", state.staff.username);
 
-    data.forEach(j => {
-      const tr = jEl(`<tr>
-        <td>${new Date(j.date).toLocaleDateString("ru-RU")}</td>
-        <td><b>${j.student}</b></td>
-        <td>${j.subject}</td>
-        <td style="color:var(--accent);font-weight:bold">${j.grade}</td>
-        <td>${j.teacher}</td>
-      </tr>`);
+    fetch(url).then(r => r.json()).then(d => renderJournalTable(d.ok && d.journal ? d.journal : [], tableWrap)).catch(() => renderJournalTable([], tableWrap));
+  }
+
+  function renderJournalTable(journalData, wrapper) {
+    wrapper.innerHTML = "";
+    var gradesMap = {};
+    journalData.forEach(item => { if (!gradesMap[item.student]) gradesMap[item.student] = {}; gradesMap[item.student][item.date] = item.grade; });
+
+    var table = jEl('<table class="journal-table"></table>');
+    var thead = jEl('<thead><tr><th rowspan="2">№</th><th rowspan="2">Фамилия и имя</th></tr></thead>');
+    var dateTh = jEl('<tr></tr>');
+    DEFAULT_DATES.forEach(d => dateTh.appendChild(jEl('<th>' + d + '</th>')));
+    thead.firstChild.appendChild(jEl('<th colspan="' + DEFAULT_DATES.length + '">Даты занятий</th>'));
+    thead.appendChild(dateTh); table.appendChild(thead);
+
+    var tbody = jEl('<tbody></tbody>');
+    DEFAULT_STUDENTS.forEach((studentName, idx) => {
+      if (isStudent && state.student.name.toLowerCase().indexOf(studentName.toLowerCase().split(" ")[0]) === -1) return;
+
+      var tr = jEl('<tr></tr>');
+      tr.appendChild(jEl('<td>' + (idx + 1) + '</td>'));
+      var nameTd = jEl('<td style="display:flex; justify-content:space-between; align-items:center"></td>');
+      nameTd.appendChild(jEl('<span>' + jEsc(studentName) + '</span>'));
+      if (isCurator) {
+        var mailIcon = jEl('<button style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--accent)" title="Отправить отчет">📧</button>');
+        mailIcon.addEventListener("click", e => sendReportEmail(targetGroup, studentName, e.target));
+        nameTd.appendChild(mailIcon);
+      }
+      tr.appendChild(nameTd);
+
+      DEFAULT_DATES.forEach(date => {
+        var grade = (gradesMap[studentName] && gradesMap[studentName][date]) ? gradesMap[studentName][date] : "";
+        var td = jEl('<td></td>');
+        if (canEdit) {
+          var input = jEl('<input type="text" class="grade-input" maxlength="3" value="' + grade + '">');
+          input.addEventListener("change", function() { saveGrade(studentName, date, this.value); });
+          td.appendChild(input);
+        } else {
+          if (grade) td.innerHTML = '<b style="color:' + (grade === "5" ? "var(--ok)" : (grade === "2" ? "var(--err)" : "var(--text)")) + '; font-size:14px">' + jEsc(grade) + '</b>';
+        }
+        tr.appendChild(td);
+      });
       tbody.appendChild(tr);
     });
-
-    content.appendChild(table);
+    table.appendChild(tbody); wrapper.appendChild(table);
   }
 
-  if (isStaff) {
-    block.querySelector("#addGradeForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const student = block.querySelector("#jStudent").value.trim();
-      const subject = block.querySelector("#jSubject").value.trim();
-      const grade = block.querySelector("#jGrade").value;
-      
-      if (await saveJournalEntry(group, student, subject, grade, st.staff.name)) {
-        block.querySelector("#addGradeForm").reset();
-        refresh();
-      } else {
-        alert("Ошибка сохранения");
-      }
-    });
+  function saveGrade(student, date, grade) {
+    if (!APPS_SCRIPT_URL || !canEdit) return;
+    var p = new URLSearchParams();
+    p.append("action", "journalsave"); p.append("group", targetGroup); p.append("student", student);
+    p.append("date", date); p.append("topic", "Занятие"); p.append("grade", grade);
+    p.append("teacher", state.staff ? state.staff.name : "Учитель");
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r => r.json()).then(d => { if (!d.ok) alert("Ошибка сохранения"); }).catch(() => alert("Нет сети"));
   }
 
-  refresh();
+  function sendReportEmail(group, student, btn) {
+    var email = prompt("Введите email для отчета:", "anna.shirockix@gmail.com");
+    if (!email) return;
+    var oldText = btn.innerHTML; btn.innerHTML = "⏳ Отправка..."; btn.disabled = true;
+    var p = new URLSearchParams();
+    p.append("action", "journalreport"); p.append("group", group); p.append("email", email);
+    if (student) p.append("student", student);
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r => r.json()).then(d => {
+      btn.innerHTML = oldText; btn.disabled = false;
+      alert(d.ok ? "✅ Отчет отправлен!" : "❌ Ошибка: " + d.error);
+    }).catch(() => { btn.innerHTML = oldText; btn.disabled = false; alert("❌ Ошибка сети."); });
+  }
+
+  function drawFlashcards() {
+    contentBox.innerHTML = "";
+    contentBox.appendChild(jEl('<div class="module"><h2>Карточки знаний</h2><p class="sub">Нажмите, чтобы перевернуть.</p><div id="flashcardArea"></div><div class="test-actions" style="justify-content:center; margin-top:20px"><button class="btn ghost" id="nextCardBtn">Следующая →</button></div></div>'));
+    var area = contentBox.querySelector("#flashcardArea"), currentIndex = 0;
+    function renderCard() {
+      var card = FLASHCARDS[currentIndex]; area.innerHTML = "";
+      var el = jEl('<div class="flashcard" id="fCard"><div class="flashcard-inner"><div class="flashcard-front"><div style="color:var(--accent);font-size:12px;margin-bottom:10px">' + card.topic + '</div><h3>' + card.q + '</h3></div><div class="flashcard-back"><h3>Ответ</h3><p>' + card.a + '</p></div></div></div>');
+      el.addEventListener("click", () => el.classList.toggle("flipped")); area.appendChild(el);
+    }
+    renderCard();
+    contentBox.querySelector("#nextCardBtn").addEventListener("click", () => { currentIndex = (currentIndex + 1) % FLASHCARDS.length; renderCard(); });
+  }
+  drawTable();
 };
