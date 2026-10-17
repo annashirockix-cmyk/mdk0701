@@ -6,20 +6,37 @@
 <title>МДК 07.01</title>
 <link rel="manifest" href="manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="style.css?v=21">
+<link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
 
+<!-- ОКНО ВХОДА (Две формы) -->
 <div class="login-overlay" id="loginOverlay" hidden>
-  <div class="login-card">
-    <div class="login-brand"><span class="brand-badge">МДК 07.01</span><h1>Вход</h1></div>
-    <input id="loginName" type="text" placeholder="ФИО" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-    <input id="loginGroup" type="text" placeholder="Группа" style="width:100%;padding:10px;margin-bottom:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-    <button id="loginBtn" class="btn" style="width:100%">Войти как студент</button>
-    <p style="text-align:center;margin-top:10px;"><a href="#" id="loginStaffLink" style="color:var(--accent)">Вход для учителя</a></p>
+  <div class="login-card" style="max-width: 400px; background: var(--card); padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+    
+    <div class="login-brand" style="text-align: center; margin-bottom: 25px;">
+      <span class="brand-badge" style="font-size: 14px; padding: 6px 12px; background:var(--accent); color:#fff;">МДК 07.01</span>
+    </div>
+
+    <!-- СТУДЕНТ -->
+    <h3 style="margin-top:0; margin-bottom:15px; font-size:18px;">🎓 Вход студента</h3>
+    <input id="loginName" type="text" placeholder="ФИО (Иванов Иван)" style="width:100%; padding:12px; margin-bottom:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+    <input id="loginGroup" type="text" placeholder="Группа (ТМ-21)" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+    <button id="loginBtn" class="btn" style="width:100%; padding:12px;">Войти как студент</button>
+
+    <!-- РАЗДЕЛИТЕЛЬ -->
+    <div style="text-align:center; margin:20px 0; color:var(--muted); font-size:13px; font-weight:bold;">─── или ───</div>
+
+    <!-- УЧИТЕЛЬ -->
+    <h3 style="margin-top:0; margin-bottom:15px; font-size:18px;">👨‍🏫 Вход сотрудника</h3>
+    <input id="loginStaffName" type="text" placeholder="Логин (admin / teacher)" style="width:100%; padding:12px; margin-bottom:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+    <input id="loginStaffPass" type="password" placeholder="Пароль" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+    <button id="staffLoginBtn" class="btn ghost" style="width:100%; padding:12px; border-color:var(--accent); color:var(--accent);">Войти как сотрудник</button>
+
   </div>
 </div>
 
+<!-- ШАПКА -->
 <header class="topbar">
   <button class="burger-btn" id="burgerBtn"><span></span><span></span><span></span></button>
   <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
@@ -27,6 +44,7 @@
   <div class="topbar-status"><span class="status-pill" id="xpCount">🌟 0 XP</span></div>
 </header>
 
+<!-- МЕНЮ -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <aside class="drawer" id="drawer">
   <div class="drawer-head">
@@ -35,6 +53,7 @@
   </div>
   <nav class="drawer-nav">
     <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
+    <a class="drawer-item" data-go="#/profile">👤 <span>Личный кабинет</span></a>
     <a class="drawer-item" data-go="#/simulator">🖥️ <span>Симулятор G-кода</span></a>
     <a class="drawer-item" data-go="#/shop">🛒 <span>Магазин XP</span></a>
     <a class="drawer-item" data-go="#/portfolio">🎓 <span>Портфолио</span></a>
@@ -44,24 +63,26 @@
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
     <a class="drawer-item" data-go="#/gcode-reference">📖 <span>Справочник G/M</span></a>
     <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
+    <a class="drawer-item" data-go="#/final-training">🏋️ <span>Тренировка</span></a>
+    <a class="drawer-item" data-go="#/final-exam">🎓 <span>Экзамен</span></a>
     <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
   </nav>
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v21.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v23.0</footer>
 
-<script src="data.js?v=21"></script>
-<script src="data-extra.js?v=21"></script>
-<script src="info.js?v=21"></script>
-<script src="script.js?v=21"></script>
-<script src="extra.js?v=21"></script>
-<script src="final.js?v=21"></script>
-<script src="links.js?v=21"></script>
-<script src="rating.js?v=21"></script>
-<script src="schedule.js?v=21"></script>
-<script src="journal.js?v=21"></script>
-<script src="minigames.js?v=21"></script>
-<script src="assistant.js?v=21"></script>
+<script src="data.js?v=23"></script>
+<script src="data-extra.js?v=23"></script>
+<script src="info.js?v=23"></script>
+<script src="script.js?v=23"></script>
+<script src="extra.js?v=23"></script>
+<script src="final.js?v=23"></script>
+<script src="links.js?v=23"></script>
+<script src="rating.js?v=23"></script>
+<script src="schedule.js?v=23"></script>
+<script src="journal.js?v=23"></script>
+<script src="minigames.js?v=23"></script>
+<script src="assistant.js?v=23"></script>
 </body>
 </html>

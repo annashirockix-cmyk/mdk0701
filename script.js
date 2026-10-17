@@ -1,10 +1,10 @@
 /* ============================================================
-   МДК 07.01 — script.js (v22.0 FINAL COMPLETE)
+   МДК 07.01 — script.js (v23.0 FULL)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
-var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, practiceStatus: {}, activity: [], favorites: [], achievements: {}, xp: 0, shop: [] };
+var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [] };
 
 // Восстановление данных из памяти
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
@@ -51,41 +51,51 @@ function saveStudentData(){
 function initAuth(){
   var overlay = $("loginOverlay");
   if (!overlay) return;
-  if (!state.student && !state.staff) overlay.hidden=false; else overlay.hidden=true;
+
+  if (!state.student && !state.staff) overlay.hidden = false; else overlay.hidden = true;
   if (state.student) loadStudentData();
 
-  $("loginBtn").addEventListener("click", ()=>{
-    var n = $("loginName").value, g = $("loginGroup").value;
-    if (!n || !g) { window.showToast("Введите имя и группу", "err"); return; }
+  // 1. Кнопка Входа Студента
+  $("loginBtn").addEventListener("click", () => {
+    var n = $("loginName").value.trim();
+    var g = $("loginGroup").value.trim();
+    if (!n || !g) { window.showToast("Введите ФИО и группу", "err"); return; }
+    
     state.student = { name: n, group: g.toUpperCase() };
     localStorage.setItem("mdk0701.student", JSON.stringify(state.student));
-    loadStudentData(); overlay.hidden=true; renderUserChip(); route();
+    loadStudentData(); overlay.hidden = true; renderUserChip(); route();
+    window.showToast("Вы вошли как " + n, "ok");
   });
-  
-  $("loginStaffLink").addEventListener("click", (e)=>{
-    e.preventDefault();
-    var user = prompt("Логин (admin):"), pass = prompt("Пароль (Admin!Mdk0701_Core):");
-    if(!user || !pass) return;
-    fetch(APPS_SCRIPT_URL+"?action=login&username="+user+"&password="+pass).then(r=>r.json()).then(d=>{
-      if(d.ok){ 
-        state.staff = { role: d.role, name: d.name }; 
-        sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
-        overlay.hidden=true; renderUserChip(); route(); 
-      }
-      else window.showToast("Неверный логин или пароль", "err");
-    }).catch(() => window.showToast("Ошибка сети", "err"));
+
+  // 2. Кнопка Входа Сотрудника
+  $("staffLoginBtn").addEventListener("click", () => {
+    var user = $("loginStaffName").value.trim();
+    var pass = $("loginStaffPass").value.trim();
+    if (!user || !pass) { window.showToast("Введите логин и пароль", "err"); return; }
+
+    fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass))
+      .then(r => r.json()).then(d => {
+        if (d.ok) { 
+          state.staff = { role: d.role, name: d.name }; 
+          sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
+          overlay.hidden = true; renderUserChip(); route(); 
+          window.showToast("Добро пожаловать, " + d.name, "ok");
+        } else {
+          window.showToast("Неверный логин или пароль", "err");
+        }
+      }).catch(() => window.showToast("Ошибка сети", "err"));
   });
 }
 
 function renderUserChip(){
   if (state.staff) { 
-    $("userChipName").textContent = state.staff.name; 
-    $("userChipGroup").textContent = "Учитель"; 
-    $("userChipAvatar").textContent = "👨‍🏫"; 
+    if($("userChipName")) $("userChipName").textContent = state.staff.name; 
+    if($("userChipGroup")) $("userChipGroup").textContent = "Учитель"; 
+    if($("userChipAvatar")) $("userChipAvatar").textContent = "👨‍🏫"; 
   } else if (state.student) { 
-    $("userChipName").textContent = state.student.name; 
-    $("userChipGroup").textContent = "Гр. " + state.student.group; 
-    $("userChipAvatar").textContent = "👨‍🎓"; 
+    if($("userChipName")) $("userChipName").textContent = state.student.name; 
+    if($("userChipGroup")) $("userChipGroup").textContent = "Гр. " + state.student.group; 
+    if($("userChipAvatar")) $("userChipAvatar").textContent = "👨‍🎓"; 
   }
 }
 
@@ -169,7 +179,7 @@ function renderTopic(id, tab){
     } else panel.appendChild(el('<p>Практических работ нет.</p>'));
   }
 
-  // 3. САМОСТОЯТЕЛЬНАЯ (Одна кнопка)
+  // 3. САМОСТОЯТЕЛЬНАЯ
   if (tab === "self") {
     if(t.topic.selfChecks && t.topic.selfChecks.length) {
       var selfWrap = el('<div id="selfWrap"></div>'); panel.appendChild(selfWrap);
@@ -332,7 +342,7 @@ function renderShopPage(){
     { id: "theme", icon: "🌌", title: "Тема 'Космос'", price: 200 }
   ];
   
-  var grid = el('<div class="shop-grid"></div>');
+  var grid = el('<div class="shop-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"></div>');
   items.forEach(it => {
     var has = state.shop.includes(it.id);
     var btn = el(`<button class="btn" style="width:100%;margin-top:10px;" ${has || state.xp < it.price ? 'disabled' : ''}>${has ? 'Куплено' : (state.xp < it.price ? 'Мало XP' : 'Купить за ' + it.price)}</button>`);
@@ -345,7 +355,7 @@ function renderShopPage(){
         window.showToast("Покупка успешна!", "ok"); 
       });
     }
-    var card = el(`<div class="shop-item"><div style="font-size:40px;">${it.icon}</div><div style="font-weight:bold;margin:10px 0;">${it.title}</div></div>`);
+    var card = el(`<div class="shop-item" style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;"><div style="font-size:40px;">${it.icon}</div><div style="font-weight:bold;margin:10px 0;">${it.title}</div></div>`);
     card.appendChild(btn); 
     grid.appendChild(card);
   });
@@ -374,7 +384,7 @@ function renderPortfolioPage(){
   app.appendChild(el(html));
 }
 
-// ДОПОЛНИТЕЛЬНЫЕ СТРАНИЦЫ
+// КАЛЬКУЛЯТОР
 function renderCalculatorPage(){
   var app = $("app"); app.innerHTML = ""; 
   app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
@@ -384,12 +394,6 @@ function renderCalculatorPage(){
     <button class="btn" style="width:100%" onclick="var n=Math.round((1000*document.getElementById('vc').value)/(Math.PI*document.getElementById('d').value)); document.getElementById('res').innerText='n = '+n+' об/мин';">Рассчитать</button>
     <div id="res" style="margin-top:15px;font-weight:bold;font-size:18px;"></div>
   </section>`));
-}
-
-function renderGlossaryPage(){
-  var app = $("app"); app.innerHTML = ""; 
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  app.appendChild(el(`<section class="module"><h2>Глоссарий</h2><p>СОЖ — смазочно-охлаждающая жидкость.<br>Шпиндель — вращающийся вал станка.</p></section>`));
 }
 
 // РОУТИНГ
@@ -406,6 +410,7 @@ function route(){
   else if (parts[0] === "simulator") renderSimulatorPage();
   else if (parts[0] === "shop") renderShopPage();
   else if (parts[0] === "portfolio") renderPortfolioPage();
+  else if (parts[0] === "calculator") renderCalculatorPage();
   else if (parts[0] === "profile") window.renderProfilePage && window.renderProfilePage();
   else if (parts[0] === "dashboard") window.renderDashboard && window.renderDashboard();
   else if (parts[0] === "journal") window.renderJournalPage && window.renderJournalPage();
@@ -416,8 +421,6 @@ function route(){
   else if (parts[0] === "final-exam") window.renderFinalExamPage && window.renderFinalExamPage();
   else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
   else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
-  else if (parts[0] === "calculator") renderCalculatorPage();
-  else if (parts[0] === "glossary") renderGlossaryPage();
   else renderHome();
   
   window.scrollTo(0, 0);
