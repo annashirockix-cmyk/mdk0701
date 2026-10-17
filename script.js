@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v16.2 — FULL REWRITE & FIXES)
+   МДК 07.01 — script.js (v16.3 — FULL REWRITE + STREAK & ACHIEVEMENTS)
    ============================================================ */
 "use strict";
 
@@ -43,7 +43,7 @@ var GLOSSARY = [
 
 var ROLE_LABELS = { student: "🎓 Студент", admin: "🛡 Администратор", teacher: "👨‍🏫 Преподаватель", curator: "🎓 Куратор группы", tester: "🧪 Тестировщик" };
 
-var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, practiceStatus: {}, activity: [], favorites: [], lastSync: "" };
+var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, practiceStatus: {}, activity: [], favorites: [], achievements: {}, lastSync: "" };
 
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
@@ -79,9 +79,79 @@ function toggleFavorite(topicId, event) {
   if (location.hash === "#/" || location.hash === "") renderHome(); else renderTopic(topicId, "passport");
 }
 
+/* --- Стрик и Достижения --- */
+function updateStreak() {
+  if (!state.student) return;
+  var today = new Date().toDateString();
+  var lastVisit = localStorage.getItem("mdk0701.lastVisit");
+  var streak = parseInt(localStorage.getItem("mdk0701.streak") || "0");
+
+  if (lastVisit !== today) {
+    var yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (lastVisit === yesterday.toDateString()) {
+      streak++;
+    } else if (lastVisit !== today) {
+      streak = 1;
+    }
+    
+    localStorage.setItem("mdk0701.lastVisit", today);
+    localStorage.setItem("mdk0701.streak", streak);
+    if (streak > 1) window.showToast("🔥 Вы учитесь " + streak + " дней подряд!", "ok");
+  }
+}
+
+function checkAchievements() {
+  if (!state.student) return;
+  var changed = false;
+  
+  // 1. Первый шаг (пройден хотя бы 1 тест)
+  var testsCount = Object.keys(state.results || {}).length;
+  if (testsCount >= 1 && !state.achievements["first_test"]) {
+    state.achievements["first_test"] = true; changed = true;
+    window.showToast("🏆 Достижение: Первый шаг (Пройден 1 тест)", "ok");
+  }
+
+  // 2. Отличник (средний балл > 4.5, при наличии оценок)
+  var grades = [...Object.values(state.results || {}).map(x=>x.grade), ...Object.values(state.selfResults || {}).map(x=>x.grade)].filter(x=>x>0);
+  var avg = grades.length ? grades.reduce((a,b)=>a+b,0)/grades.length : 0;
+  if (avg >= 4.5 && !state.achievements["excellent"]) {
+    state.achievements["excellent"] = true; changed = true;
+    window.showToast("🏆 Достижение: Отличник (Средний балл > 4.5)", "ok");
+  }
+
+  // 3. Трудяга (Пройдено 5 тем)
+  var doneCount = 0;
+  var c = getCourse();
+  if(c) c.sections.forEach(sec => sec.topics.forEach(t => { if ((state.progress[t.id]?.done || 0) >= 5) doneCount++; }));
+  if (doneCount >= 5 && !state.achievements["worker"]) {
+    state.achievements["worker"] = true; changed = true;
+    window.showToast("🏆 Достижение: Трудяга (Пройдено 5 тем)", "ok");
+  }
+
+  // 4. Геймер (Поиграл в игры)
+  if (localStorage.getItem("mdk0701.played_games") && !state.achievements["gamer"]) {
+    state.achievements["gamer"] = true; changed = true;
+    window.showToast("🏆 Достижение: Геймер (Найдены мини-игры)", "ok");
+  }
+
+  if (changed) saveStudentData();
+}
+
+/* --- Skeleton Loader --- */
+function showSkeleton(container, rows) {
+  container.innerHTML = "";
+  for (var i = 0; i < (rows || 3); i++) {
+    container.appendChild(el('<div class="skeleton skeleton-title"></div>'));
+    container.appendChild(el('<div class="skeleton skeleton-text"></div>'));
+    container.appendChild(el('<div class="skeleton skeleton-text short"></div>'));
+  }
+}
+
 /* --- Данные и Синхронизация --- */
 function loadStudentData(){
-  var k = studentKey(); if (!k){ state.progress = {}; state.results = {}; state.selfResults = {}; state.practiceStatus = {}; state.activity = []; state.favorites = []; return; }
+  var k = studentKey(); if (!k){ state.progress = {}; state.results = {}; state.selfResults = {}; state.practiceStatus = {}; state.activity = []; state.favorites = []; state.achievements = {}; return; }
   var ek = encodeURIComponent(k);
   state.progress = JSON.parse(localStorage.getItem("mdk0701.progress." + ek) || "{}");
   state.results = JSON.parse(localStorage.getItem("mdk0701.results." + ek) || "{}");
@@ -89,6 +159,7 @@ function loadStudentData(){
   state.practiceStatus = JSON.parse(localStorage.getItem("mdk0701.practiceStatus." + ek) || "{}");
   state.activity = JSON.parse(localStorage.getItem("mdk0701.activity." + ek) || "[]");
   state.favorites = JSON.parse(localStorage.getItem("mdk0701.favorites." + ek) || "[]");
+  state.achievements = JSON.parse(localStorage.getItem("mdk0701.achievements." + ek) || "{}");
   state.lastSync = localStorage.getItem("mdk0701.lastSync." + ek) || "";
 }
 function saveStudentData(){
@@ -99,14 +170,15 @@ function saveStudentData(){
   localStorage.setItem("mdk0701.practiceStatus." + ek, JSON.stringify(state.practiceStatus));
   localStorage.setItem("mdk0701.activity." + ek, JSON.stringify(state.activity));
   localStorage.setItem("mdk0701.favorites." + ek, JSON.stringify(state.favorites));
+  localStorage.setItem("mdk0701.achievements." + ek, JSON.stringify(state.achievements));
   if (state.lastSync) localStorage.setItem("mdk0701.lastSync." + ek, state.lastSync);
 }
 function saveStudent(){ if (state.student) localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); else localStorage.removeItem("mdk0701.student"); }
 function saveStaffSession(){ if (state.staff) sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); else sessionStorage.removeItem("mdk0701.staff"); }
 function logActivity(type, text){ state.activity.push({ type, text, date: new Date().toISOString() }); if (state.activity.length > ACTIVITY_MAX) state.activity = state.activity.slice(-ACTIVITY_MAX); saveStudentData(); }
-function saveProgress(){ saveStudentData(); scheduleCloudSave(); }
-function saveResults(){ saveStudentData(); scheduleCloudSave(); }
-function saveSelfResults(){ saveStudentData(); scheduleCloudSave(); }
+function saveProgress(){ saveStudentData(); scheduleCloudSave(); checkAchievements(); }
+function saveResults(){ saveStudentData(); scheduleCloudSave(); checkAchievements(); }
+function saveSelfResults(){ saveStudentData(); scheduleCloudSave(); checkAchievements(); }
 
 var cloudTimer = null, cloudBusy = false;
 function scheduleCloudSave(){ if (cloudTimer) clearTimeout(cloudTimer); cloudTimer = setTimeout(function(){ cloudSave(true); }, 3000); }
@@ -197,7 +269,7 @@ function initAuth(){
   
   if (!state.student && !state.staff) { overlay.hidden=false; document.body.style.overflow="hidden"; } else overlay.hidden=true;
   if (state.student){
-    loadStudentData();
+    loadStudentData(); updateStreak();
     cloudLoad().then(cloud=>{
       if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync||"")){ if(cloud.payload.avatar) state.student.avatar=cloud.payload.avatar; applyCloudPayload(cloud.payload); state.lastSync=cloud.savedAt; saveStudentData(); route(); }
     });
@@ -210,7 +282,7 @@ function initAuth(){
     if (!rn.ok){ nameInput.focus(); return; } if(!rg.ok){ groupInput.focus(); return; }
     if (state.staff){ state.staff=null; saveStaffSession(); }
     state.student = { name: rn.normalized, group: rg.normalized, avatar: loginAvatar, loginAt: new Date().toISOString() };
-    saveStudent(); loadStudentData(); overlay.hidden=true; document.body.style.overflow=""; renderUserChip();
+    saveStudent(); loadStudentData(); updateStreak(); overlay.hidden=true; document.body.style.overflow=""; renderUserChip();
     cloudLoad().then(cloud=>{
       if (cloud && cloud.savedAt && cloud.savedAt > (state.lastSync||"")){ if(cloud.payload.avatar) state.student.avatar=cloud.payload.avatar; applyCloudPayload(cloud.payload); state.lastSync=cloud.savedAt; saveStudentData(); }
       route();
@@ -433,7 +505,7 @@ function route(){
     calculator: renderCalculatorPage, 
     glossary: renderGlossaryPage,
     
-    // НОВЫЕ СТРАНИЦЫ:
+    // Страницы из minigames.js:
     events: ()=>window.renderEventsPage && window.renderEventsPage(),
     tictactoe: ()=>window.renderTicTacToePage && window.renderTicTacToePage(),
     sudoku: ()=>window.renderSudokuPage && window.renderSudokuPage(),
@@ -542,4 +614,4 @@ function renderTopic(id, tab, mode){
 }
 
 window.addEventListener("hashchange", ()=>{ closeDrawer(); route(); });
-window.addEventListener("DOMContentLoaded", ()=>{ initTheme(); initAuth(); initDrawer(); renderUserChip(); route(); });
+window.addEventListener("DOMContentLoaded", ()=>{ initTheme(); initAuth(); initDrawer(); renderUserChip(); updateStreak(); route(); });

@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — style.css (v16.0 — ПОЛНЫЙ ДИЗАЙН)
+   МДК 07.01 — style.css (v16.1 — ПОЛНЫЙ ДИЗАЙН + PRINT & SKELETON)
    ============================================================ */
 
 :root, html[data-theme="light"]{
@@ -108,7 +108,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .t-fav:hover{transform:scale(1.2)}
 .t-fav.active{color:var(--gold)}
 
-/* ДОКУМЕНТЫ (ПАСПОРТА И ОХРАНА ТРУДА) */
+/* ДОКУМЕНТЫ */
 .doc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:8px}
 .doc-card{display:block;border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:var(--card-soft);color:var(--text);transition:border-color .15s, transform .15s, background .15s;cursor:pointer;outline:none;}
 .doc-card:hover,.doc-card:focus{border-color:var(--accent);transform:translateY(-1px);background:var(--card)}
@@ -224,6 +224,67 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .qr-wrap{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:20px}
 .qr-wrap img{border-radius:12px;border:1px solid var(--border);background:#fff;padding:10px;width:200px;height:200px;}
 .qr-wrap .qr-info{flex:1;min-width:200px}
+
+/* ============================================================
+   НОВЫЕ ФИЧИ: Печать, Skeleton, Фильтры темной темы
+   ============================================================ */
+
+/* 1. Темная тема для картинок (чтобы белые схемы не слепили) */
+html[data-theme="dark"] .lecture-content img,
+html[data-theme="dark"] .doc-card img {
+  filter: brightness(0.85) contrast(1.1);
+  transition: filter 0.3s ease;
+}
+
+/* 2. Skeleton-загрузка */
+.skeleton {
+  background: linear-gradient(90deg, var(--card-soft) 25%, var(--border) 50%, var(--card-soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.skeleton-title { height: 24px; width: 60%; margin-bottom: 16px; }
+.skeleton-text { height: 16px; width: 100%; margin-bottom: 8px; }
+.skeleton-text.short { width: 40%; }
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 3. Печать лекций */
+@media print {
+  .topbar, .drawer, .footer, .tabs, .backlink, .theme-toggle, .test-actions, button, .as-fab, .toast-container {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 14pt;
+  }
+  #app {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  .panel {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .topic-head {
+    border: none !important;
+    padding: 0 0 20px 0 !important;
+    box-shadow: none !important;
+  }
+  a {
+    text-decoration: none !important;
+    color: #000 !important;
+  }
+  .kpi-row { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .kpi { border: 1px solid #000; background: #fff; }
+}
 
 /* АДАПТИВНОСТЬ */
 @media (max-width: 768px) {

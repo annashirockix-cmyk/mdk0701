@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v16.0)
+   МДК 07.01 — extra.js (v16.1 — DASHBOARD + ACHIEVEMENTS)
    ============================================================ */
 "use strict";
 
@@ -68,7 +68,11 @@ window.renderProfilePage = function() {
     COURSE.sections.forEach(sec => sec.topics.forEach(t => { if ((state.progress[t.id]?.done || 0) >= 5) topicsDone++; }));
     var grades = [...Object.values(state.results).map(x=>x.grade), ...Object.values(state.selfResults).map(x=>x.grade)].filter(x=>x>0);
     var avgGrade = grades.length ? (grades.reduce((a,b)=>a+b,0)/grades.length).toFixed(2) : "—";
-    grid.appendChild(el('<div class="profile-widget"><h3>📊 Моя успеваемость</h3><div class="pw-list"><div class="pw-item"><span>Пройдено тем:</span><b>' + topicsDone + '</b></div><div class="pw-item"><span>Средний балл:</span><b>' + avgGrade + '</b></div><div class="pw-item"><span>Пройдено тестов:</span><b>' + Object.keys(state.results).length + '</b></div><div class="pw-item"><span>В избранном:</span><b>' + (state.favorites ? state.favorites.length : 0) + '</b></div></div><button class="btn" style="margin-top:16px; width:100%" onclick="location.hash=\'#/dashboard\'">Перейти в статистику</button></div>'));
+    
+    // Добавлен Стрик в профиль
+    var streak = localStorage.getItem("mdk0701.streak") || "0";
+
+    grid.appendChild(el('<div class="profile-widget"><h3>📊 Моя успеваемость</h3><div class="pw-list"><div class="pw-item"><span>🔥 Дней подряд:</span><b>' + streak + '</b></div><div class="pw-item"><span>Пройдено тем:</span><b>' + topicsDone + '</b></div><div class="pw-item"><span>Средний балл:</span><b>' + avgGrade + '</b></div><div class="pw-item"><span>Пройдено тестов:</span><b>' + Object.keys(state.results).length + '</b></div></div><button class="btn" style="margin-top:16px; width:100%" onclick="location.hash=\'#/dashboard\'">Перейти в статистику</button></div>'));
     grid.appendChild(el('<div class="profile-widget"><h3>🔗 Быстрые ссылки</h3><div class="pw-list" style="gap:12px"><a href="#/final-training" class="btn ghost" style="text-align:left">🏋️ Итоговая тренировка</a><a href="#/final-exam" class="btn ghost" style="text-align:left">🎓 Итоговый экзамен</a><a href="#/gallery" class="btn ghost" style="text-align:left">🖼 Галерея работ</a><a href="#/links" class="btn ghost" style="text-align:left">📚 Полезные материалы</a></div></div>'));
   } else {
     grid.appendChild(el('<div class="profile-widget"><h3>🛠 Управление</h3><div class="pw-list" style="gap:12px"><a href="#/journal" class="btn" style="text-align:left">📔 Открыть журнал</a><a href="#/schedule" class="btn ghost" style="text-align:left">📅 Редактировать расписание</a>' + (state.staff.role === "teacher" || state.staff.role === "admin" ? '<a href="#/staff" class="btn ghost" style="text-align:left">🛠 Панель преподавателя</a>' : '') + '<a href="#/questions" class="btn ghost" style="text-align:left">❓ Вопросы студентов</a></div></div>'));
@@ -136,12 +140,54 @@ window.renderCalendarPage = function(){
   app.appendChild(el(`<section class="module"><h2>События</h2><div class="event-list"><div class="event-item"><span class="ev-date">01.09</span><span class="ev-text">День знаний</span></div></div></section>`));
 };
 
-/* ДАШБОРД */
+/* ДАШБОРД (Обновлен: Достижения и Скелетоны) */
 window.renderDashboard = function(){
   const app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Статистика";
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
   app.appendChild(el(`<section class="hero"><h1>Мой прогресс</h1></section>`));
-  app.appendChild(el(`<section class="module"><h2>🏆 Мои достижения</h2><div class="achievements-grid"><div class="ach-card unlocked"><span class="ach-icon">🥉</span><div class="ach-title">Первый шаг</div></div></div></section>`));
+  
+  // Блок достижений
+  var achBlock = el(`<section class="module"><h2>🏆 Мои достижения</h2><div class="achievements-grid" id="achGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:16px;"></div></section>`);
+  app.appendChild(achBlock);
+  var grid = achBlock.querySelector("#achGrid");
+
+  // Все возможные ачивки
+  var allAch = [
+    { id: "first_test", icon: "🥉", title: "Первый шаг", desc: "Пройден 1 тест" },
+    { id: "worker", icon: "💪", title: "Трудяга", desc: "Пройдено 5 тем" },
+    { id: "excellent", icon: "🎓", title: "Отличник", desc: "Средний балл > 4.5" },
+    { id: "gamer", icon: "🎮", title: "Геймер", desc: "Найдены мини-игры" }
+  ];
+
+  allAch.forEach(a => {
+    var unlocked = state.achievements && state.achievements[a.id];
+    var card = el(`
+      <div style="background:var(--card-soft); border:1px solid ${unlocked ? 'var(--gold)' : 'var(--border)'}; padding:16px; border-radius:12px; text-align:center; opacity:${unlocked ? '1' : '0.4'};">
+        <div style="font-size:36px; margin-bottom:8px;">${unlocked ? a.icon : '🔒'}</div>
+        <div style="font-weight:bold; font-size:14px; color:${unlocked ? 'var(--text)' : 'var(--muted)'}">${a.title}</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px;">${a.desc}</div>
+      </div>
+    `);
+    grid.appendChild(card);
+  });
+
+  // Блок загруженных работ
+  var worksBlock = el(`
+    <section class="module">
+      <h2>📂 Мои загруженные работы</h2>
+      <p class="sub">Файлы, которые вы прикрепили к практическим заданиям.</p>
+      <div id="myWorksStats"></div>
+    </section>
+  `);
+  app.appendChild(worksBlock);
+  
+  var box = worksBlock.querySelector("#myWorksStats");
+  // Используем skeleton-загрузку
+  if (typeof showSkeleton === "function") showSkeleton(box, 2);
+  
+  setTimeout(() => {
+    box.innerHTML = '<div class="comment-empty">Файлов пока нет. Откройте любую практическую и нажмите «Прикрепить работу».</div>';
+  }, 1000); // Имитация загрузки для красоты
 };
 
 /* QR-КОД */
