@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v16.1 — ИСПРАВЛЕНИЕ БАГОВ)
+   МДК 07.01 — script.js (v16.2 — FULL REWRITE & FIXES)
    ============================================================ */
 "use strict";
 
@@ -48,6 +48,7 @@ var state = { student: null, staff: null, progress: {}, results: {}, selfResults
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
 
+/* --- Базовые утилиты --- */
 function getCourse(){ try { if (typeof COURSE !== "undefined" && COURSE && COURSE.sections) return COURSE; } catch (e){} try { if (window.COURSE) return window.COURSE; } catch(e){} return null; }
 function $(id){ return document.getElementById(id); }
 function el(html){ var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
@@ -78,6 +79,7 @@ function toggleFavorite(topicId, event) {
   if (location.hash === "#/" || location.hash === "") renderHome(); else renderTopic(topicId, "passport");
 }
 
+/* --- Данные и Синхронизация --- */
 function loadStudentData(){
   var k = studentKey(); if (!k){ state.progress = {}; state.results = {}; state.selfResults = {}; state.practiceStatus = {}; state.activity = []; state.favorites = []; return; }
   var ek = encodeURIComponent(k);
@@ -132,6 +134,7 @@ function applyCloudPayload(p){
   state.practiceStatus = p.practiceStatus || {}; state.favorites = p.favorites || [];
 }
 
+/* --- Тема и Аватары --- */
 function applyTheme(theme){
   document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme);
   var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute("content", ({ light:"#c14a2a", dark:"#0e0e10", sepia:"#a0522d", ocean:"#1a6da8", forest:"#3d7a3d", contrast:"#0033cc" })[theme] || "#c14a2a");
@@ -160,6 +163,7 @@ function buildAvatarPicker(selected, onPick){
   return wrap;
 }
 
+/* --- Авторизация и Меню --- */
 function normalizeName(v){ return v.trim().split(/\s+/).map(p=>p?p[0].toUpperCase()+p.slice(1).toLowerCase():"").filter(Boolean).slice(0,3).join(" "); }
 function validateName(v){ var parts = v.trim().split(/\s+/).filter(Boolean); if (parts.length < 2) return { ok:false, msg:"Введите минимум фамилию и имя" }; for (var i=0;i<parts.length;i++) if(parts[i].length<2) return {ok:false,msg:"Слишком короткое слово"}; return {ok:true,msg:"Похоже на ФИО",normalized:normalizeName(v)}; }
 function validateGroup(v){ var t = v.trim().toUpperCase(); if(t.length<2) return {ok:false,msg:"Слишком короткая группа"}; return {ok:true,msg:"",normalized:t}; }
@@ -168,6 +172,7 @@ function openDrawer(){ $("drawer").classList.add("open"); $("drawerOverlay").cla
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); document.body.style.overflow=""; }
 function toggleDrawer(){ $("drawer").classList.contains("open") ? closeDrawer() : openDrawer(); }
 function initDrawer(){
+  if(!$("burgerBtn")) return;
   $("burgerBtn").addEventListener("click", toggleDrawer); $("drawerOverlay").addEventListener("click", closeDrawer); $("drawerClose").addEventListener("click", closeDrawer);
   document.querySelectorAll("#drawerNav [data-go]").forEach(item=>{
     item.addEventListener("click", e=>{ e.preventDefault(); closeDrawer(); setTimeout(()=>location.hash = item.dataset.go, 120); });
@@ -187,6 +192,7 @@ function handleLogout(){
 
 function initAuth(){
   var overlay = $("loginOverlay"), nameInput = $("loginName"), groupInput = $("loginGroup");
+  if(!overlay) return;
   var loginAvatar = DEFAULT_AVATAR; $("loginAvatarPicker").appendChild(buildAvatarPicker(loginAvatar, a=>loginAvatar=a));
   
   if (!state.student && !state.staff) { overlay.hidden=false; document.body.style.overflow="hidden"; } else overlay.hidden=true;
@@ -240,11 +246,13 @@ function openRoleModal(){
 }
 
 function renderUserChip(){
+  if(!$("userChipAvatar")) return;
   if (state.staff){ $("userChipAvatar").textContent="👨‍🏫"; $("userChipName").textContent=state.staff.name; $("userChipGroup").textContent=ROLE_LABELS[state.staff.role]||state.staff.role; $("drawerCabinetBtn").hidden=false; $("drawerSyncBtn").hidden=true; return; }
   if (state.student){ $("userChipAvatar").textContent=getAvatar(); $("userChipName").textContent=state.student.name; $("userChipGroup").textContent="Гр. "+state.student.group; $("drawerCabinetBtn").hidden=true; $("drawerSyncBtn").hidden=false; return; }
   $("userChipAvatar").textContent="👨‍🎓"; $("userChipName").textContent="Гость"; $("userChipGroup").textContent="Роль: Гость"; $("drawerCabinetBtn").hidden=true; $("drawerSyncBtn").hidden=true;
 }
 
+/* --- Главная страница --- */
 function renderHome(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; var c = getCourse(); if (!c) return;
   
@@ -315,7 +323,7 @@ function renderHome(){
     app.appendChild(block2);
   }
 
-  // ВОЗВРАЩЕН БЛОК С ВИДЕО
+  // БЛОК ВИДЕО
   if (c.videos && c.videos.length) {
     app.appendChild(el('<div class="steps-title">Видеоматериалы</div>'));
     var vidBlock = el('<section class="module"><h2>🎬 Видеоуроки</h2><div class="video-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; margin-top:12px"></div></section>');
@@ -331,6 +339,7 @@ function renderHome(){
     app.appendChild(vidBlock);
   }
 
+  // БЛОК КАРТОЧЕК
   var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div class="test-actions" style="justify-content:center"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
   app.appendChild(flashBlock); var hArea = flashBlock.querySelector("#homeFlashcardArea"), hIndex = 0;
   function renderHomeCard() { 
@@ -344,6 +353,7 @@ function renderHome(){
   if (window.renderCommentsBlock && state.student) app.appendChild(window.renderCommentsBlock());
 }
 
+/* --- Калькулятор и Глоссарий --- */
 function renderCalculatorPage(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; $("crumbs").textContent = "Калькулятор";
   app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
@@ -393,7 +403,9 @@ function renderGlossaryPage(){
   box.querySelector("#gSearch").addEventListener("input", function(){ drawList(this.value); });
 }
 
+/* --- Роутинг --- */
 function goHome(e){ if(e) e.preventDefault(); location.hash="#/"; }
+
 function route(){
   document.querySelectorAll(".pdf-overlay, .theme-overlay, .user-menu, .more-menu").forEach(x=>x.remove());
   var hash = location.hash.replace(/^#/, "") || "/"; var parts = hash.split("/").filter(Boolean); var app = $("app"); if(!app) return;
@@ -419,7 +431,13 @@ function route(){
     schedule: ()=>window.renderSchedulePage&&window.renderSchedulePage(),
     journal: ()=>window.renderJournalPage&&window.renderJournalPage(), 
     calculator: renderCalculatorPage, 
-    glossary: renderGlossaryPage
+    glossary: renderGlossaryPage,
+    
+    // НОВЫЕ СТРАНИЦЫ:
+    events: ()=>window.renderEventsPage && window.renderEventsPage(),
+    tictactoe: ()=>window.renderTicTacToePage && window.renderTicTacToePage(),
+    sudoku: ()=>window.renderSudokuPage && window.renderSudokuPage(),
+    crossword: ()=>window.renderCrosswordPage && window.renderCrosswordPage()
   };
   
   if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2]||"passport", parts[3]||"control");
@@ -428,6 +446,7 @@ function route(){
   window.scrollTo(0, 0);
 }
 
+/* --- Страница темы --- */
 function renderTopic(id, tab, mode){
   tab = tab || "passport"; mode = mode || "control"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = ""; $("crumbs").textContent = t.topic.code + " · " + t.topic.title;

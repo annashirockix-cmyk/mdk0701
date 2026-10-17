@@ -168,3 +168,16 @@
 <script src="assistant.js?v=16"></script>
 </body>
 </html>
+<!-- ВНУТРИ <nav class="drawer-nav" id="drawerNav"> -->
+<!-- Добавьте эти строки после "Календарь" и "Статистика": -->
+<a class="drawer-item" data-go="#/events">🎉 <span>Ивенты</span></a>
+
+<!-- А в самый низ меню (перед "Справочно" или после): -->
+<div class="drawer-section">Перемена (Игры)</div>
+<a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
+<a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
+<a class="drawer-item" data-go="#/crossword">📝 <span>Кроссворд</span></a>
+
+<!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ (в самом низу body): -->
+<script src="minigames.js?v=16"></script>
+<script src="easter-eggs.js?v=16"></script>
