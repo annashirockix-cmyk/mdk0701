@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v16.0)
+   МДК 07.01 — script.js (v16.1 — ИСПРАВЛЕНИЕ БАГОВ)
    ============================================================ */
 "use strict";
 
@@ -55,7 +55,6 @@ function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, fu
 function findTopic(id){ var c = getCourse(); if (!c) return null; for (var i = 0; i < c.sections.length; i++){ var s = c.sections[i]; if (!s.topics) continue; for (var j = 0; j < s.topics.length; j++){ if (s.topics[j].id === id) return { section: s, topic: s.topics[j] }; } } return null; }
 function studentKey(s){ s = s || state.student; if (!s || !s.name) return null; return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()); }
 function getAvatar(){ return (state.student && state.student.avatar) || DEFAULT_AVATAR; }
-function shuffled(a){ var r = a.slice(); for (var i = r.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = r[i]; r[i] = r[j]; r[j] = t; } return r; }
 function quoteOfDay(){ return QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length]; }
 function fmtRel(iso){ var d = new Date(iso), diff = (Date.now() - d) / 1000; if (diff < 60) return "только что"; if (diff < 3600) return Math.floor(diff / 60) + " мин назад"; if (diff < 86400) return Math.floor(diff / 3600) + " ч назад"; return d.toLocaleDateString("ru-RU"); }
 function setSyncStatus(text){ var n = $("syncStatus"); if (!n) return; n.textContent = text; setTimeout(function(){ if (n.textContent === text) n.textContent = ""; }, 3000); }
@@ -248,25 +247,45 @@ function renderUserChip(){
 
 function renderHome(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; var c = getCourse(); if (!c) return;
-  app.appendChild(el('<section class="hero"><div class="meta">'+escapeHtml(c.specialty)+'</div><h1>'+escapeHtml(c.title)+'</h1><p>'+escapeHtml(c.module)+'</p><div class="hero-quote">'+quoteOfDay()+'</div></section>'));
+  
+  app.appendChild(el(`
+    <section class="hero">
+      <div class="meta">${escapeHtml(c.specialty)}</div>
+      <h1>${escapeHtml(c.title)}</h1>
+      <p>${escapeHtml(c.module)}</p>
+      <div class="hero-quote">${quoteOfDay()}</div>
+    </section>
+  `));
   
   if (state.favorites && state.favorites.length){
     var favBlock = el('<section class="module fav-section"><h2>⭐ Избранные темы</h2><div class="fav-list"></div></section>');
     state.favorites.forEach(id=>{
       var t = findTopic(id); if(!t) return;
-      var item = el('<div class="fav-item"><span class="fav-code">'+t.topic.code+'</span><span class="fav-title">'+t.topic.title+'</span><span>→</span></div>');
+      var item = el(`<div class="fav-item"><span class="fav-code">${t.topic.code}</span><span class="fav-title">${t.topic.title}</span><span>→</span></div>`);
       item.addEventListener("click", ()=>location.hash="#/topic/"+id); favBlock.querySelector(".fav-list").appendChild(item);
     });
     app.appendChild(favBlock);
   }
 
   c.sections.forEach(sec=>{
-    app.appendChild(el('<div class="steps-title">'+sec.code+' · '+sec.title+'</div>'));
+    app.appendChild(el(`<div class="steps-title">${sec.code} · ${sec.title}</div>`));
     var list = el('<div class="topics"></div>');
     sec.topics.forEach(t=>{
       var done = (state.progress[t.id] && state.progress[t.id].done) || 0;
       var isFav = (state.favorites || []).indexOf(t.id) !== -1;
-      var card = el('<div class="topic"><div class="t-code">'+t.code+'</div><div class="t-body"><div class="t-title">'+t.title+'</div><div class="t-meta">'+t.hours.total+' ак.ч</div></div><div class="t-right"><div class="t-progress">'+done+'/5</div><div class="t-fav '+(isFav?'active':'')+'">★</div></div></div>');
+      var card = el(`
+        <div class="topic">
+          <div class="t-code">${t.code}</div>
+          <div class="t-body">
+            <div class="t-title">${t.title}</div>
+            <div class="t-meta">${t.hours ? t.hours.total : '—'} ак.ч</div>
+          </div>
+          <div class="t-right">
+            <div class="t-progress">${done}/5</div>
+            <div class="t-fav ${isFav?'active':''}">★</div>
+          </div>
+        </div>
+      `);
       card.addEventListener("click", ()=>location.hash="#/topic/"+t.id);
       card.querySelector(".t-fav").addEventListener("click", e=>toggleFavorite(t.id, e));
       list.appendChild(card);
@@ -279,7 +298,7 @@ function renderHome(){
     var block = el('<section class="module"><h2>Паспорта станков</h2><p class="sub">PDF-файлы. Открываются прямо на странице.</p><div class="doc-grid"></div></section>');
     var grid = block.querySelector(".doc-grid");
     c.passports.forEach(function(p){
-      var card = el('<div class="doc-card" role="button" tabindex="0"><div class="doc-code">'+escapeHtml(p.code)+'</div><div class="doc-title">'+escapeHtml(p.title)+'</div><div class="doc-summary">'+escapeHtml(p.summary)+'</div><div class="doc-action">Открыть PDF →</div></div>');
+      var card = el(`<div class="doc-card" role="button" tabindex="0"><div class="doc-code">${escapeHtml(p.code)}</div><div class="doc-title">${escapeHtml(p.title)}</div><div class="doc-summary">${escapeHtml(p.summary)}</div><div class="doc-action">Открыть PDF →</div></div>`);
       card.addEventListener("click", function(){ if(window.openPdfModal) window.openPdfModal(p.file, p.title); });
       grid.appendChild(card);
     });
@@ -291,15 +310,36 @@ function renderHome(){
     var block2 = el('<section class="module"><h2>Инструкции по охране труда</h2><p class="sub">DOCX-файлы. Скачиваются для ознакомления.</p><div class="doc-grid"></div></section>');
     var grid2 = block2.querySelector(".doc-grid");
     c.safety.forEach(function(s){
-      grid2.appendChild(el('<a class="doc-card" href="' + s.file + '" download><div class="doc-code">' + escapeHtml(s.code) + '</div><div class="doc-title">' + escapeHtml(s.title) + '</div><div class="doc-summary">' + escapeHtml(s.summary) + '</div><div class="doc-action">Скачать .docx →</div></a>'));
+      grid2.appendChild(el(`<a class="doc-card" href="${s.file}" download><div class="doc-code">${escapeHtml(s.code)}</div><div class="doc-title">${escapeHtml(s.title)}</div><div class="doc-summary">${escapeHtml(s.summary)}</div><div class="doc-action">Скачать .docx →</div></a>`));
     });
     app.appendChild(block2);
   }
 
+  // ВОЗВРАЩЕН БЛОК С ВИДЕО
+  if (c.videos && c.videos.length) {
+    app.appendChild(el('<div class="steps-title">Видеоматериалы</div>'));
+    var vidBlock = el('<section class="module"><h2>🎬 Видеоуроки</h2><div class="video-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; margin-top:12px"></div></section>');
+    var vGrid = vidBlock.querySelector('.video-grid');
+    c.videos.forEach(v => {
+      vGrid.appendChild(el(`
+        <div class="video-card" style="background:var(--card-soft); padding:12px; border-radius:12px; border:1px solid var(--border); display:flex; flex-direction:column; gap:8px;">
+          <div style="font-weight:600; font-size:14px; line-height:1.3">${v.title}</div>
+          <video controls src="${v.src}" style="width:100%; border-radius:8px; margin-top:auto; background:#000; aspect-ratio:16/9"></video>
+        </div>
+      `));
+    });
+    app.appendChild(vidBlock);
+  }
+
   var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div class="test-actions" style="justify-content:center"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
   app.appendChild(flashBlock); var hArea = flashBlock.querySelector("#homeFlashcardArea"), hIndex = 0;
-  function renderHomeCard() { var card = FLASHCARDS[hIndex]; hArea.innerHTML = '<div class="flashcard"><div class="flashcard-inner"><div class="flashcard-front"><div style="color:var(--accent);margin-bottom:10px">'+card.topic+'</div><h3>'+card.q+'</h3></div><div class="flashcard-back"><h3>Ответ</h3><p>'+card.a+'</p></div></div></div>'; hArea.querySelector(".flashcard").addEventListener("click", function(){ this.classList.toggle("flipped"); }); }
-  renderHomeCard(); flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%FLASHCARDS.length; renderHomeCard(); });
+  function renderHomeCard() { 
+    var card = FLASHCARDS[hIndex]; 
+    hArea.innerHTML = `<div class="flashcard"><div class="flashcard-inner"><div class="flashcard-front"><div style="color:var(--accent);margin-bottom:10px">${card.topic}</div><h3>${card.q}</h3></div><div class="flashcard-back"><h3>Ответ</h3><p>${card.a}</p></div></div></div>`; 
+    hArea.querySelector(".flashcard").addEventListener("click", function(){ this.classList.toggle("flipped"); }); 
+  }
+  renderHomeCard(); 
+  flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%FLASHCARDS.length; renderHomeCard(); });
   
   if (window.renderCommentsBlock && state.student) app.appendChild(window.renderCommentsBlock());
 }
@@ -322,15 +362,35 @@ function renderGlossaryPage(){
   var app = $("app"); if (!app) return; app.innerHTML = ""; $("crumbs").textContent = "Глоссарий";
   app.appendChild(el('<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>'));
   app.appendChild(el('<section class="hero"><div class="meta">Справочник</div><h1>Глоссарий</h1><p>Основные термины обработки и ЧПУ.</p></section>'));
-  var box = el('<section class="module"><input type="text" class="glossary-search" id="gSearch" placeholder="Поиск..."><div class="glossary-list" id="gList"></div></section>');
+  
+  var box = el(`
+    <section class="module">
+      <input type="text" class="glossary-search" id="gSearch" placeholder="Поиск по терминам...">
+      <div class="glossary-list" id="gList" style="margin-top:16px; display:flex; flex-direction:column; gap:12px;"></div>
+    </section>
+  `);
   app.appendChild(box);
+
   function drawList(filter){
-    filter = filter.toLowerCase(); var list = box.querySelector("#gList"); list.innerHTML = "";
-    GLOSSARY.filter(item=>item.term.toLowerCase().includes(filter)||item.def.toLowerCase().includes(filter)).forEach(item=>{
-      list.appendChild(el('<div class="glossary-item"><div class="g-term">'+item.term+'</div><div class="g-def">'+item.def+'</div></div>'));
+    var list = box.querySelector("#gList");
+    list.innerHTML = "";
+    var f = filter.toLowerCase();
+    var items = GLOSSARY.filter(item => item.term.toLowerCase().includes(f) || item.def.toLowerCase().includes(f));
+    if (!items.length) {
+      list.innerHTML = '<div class="comment-empty">Ничего не найдено.</div>';
+      return;
+    }
+    items.forEach(item => {
+      list.appendChild(el(`
+        <div class="glossary-item" style="background:var(--card-soft); padding:16px; border-radius:10px; border:1px solid var(--border)">
+          <div class="g-term" style="font-weight:700; color:var(--accent); margin-bottom:6px; font-size:16px">${item.term}</div>
+          <div class="g-def" style="font-size:14px; color:var(--text-soft); line-height:1.5">${item.def}</div>
+        </div>
+      `));
     });
   }
-  drawList(""); box.querySelector("#gSearch").addEventListener("input", function(){ drawList(this.value); });
+  drawList(""); 
+  box.querySelector("#gSearch").addEventListener("input", function(){ drawList(this.value); });
 }
 
 function goHome(e){ if(e) e.preventDefault(); location.hash="#/"; }
@@ -371,12 +431,22 @@ function route(){
 function renderTopic(id, tab, mode){
   tab = tab || "passport"; mode = mode || "control"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = ""; $("crumbs").textContent = t.topic.code + " · " + t.topic.title;
-  app.appendChild(el('<a class="backlink" href="#/">← К программе</a><section class="topic-head"><div class="crumb">ПМ.07 · '+t.section.code+'</div><h1>'+t.topic.title+'</h1><div class="meta">'+t.topic.hours.total+' ак. ч / практ. '+t.topic.hours.practice+' ак. ч</div></section>'));
+  
+  var h = t.topic.hours || { total: "—", theory: "—", practice: "—" };
+  
+  app.appendChild(el(`
+    <a class="backlink" href="#/">← К программе</a>
+    <section class="topic-head">
+      <div class="crumb">ПМ.07 · ${t.section.code}</div>
+      <h1>${t.topic.title}</h1>
+      <div class="meta">${h.total} ак. ч / практ. ${h.practice} ак. ч</div>
+    </section>
+  `));
   
   var tabs = [["passport","01","Паспорт часов"],["lecture","02","Лекция"],["practice","03","Практические"],["self","04","Самостоятельная"],["test","05","Контроль темы"]];
   var tw = el('<div class="tabs"></div>');
   tabs.forEach(item=>{
-    var b = el('<button class="tab '+(item[0]===tab?'active':'')+'"><span class="t-num">'+item[1]+'</span><span class="t-name">'+item[2]+'</span></button>');
+    var b = el(`<button class="tab ${item[0]===tab?'active':''}"><span class="t-num">${item[1]}</span><span class="t-name">${item[2]}</span></button>`);
     b.addEventListener("click", ()=>location.hash="#/topic/"+id+"/"+item[0]); tw.appendChild(b);
   });
   app.appendChild(tw); var panel = el('<section class="panel"></section>'); app.appendChild(panel);
@@ -385,39 +455,51 @@ function renderTopic(id, tab, mode){
   panel.appendChild(printBtn);
 
   if (tab === "passport") {
-    panel.appendChild(el('<h2>Паспорт часов</h2><p>Тема <b>'+t.topic.code+'</b> — '+t.topic.title+'.</p><div class="kpi-row"><div class="kpi"><div class="k-label">Всего</div><div class="k-value">'+t.topic.hours.total+' ч</div></div><div class="kpi"><div class="k-label">Теория</div><div class="k-value">'+t.topic.hours.theory+' ч</div></div><div class="kpi"><div class="k-label">Практика</div><div class="k-value">'+t.topic.hours.practice+' ч</div></div></div>'));
+    var passportHtml = `
+      <h2>Паспорт часов</h2>
+      <p>Тема <b>${t.topic.code}</b> — ${t.topic.title}.</p>
+      <div class="kpi-row">
+        <div class="kpi"><div class="k-label">Всего</div><div class="k-value">${h.total} ч</div></div>
+        <div class="kpi"><div class="k-label">Теория</div><div class="k-value">${h.theory} ч</div></div>
+        <div class="kpi"><div class="k-label">Практика</div><div class="k-value">${h.practice} ч</div></div>
+      </div>
+    `;
+    panel.appendChild(el(passportHtml));
   }
   if (tab === "lecture") {
     panel.appendChild(el('<h2>Лекция</h2><p class="accent">Теория, схема, вопросы для самопроверки.</p>'));
     (t.topic.lectures||[]).forEach(l=>{
-      panel.appendChild(el('<h3>'+l.code+'. '+l.title+'</h3>'));
-      panel.appendChild(el('<div class="lecture-content">'+(l.content || '<p><i>Материал готовится.</i></p>')+'</div>'));
+      panel.appendChild(el(`<h3>${l.code}. ${l.title}</h3>`));
+      panel.appendChild(el(`<div class="lecture-content">${l.content || '<p><i>Материал готовится.</i></p>'}</div>`));
     });
   }
   if (tab === "practice") {
     panel.appendChild(el('<h2>Практические работы</h2>'));
     (t.topic.practicals||[]).forEach(p=>{
-      var html = '<div class="practice"><div class="practice-head"><div class="p-code">'+p.code+'</div></div><div class="p-title">'+p.title+'</div>';
-      if(p.goal) html += '<div class="p-goal">Цель: '+p.goal+'</div>';
-      if(p.task) html += '<div class="p-task"><b>Задание:</b> '+p.task+'</div>';
-      if(p.example) html += '<div class="p-example"><b>Пример:</b> '+p.example+'</div>';
-      if(p.solution && p.solution.length) { html += '<div class="p-solution"><h4>Ход решения:</h4><ol>'; p.solution.forEach(s=>html+='<li>'+s+'</li>'); html+='</ol></div>'; }
-      if(p.variants && p.variants.rows && p.variants.rows.length) {
-        html += '<div class="variants"><div class="v-title">Варианты</div><div class="v-scroll"><table class="v-table"><thead><tr>';
-        if(p.variants.header) p.variants.header.forEach(h=>html+='<th>'+h+'</th>');
-        html += '</tr></thead><tbody>';
-        p.variants.rows.forEach(r=>{ html+='<tr>'; r.forEach(c=>html+='<td>'+c+'</td>'); html+='</tr>'; });
-        html += '</tbody></table></div></div>';
+      var html = `<div class="practice"><div class="practice-head"><div class="p-code">${p.code}</div></div><div class="p-title">${p.title}</div>`;
+      if(p.goal) html += `<div class="p-goal">Цель: ${p.goal}</div>`;
+      if(p.task) html += `<div class="p-task"><b>Задание:</b> ${p.task}</div>`;
+      if(p.example) html += `<div class="p-example"><b>Пример:</b> ${p.example}</div>`;
+      if(p.solution && p.solution.length) { 
+        html += `<div class="p-solution"><h4>Ход решения:</h4><ol>`; 
+        p.solution.forEach(s=>html+=`<li>${s}</li>`); 
+        html+=`</ol></div>`; 
       }
-      html += '<div class="test-actions"><button class="btn" onclick="window.showToast(\'Демо-загрузка файла\', \'ok\')">📎 Прикрепить</button></div></div>';
+      if(p.variants && p.variants.rows && p.variants.rows.length) {
+        html += `<div class="variants"><div class="v-title">Варианты</div><div class="v-scroll"><table class="v-table"><thead><tr>`;
+        if(p.variants.header) p.variants.header.forEach(hh=>html+=`<th>${hh}</th>`);
+        html += `</tr></thead><tbody>`;
+        p.variants.rows.forEach(r=>{ html+=`<tr>`; r.forEach(c=>html+=`<td>${c}</td>`); html+=`</tr>`; });
+        html += `</tbody></table></div></div>`;
+      }
+      html += `<div class="test-actions"><button class="btn" onclick="window.showToast('Демо-загрузка файла', 'ok')">📎 Прикрепить</button></div></div>`;
       panel.appendChild(el(html));
     });
   }
   if (tab === "self") {
     panel.appendChild(el('<h2>Самостоятельная работа</h2>'));
-    // Восстановлены поля ввода
     (t.topic.selfChecks||[]).forEach((q, i)=>{
-      var block = el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><div class="self-row"><input type="text" class="self-input" placeholder="Ваш ответ"><button type="button" class="btn ghost self-check">Проверить</button></div><div class="self-feedback"></div></div>');
+      var block = el(`<div class="question"><div class="q-text">${i+1}. ${q.q}</div><div class="self-row"><input type="text" class="self-input" placeholder="Ваш ответ"><button type="button" class="btn ghost self-check">Проверить</button></div><div class="self-feedback"></div></div>`);
       var inp = block.querySelector(".self-input"), btn = block.querySelector(".self-check"), fb = block.querySelector(".self-feedback");
       btn.addEventListener("click", ()=>{
         if (inp.value.trim().toLowerCase() === q.a.trim().toLowerCase()) { fb.textContent = "✔ Верно"; fb.className = "self-feedback ok"; }
@@ -428,15 +510,14 @@ function renderTopic(id, tab, mode){
   }
   if (tab === "test") {
     panel.appendChild(el('<h2>Контроль темы</h2>'));
-    // Восстановлены варианты ответов
     (t.topic.test||[]).forEach((q, qi)=>{
-      var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + q.q + '</div></div>');
+      var qb = el(`<div class="question"><div class="q-text">${qi+1}. ${q.q}</div></div>`);
       q.options.forEach((opt, oi)=>{
-        qb.appendChild(el('<label class="option"><input type="radio" name="q'+qi+'" value="'+oi+'"><span>'+opt+'</span></label>'));
+        qb.appendChild(el(`<label class="option"><input type="radio" name="q${qi}" value="${oi}"><span>${opt}</span></label>`));
       });
       panel.appendChild(qb);
     });
-    panel.appendChild(el('<div class="test-actions"><button class="btn" onclick="window.showToast(\'Тест пройден!\', \'ok\')">Подвести итог</button></div>'));
+    panel.appendChild(el(`<div class="test-actions"><button class="btn" onclick="window.showToast('Тест пройден!', 'ok')">Подвести итог</button></div>`));
   }
   window.scrollTo(0, 0);
 }
