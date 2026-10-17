@@ -1,12 +1,11 @@
 /* ============================================================
-   МДК 07.01 — script.js (v28.0 — FINAL)
+   МДК 07.01 — script.js (v29.0 — XHR BULLETPROOF)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [] };
 
-// Восстановление сессии
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
 
@@ -71,38 +70,50 @@ window.doTeacherLogin = function() {
   
   if(btn) { btn.textContent = "Проверяем..."; btn.disabled = true; }
 
-  var isFinished = false;
-  var timeout = setTimeout(() => {
-    if(isFinished) return; 
-    isFinished = true;
-    alert("❌ Сервер не ответил за 10 секунд.\nВозможно, блокировщик рекламы (AdBlock) мешает запросу. Отключите его для этого сайта.");
-    if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
-  }, 10000);
-
-  // КЛЮЧЕВОЕ: cache: 'no-store' отключает любое кэширование этого запроса
-  var url = APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass);
+  // Используем XMLHttpRequest (он надежнее fetch при блокировках)
+  var xhr = new XMLHttpRequest();
+  // Добавляем случайный параметр &t=..., чтобы браузер не кэшировал ответ
+  var url = APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass) + "&t=" + new Date().getTime();
   
-  fetch(url, { cache: 'no-store' })
-    .then(r => r.json()).then(d => {
-      if(isFinished) return; isFinished = true; clearTimeout(timeout);
-      
-      if (d && d.ok) { 
-        state.staff = { role: d.role, name: d.name }; 
-        sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
-        if($("loginOverlay")) $("loginOverlay").hidden = true; 
-        renderUserChip(); 
-        route(); 
-        window.showToast("Добро пожаловать, " + d.name, "ok");
-      } else {
-        alert("ОШИБКА: Неверный логин или пароль.");
+  xhr.open("GET", url, true);
+  
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try {
+        var d = JSON.parse(xhr.responseText);
+        if (d && d.ok) { 
+          state.staff = { role: d.role, name: d.name }; 
+          sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); 
+          if($("loginOverlay")) $("loginOverlay").hidden = true; 
+          renderUserChip(); 
+          route(); 
+          window.showToast("Добро пожаловать, " + d.name, "ok");
+        } else {
+          alert("ОШИБКА: Неверный логин или пароль.");
+          if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
+        }
+      } catch(e) {
+        alert("Ошибка чтения ответа от сервера:\n" + xhr.responseText);
         if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
       }
-    }).catch((err) => {
-      if(isFinished) return; isFinished = true; clearTimeout(timeout);
-      console.error("Ошибка Fetch:", err);
-      alert("❌ ОШИБКА СЕТИ (CORS).\n\nБраузер заблокировал запрос. Попробуйте открыть сайт в режиме Инкогнито (чтобы отключить расширения).");
+    } else {
+      alert("Ошибка сервера (HTTP " + xhr.status + ")");
       if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
-    });
+    }
+  };
+
+  xhr.onerror = function() {
+    alert("❌ ОШИБКА СЕТИ (CORS).\n\nБраузер заблокировал запрос к Google.\n\n1. Отключите AdBlock / Kaspersky.\n2. Попробуйте открыть сайт в режиме 'Инкогнито'.");
+    if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
+  };
+
+  xhr.ontimeout = function() {
+    alert("❌ Сервер не ответил (таймаут 10 сек).");
+    if(btn) { btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
+  };
+
+  xhr.timeout = 10000; // 10 секунд
+  xhr.send();
 };
 
 function renderUserChip(){
