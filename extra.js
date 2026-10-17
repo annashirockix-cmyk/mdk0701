@@ -879,7 +879,7 @@ const CALENDAR_EVENTS = [
   { date:"03-08", title:"Международный женский день" },
   { date:"05-01", title:"Праздник весны и труда" },
   { date:"05-09", title:"День Победы" },
-  { date:"06-01", title:"Начало летних каникул" }
+  { date:"07-01", title:"Начало летних каникул" }
 ];
 window.renderCalendarPage = function(){
   const app = document.getElementById("app");
@@ -958,8 +958,11 @@ window.renderQrPage = function(){
   app.innerHTML = "";
   document.getElementById("crumbs").textContent = "QR-код";
   app.appendChild(el(`<a class="backlink" href="#/" onclick="goHome(event)">← На главную</a>`));
+  
   const url = location.origin + location.pathname;
-  const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" + encodeURIComponent(url);
+  // ИСПОЛЬЗУЕМ QUICKCHART ВМЕСТО API.QRSERVER
+  const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(url) + "&size=400&margin=2";
+  
   app.appendChild(el(`<section class="module">
     <div class="meta">Для телефонов</div>
     <h2>QR-код сайта</h2>
