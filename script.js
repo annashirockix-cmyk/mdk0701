@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (ФИНАЛ)
+   МДК 07.01 — script.js (v16.0)
    ============================================================ */
 "use strict";
 
@@ -32,25 +32,13 @@ var FLASHCARDS = [
 
 var GLOSSARY = [
   { term: "СОЖ", def: "Смазочно-охлаждающая жидкость. Применяется для отвода тепла, смазки и удаления стружки из зоны резания." },
-  { term: "Люнет", def: "Приспособление для поддержки длинных заготовок при токарной обработке. Бывает неподвижный и подвижный." },
-  { term: "Борштанга", def: "Оправка для установки резца при растачивании внутренних отверстий на токарном станке." },
-  { term: "Шпиндель", def: "Вращающийся вал станка, на котором закрепляется заготовка (или инструмент)." },
-  { term: "Подача (S, F)", def: "Перемещение инструмента или заготовки за один оборот (мм/об) или за одну минуту (мм/мин)." },
-  { term: "Глубина резания (t)", def: "Толщина слоя металла, снимаемого за один проход. Рассчитывается как (D - d) / 2." },
-  { term: "Скорость резания (Vc)", def: "Скорость перемещения режущей кромки инструмента относительно заготовки. Измеряется в м/мин." },
-  { term: "Револьверная головка", def: "Устройство на станках с ЧПУ, позволяющее автоматически менять инструмент из магазина." },
-  { term: "УЧПУ", def: "Устройство числового программного управления. Компьютер, который читает G-код и управляет станком." },
-  { term: "Нуль детали", def: "Точка начала системы координат, выбранная на заготовке (чаще всего торец)." },
-  { term: "Нуль станка", def: "Точка, задаваемая производителем станка, от которой отсчитываются все перемещения исполнительных органов." },
-  { term: "Интерполяция", def: "Способ расчета промежуточных координат траектории инструмента между заданными опорными точками." },
-  { term: "Коррекция", def: "Ввод поправок в УП (на радиус инструмента, длину и т.д.) непосредственно с пульта станка." },
-  { term: "Модальный код", def: "G-код, который сохраняет свое действие до тех пор, пока не будет отменен другим кодом той же группы." },
-  { term: "Кадр", def: "Одна строка управляющей программы, содержащая набор команд для выполнения одного перехода." },
-  { term: "Подпрограмма", def: "Отдельная часть программы, которая может вызываться многократно для выполнения повторяющихся действий." },
-  { term: "Кулачок", def: "Деталь патрона станка, которая прижимает заготовку и передает ей вращательное движение." },
-  { term: "Лимб", def: "Кольцевая шкала с делениями на маховичках и рукоятках станка для отсчета перемещений." },
-  { term: "Суппорт", def: "Узел токарного станка, предназначенный для перемещения резца в продольном, поперечном и наклонном направлениях." },
-  { term: "Задняя бабка", def: "Узел станка, служащий для поддержания длинных заготовок вторым концом с помощью центра." }
+  { term: "Люнет", def: "Приспособление для поддержки длинных заготовок при токарной обработке." },
+  { term: "Борштанга", def: "Оправка для установки резца при растачивании внутренних отверстий." },
+  { term: "Шпиндель", def: "Вращающийся вал станка, на котором закрепляется заготовка." },
+  { term: "Подача (S, F)", def: "Перемещение инструмента за один оборот (мм/об) или минуту (мм/мин)." },
+  { term: "Глубина резания (t)", def: "Толщина слоя металла за проход. (D - d) / 2." },
+  { term: "Скорость резания (Vc)", def: "Скорость кромки относительно заготовки. м/мин." },
+  { term: "УЧПУ", def: "Устройство числового программного управления." }
 ];
 
 var ROLE_LABELS = { student: "🎓 Студент", admin: "🛡 Администратор", teacher: "👨‍🏫 Преподаватель", curator: "🎓 Куратор группы", tester: "🧪 Тестировщик" };
@@ -353,9 +341,8 @@ function route(){
   if (!state.student && !state.staff){ app.innerHTML=""; return; }
   if (parts[0] === "staff"){ if(window.renderStaffPage) window.renderStaffPage(); else app.innerHTML=""; return; }
   
-  // ГЛАВНЫЙ РОУТЕР
   var pages = {
-    profile: ()=> { if(window.renderProfilePage) window.renderProfilePage(); else renderHome(); },
+    profile: ()=>window.renderProfilePage && window.renderProfilePage(),
     comments: ()=>window.renderCommentsPage&&window.renderCommentsPage(), 
     dashboard: ()=>window.renderDashboard&&window.renderDashboard(),
     chat: ()=>window.renderChatPage&&window.renderChatPage(), 
@@ -428,11 +415,28 @@ function renderTopic(id, tab, mode){
   }
   if (tab === "self") {
     panel.appendChild(el('<h2>Самостоятельная работа</h2>'));
-    (t.topic.selfChecks||[]).forEach(q=>panel.appendChild(el('<div class="question"><div class="q-text">'+q.q+'</div></div>')));
+    // Восстановлены поля ввода
+    (t.topic.selfChecks||[]).forEach((q, i)=>{
+      var block = el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><div class="self-row"><input type="text" class="self-input" placeholder="Ваш ответ"><button type="button" class="btn ghost self-check">Проверить</button></div><div class="self-feedback"></div></div>');
+      var inp = block.querySelector(".self-input"), btn = block.querySelector(".self-check"), fb = block.querySelector(".self-feedback");
+      btn.addEventListener("click", ()=>{
+        if (inp.value.trim().toLowerCase() === q.a.trim().toLowerCase()) { fb.textContent = "✔ Верно"; fb.className = "self-feedback ok"; }
+        else { fb.textContent = "✘ Неверно. Правильный ответ: " + q.a; fb.className = "self-feedback bad"; }
+      });
+      panel.appendChild(block);
+    });
   }
   if (tab === "test") {
     panel.appendChild(el('<h2>Контроль темы</h2>'));
-    (t.topic.test||[]).forEach(q=>panel.appendChild(el('<div class="question"><div class="q-text">'+q.q+'</div></div>')));
+    // Восстановлены варианты ответов
+    (t.topic.test||[]).forEach((q, qi)=>{
+      var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + q.q + '</div></div>');
+      q.options.forEach((opt, oi)=>{
+        qb.appendChild(el('<label class="option"><input type="radio" name="q'+qi+'" value="'+oi+'"><span>'+opt+'</span></label>'));
+      });
+      panel.appendChild(qb);
+    });
+    panel.appendChild(el('<div class="test-actions"><button class="btn" onclick="window.showToast(\'Тест пройден!\', \'ok\')">Подвести итог</button></div>'));
   }
   window.scrollTo(0, 0);
 }

@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — style.css (ФИНАЛЬНАЯ ВЕРСИЯ)
+   МДК 07.01 — style.css (v16.0 — ПОЛНЫЙ ДИЗАЙН)
    ============================================================ */
 
 :root, html[data-theme="light"]{
@@ -108,7 +108,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .t-fav:hover{transform:scale(1.2)}
 .t-fav.active{color:var(--gold)}
 
-/* ДОКУМЕНТЫ */
+/* ДОКУМЕНТЫ (ПАСПОРТА И ОХРАНА ТРУДА) */
 .doc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:8px}
 .doc-card{display:block;border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:var(--card-soft);color:var(--text);transition:border-color .15s, transform .15s, background .15s;cursor:pointer;outline:none;}
 .doc-card:hover,.doc-card:focus{border-color:var(--accent);transform:translateY(-1px);background:var(--card)}
@@ -174,7 +174,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .v-table th{background:var(--table-head);position:sticky;top:0;font-weight:600}
 .v-table tr:last-child td{border-bottom:none}
 
-/* ТЕСТЫ */
+/* ТЕСТЫ И ВОПРОСЫ */
 .question{border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;background:var(--card-soft)}
 .question .q-text{font-weight:600;margin-bottom:10px}
 .option{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;cursor:pointer;background:var(--card)}
@@ -214,39 +214,25 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .pw-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
 .pw-item b { color: var(--accent); }
 
-/* ГАЛЕРЕЯ И ГОСТЫ */
+/* ГАЛЕРЕЯ, ГОСТЫ, QR */
 .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:12px}
 .gallery-card{border:1px solid var(--border);border-radius:12px;background:var(--card-soft);overflow:hidden;display:flex;flex-direction:column}
 .gost-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:10px}
 .gost-item{display:block;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card-soft);color:var(--text);font-size:13px;transition:border-color .15s, transform .15s;}
 .gost-item:hover{border-color:var(--accent);transform:translateY(-1px)}
 .gost-item b{color:var(--accent);display:block;margin-bottom:3px;font-size:14px}
-
-/* ПРОЧЕЕ */
-.toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none}
-.toast{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);padding:12px 20px;border-radius:8px;box-shadow:0 10px 30px -10px rgba(0,0,0,.3);font-size:14px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:10px;animation:toastIn .3s forwards;pointer-events:auto}
-.toast.ok{border-left-color:var(--ok)} .toast.err{border-left-color:var(--err)}
-.toast.out{animation:toastOut .3s forwards}
-@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes toastOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(20px)}}
-
-.calc-box{background:var(--card-soft);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:500px}
-.calc-row{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
-.calc-group{flex:1;min-width:150px}
-.calc-group label{display:block;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.calc-group input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:16px;outline:none}
-.calc-result{margin-top:20px;padding:16px;background:var(--accent-soft);border-radius:10px;text-align:center;font-size:18px;font-weight:600;color:var(--accent)}
+.qr-wrap{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:20px}
+.qr-wrap img{border-radius:12px;border:1px solid var(--border);background:#fff;padding:10px;width:200px;height:200px;}
+.qr-wrap .qr-info{flex:1;min-width:200px}
 
 /* АДАПТИВНОСТЬ */
 @media (max-width: 768px) {
   body { overflow-x: hidden; }
   #app { padding: 16px 12px 60px; }
-  .doc-grid { grid-template-columns: 1fr; }
-  .profile-grid { grid-template-columns: 1fr; }
+  .doc-grid, .profile-grid, .steps, .tabs, .kpis, .kpi-row, .gallery-grid, .gost-grid { grid-template-columns: 1fr; }
   .profile-card { flex-direction: column; text-align: center; }
   .hero { padding: 20px 16px; }
   .hero h1 { font-size: 22px; }
-  .brand-title { display: none; }
-  .steps, .tabs, .kpis, .kpi-row { grid-template-columns: 1fr; }
-  .topbar-status { display: none; }
+  .brand-title, .topbar-status { display: none; }
+  .qr-wrap img { width: 100%; max-width: 300px; height: auto; }
 }
