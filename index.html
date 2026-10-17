@@ -1,3 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#c14a2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>МДК 07.01 — Технология обработки деталей на станках с ЧПУ</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM2IiBmaWxsPSIjYzE0YTJhIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI5NiIgcj0iNTIiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSI5NiIgY3k9Ijk2IiByPSIyOCIgZmlsbD0iI2MxNGEyYSIvPjwvc3ZnPg==">
+
+<script>
+  (function(){
+    try {
+      var t = localStorage.getItem("mdk0701.theme");
+      if (!t || t === "auto"){
+        var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        t = d ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", t);
+    } catch(e){}
+  })();
+</script>
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ЭКРАН ВХОДА СТУДЕНТА -->
+<div class="login-overlay" id="loginOverlay" hidden>
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-badge">МДК 07.01</span>
+      <h1>Вход студента</h1>
+    </div>
+    <p class="login-sub">Введите ФИО и группу. Прогресс сохранится в браузере и в облаке.</p>
+
+    <label for="loginName">ФИО студента</label>
+    <input id="loginName" type="text" placeholder="Иванов Иван Иванович" autocomplete="name">
+    <div class="field-hint" id="nameHint"></div>
+
+    <label for="loginGroup">Группа</label>
+    <input id="loginGroup" type="text" placeholder="ТМ-21" autocomplete="off" list="groupList">
+    <datalist id="groupList">
+      <option value="ТМ-21"><option value="ТМ-22"><option value="ТМ-23">
+      <option value="ТС-21"><option value="ТС-22"><option value="ТМ-20">
+      <option value="ТМ-3">
+    </datalist>
+    <div class="field-hint" id="groupHint"></div>
+
+    <label>Аватар</label>
+    <div class="avatar-picker-inline" id="loginAvatarPicker"></div>
+
+    <button id="loginBtn" class="btn login-btn">Войти как студент</button>
+    <p class="login-hint">
+      Служебный вход для сотрудников —
+      <a href="#" id="loginStaffLink" style="color:var(--accent);text-decoration:underline">логин и пароль</a>
+    </p>
+  </div>
+</div>
+
+<!-- ТОНКАЯ ВЕРХНЯЯ ПОЛОСА -->
+<header class="topbar">
+  <button class="burger-btn" id="burgerBtn" title="Меню" aria-label="Меню">
+    <span></span><span></span><span></span>
+  </button>
+
+  <a class="brand" href="#/" onclick="goHome(event)">
+    <span class="brand-badge">МДК 07.01</span>
+    <span class="brand-title">Оператор станков с ПУ</span>
+  </a>
+
+  <div class="crumbs" id="crumbs"></div>
+
+  <div class="topbar-status">
+    <span class="status-pill" id="onlineCount" title="Сейчас онлайн">🌐 —</span>
+    <span class="status-pill" id="netStatus" title="Соединение">📶</span>
+  </div>
+
+  <button class="theme-toggle" id="themeToggle" title="Сменить тему" aria-label="Сменить тему">
+    <span class="theme-icon" id="themeIcon">🎨</span>
+  </button>
+</header>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+
 <!-- БОКОВАЯ ШТОРКА -->
 <aside class="drawer" id="drawer" aria-hidden="true">
   <div class="drawer-head">
@@ -52,3 +139,31 @@
     <button class="drawer-item drawer-item-btn danger" data-act="logout" style="margin-top:8px">🚪 <span>Выйти из аккаунта</span></button>
   </div>
 </aside>
+
+<div class="announce-bar" id="announceBar" hidden>
+  <span class="announce-icon">📣</span>
+  <span class="announce-text" id="announceText"></span>
+  <button class="announce-close" id="announceClose" aria-label="Закрыть">✕</button>
+</div>
+
+<main id="app"></main>
+
+<footer class="footer">
+  ГБПОУ МО «Луховицкий авиационный технический техникум» · Профессионалитет · 2024
+</footer>
+
+<canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+<script src="data.js"></script>
+<script src="data-extra.js"></script>
+<script src="info.js"></script>
+<script src="script.js"></script>
+<script src="extra.js"></script>
+<script src="final.js"></script>
+<script src="links.js"></script>
+<script src="rating.js"></script>
+<script src="schedule.js"></script>
+<script src="journal.js"></script>
+<script src="assistant.js"></script>
+</body>
+</html>
