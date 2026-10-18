@@ -6,28 +6,16 @@
 <title>МДК 07.01</title>
 <link rel="manifest" href="manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="style.css?v=34">
+<link rel="stylesheet" href="style.css?v=50">
 <script>
-  // Автоматическое включение темной темы, если она стоит в системе
-  (function(){
-    try {
-      var t = localStorage.getItem("mdk0701.theme");
-      if (!t || t === "auto"){
-        var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        t = d ? "dark" : "light";
-      }
-      document.documentElement.setAttribute("data-theme", t);
-    } catch(e){}
-  })();
+  (function(){ try { var t = localStorage.getItem("mdk0701.theme"); if (!t || t === "auto"){ var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; t = d ? "dark" : "light"; } document.documentElement.setAttribute("data-theme", t); } catch(e){} })();
 </script>
 </head>
 <body>
 
 <div class="login-overlay" id="loginOverlay" hidden>
   <div class="login-card">
-    <div class="login-brand" style="text-align: center; margin-bottom: 25px;">
-      <span class="brand-badge" style="font-size: 14px; padding: 6px 12px;">МДК 07.01</span>
-    </div>
+    <div class="login-brand" style="text-align: center; margin-bottom: 25px;"><span class="brand-badge" style="font-size: 14px; padding: 6px 12px;">МДК 07.01</span></div>
     <h3>🎓 Вход студента</h3>
     <input id="loginName" type="text" placeholder="ФИО (Иванов Иван)">
     <input id="loginGroup" type="text" placeholder="Группа (ТМ-21)">
@@ -45,15 +33,16 @@
   <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
   <div class="crumbs" id="crumbs"></div>
   <div class="topbar-status"><span class="status-pill" id="xpCount">🌟 0 XP</span></div>
+  <button id="themeToggle" class="btn ghost" style="padding: 8px 12px; margin-left: 10px; border-radius: 8px;">🎨 Тема</button>
 </header>
 
 <div class="drawer-overlay" id="drawerOverlay"></div>
-<aside class="drawer" id="drawer">
+<aside class="drawer" id="drawer" style="display:flex; flex-direction:column;">
   <div class="drawer-head">
     <div class="drawer-user"><span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span><div><div id="userChipName">Гость</div><div id="userChipGroup" style="font-size:12px;color:var(--muted)">Роль: Гость</div></div></div>
     <button class="drawer-close" id="drawerClose">✕</button>
   </div>
-  <nav class="drawer-nav">
+  <nav class="drawer-nav" style="flex:1; overflow-y:auto;">
     <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
     <a class="drawer-item" data-go="#/profile">👤 <span>Личный кабинет</span></a>
     <a class="drawer-item" data-go="#/simulator">🖥️ <span>Симулятор G-кода</span></a>
@@ -62,23 +51,33 @@
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
+    <a class="drawer-item" data-go="#/gcode-reference">📖 <span>Справочник G/M</span></a>
+    <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
+    <a class="drawer-item" data-go="#/final-exam">🎓 <span>Экзамен</span></a>
+    <a class="drawer-item" data-go="#/final-training">🏋️ <span>Тренировка</span></a>
+    <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
+    <!-- ВОЗВРАЩЕНЫ ЧАТ И ОТЗЫВЫ -->
+    <a class="drawer-item" data-go="#/chat">💭 <span>Чат группы</span></a>
+    <a class="drawer-item" data-go="#/comments">💬 <span>Отзывы о курсе</span></a>
+    
+    <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px;" onclick="window.handleLogout()">🚪 <span>Выйти из аккаунта</span></a>
   </nav>
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v34.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v50.0</footer>
 
-<script src="data.js?v=34"></script>
-<script src="data-extra.js?v=34"></script>
-<script src="info.js?v=34"></script>
-<script src="script.js?v=34"></script>
-<script src="extra.js?v=34"></script>
-<script src="final.js?v=34"></script>
-<script src="links.js?v=34"></script>
-<script src="rating.js?v=34"></script>
-<script src="schedule.js?v=34"></script>
-<script src="journal.js?v=34"></script>
-<script src="minigames.js?v=34"></script>
-<script src="assistant.js?v=34"></script>
+<script src="data.js?v=50"></script>
+<script src="data-extra.js?v=50"></script>
+<script src="info.js?v=50"></script>
+<script src="script.js?v=50"></script>
+<script src="extra.js?v=50"></script>
+<script src="final.js?v=50"></script>
+<script src="links.js?v=50"></script>
+<script src="rating.js?v=50"></script>
+<script src="schedule.js?v=50"></script>
+<script src="journal.js?v=50"></script>
+<script src="minigames.js?v=50"></script>
+<script src="assistant.js?v=50"></script>
 </body>
 </html>

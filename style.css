@@ -1,20 +1,17 @@
 /* ============================================================
-   МДК 07.01 — style.css (v33.0 FULL RESTORE)
+   МДК 07.01 — style.css (v47.0 FINAL)
    ============================================================ */
 
-/* ЖЕСТКОЕ СКРЫТИЕ ОКНА ВХОДА */
 [hidden] { display: none !important; }
 
 /* ЦВЕТОВЫЕ ТЕМЫ */
 :root, html[data-theme="light"]{
   --bg:#f5f2ec; --card:#ffffff; --card-soft:#fcfaf7; --border:#e8e2d8; --text:#222222; --text-soft:#4a4a4a; --muted:#8a8578;
-  --accent:#c14a2a; --accent-soft:#f7e8e1; --ok:#2d7a4f; --err:#c0392b; --shadow:0 4px 12px rgba(0,0,0,0.05);
-  color-scheme: light;
+  --accent:#c14a2a; --accent-soft:#f7e8e1; --ok:#2d7a4f; --err:#c0392b; --shadow:0 4px 12px rgba(0,0,0,0.05); color-scheme: light;
 }
 html[data-theme="dark"]{
   --bg:#0e0e10; --card:#171719; --card-soft:#1c1c1f; --border:#2a2a2e; --text:#e8e6e1; --text-soft:#c8c5bd; --muted:#8f8b80;
-  --accent:#ff6b3d; --accent-soft:#2a1c15; --ok:#58c98a; --err:#ff6e5e; --shadow:0 4px 12px rgba(0,0,0,0.3);
-  color-scheme: dark;
+  --accent:#ff6b3d; --accent-soft:#2a1c15; --ok:#58c98a; --err:#ff6e5e; --shadow:0 4px 12px rgba(0,0,0,0.3); color-scheme: dark;
 }
 html[data-theme="sepia"]{ --bg:#f4ecd8; --card:#fbf5e6; --card-soft:#f8f0dc; --border:#e0d3b8; --text:#3a2e1f; --accent:#a0522d; --ok:#4a7a4a; --err:#a83232; --shadow:0 4px 12px rgba(0,0,0,0.05); }
 html[data-theme="ocean"]{ --bg:#eef4f8; --card:#ffffff; --card-soft:#f4f9fc; --border:#d3e2ec; --text:#16242e; --accent:#1a6da8; --ok:#1e7a5a; --err:#c0392b; --shadow:0 4px 12px rgba(0,0,0,0.05); }
@@ -67,8 +64,8 @@ a { color: inherit; text-decoration: none; }
 .btn.ghost { background: var(--card); border: 1px solid var(--border); color: var(--text); }
 .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ТЕМЫ И КАРТОЧКИ */
-.topic { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: 0.2s; }
+/* КАРТОЧКИ ТЕМ */
+.topic { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: 0.2s; margin-bottom: 12px; }
 .topic:hover { border-color: var(--accent); transform: translateY(-2px); }
 .topic .t-code { color: var(--accent); font-weight: bold; min-width: 60px; }
 .topic .t-title { font-weight: 600; font-size: 16px; }
@@ -89,7 +86,6 @@ a { color: inherit; text-decoration: none; }
 .lecture-content th, .lecture-content td { border: 1px solid var(--border); padding: 10px; text-align: left; }
 .lecture-content th { background: var(--card-soft); font-weight: 600; }
 .lecture-content ul, .lecture-content ol { margin: 10px 0; padding-left: 24px; }
-.lecture-content li { margin: 6px 0; }
 
 /* ТЕСТЫ */
 .question { border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; background: var(--card-soft); }
@@ -100,17 +96,20 @@ a { color: inherit; text-decoration: none; }
 .option.wrong { border-color: var(--err); background: rgba(192, 57, 43, 0.1); }
 .self-input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); margin: 8px 0; font-size: 15px; }
 
-/* АДАПТИВНОСТЬ И ПЕЧАТЬ */
-@media (max-width: 768px) {
-  #app { padding: 16px 12px 60px; }
-  .hero { padding: 24px 20px; }
-  .hero h1 { font-size: 24px; }
-  .tabs { flex-direction: column; }
-  .tab { width: 100%; text-align: center; }
-}
-@media print {
-  .topbar, .drawer, .drawer-overlay, .footer, .tabs, .backlink, button, .login-overlay { display: none !important; }
-  body { background: #fff !important; color: #000 !important; font-size: 14pt; }
-  #app { padding: 0; margin: 0; }
-  .panel, .module { border: none !important; box-shadow: none !important; padding: 0 !important; }
-}
+/* КАРТОЧКИ ЗНАНИЙ */
+.home-flashcards-wrap { perspective: 1000px; margin-bottom: 16px; }
+.flashcard { width: 100%; height: 180px; cursor: pointer; }
+.flashcard-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; }
+.flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+.flashcard-front, .flashcard-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; background: var(--card-soft); border: 2px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+.flashcard-back { transform: rotateY(180deg); border-color: var(--accent); }
+
+/* СПРАВОЧНИК G-КОДОВ */
+.gcode-ref-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.gcode-ref-item { display: flex; gap: 16px; background: var(--card-soft); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.gcode-ref-code { font-size: 20px; font-weight: 800; color: var(--accent); min-width: 60px; }
+.gcode-ref-name { font-weight: 700; margin-bottom: 6px; }
+.gcode-ref-desc { color: var(--text-soft); font-size: 14px; margin-bottom: 8px; }
+.gcode-ref-example code { background: var(--code-bg); color: var(--code-text); padding: 4px 8px; border-radius: 6px; font-size: 13px; display: inline-block; }
+
+@media (max-width: 768px) { #app { padding: 16px 12px 60px; } .hero h1 { font-size: 24px; } .tabs { flex-direction: column; } .tab { width: 100%; text-align: center; } }
