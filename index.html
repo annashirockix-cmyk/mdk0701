@@ -6,32 +6,37 @@
 <title>МДК 07.01</title>
 <link rel="manifest" href="manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=34">
+<script>
+  // Автоматическое включение темной темы, если она стоит в системе
+  (function(){
+    try {
+      var t = localStorage.getItem("mdk0701.theme");
+      if (!t || t === "auto"){
+        var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        t = d ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", t);
+    } catch(e){}
+  })();
+</script>
 </head>
 <body>
 
-<!-- ОКНО ВХОДА -->
 <div class="login-overlay" id="loginOverlay" hidden>
-  <div class="login-card" style="max-width: 400px; background: var(--card); padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-    
+  <div class="login-card">
     <div class="login-brand" style="text-align: center; margin-bottom: 25px;">
-      <span class="brand-badge" style="font-size: 14px; padding: 6px 12px; background:var(--accent); color:#fff;">МДК 07.01</span>
+      <span class="brand-badge" style="font-size: 14px; padding: 6px 12px;">МДК 07.01</span>
     </div>
-
-    <!-- СТУДЕНТ -->
-    <h3 style="margin-top:0; margin-bottom:15px; font-size:18px;">🎓 Вход студента</h3>
-    <input id="loginName" type="text" placeholder="ФИО (Иванов Иван)" style="width:100%; padding:12px; margin-bottom:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
-    <input id="loginGroup" type="text" placeholder="Группа (ТМ-21)" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
-    <button class="btn" style="width:100%; padding:12px;" onclick="window.doStudentLogin(event)">Войти как студент</button>
-
+    <h3>🎓 Вход студента</h3>
+    <input id="loginName" type="text" placeholder="ФИО (Иванов Иван)">
+    <input id="loginGroup" type="text" placeholder="Группа (ТМ-21)">
+    <button class="btn" style="width:100%; padding:12px;" onclick="window.doStudentLogin()">Войти как студент</button>
     <div style="text-align:center; margin:20px 0; color:var(--muted); font-size:13px; font-weight:bold;">─── или ───</div>
-
-    <!-- УЧИТЕЛЬ -->
-    <h3 style="margin-top:0; margin-bottom:15px; font-size:18px;">👨‍🏫 Вход сотрудника</h3>
-    <input id="loginStaffName" type="text" placeholder="Логин (admin / teacher)" style="width:100%; padding:12px; margin-bottom:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
-    <input id="loginStaffPass" type="password" placeholder="Пароль" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
-    <button id="staffLoginBtn" class="btn ghost" style="width:100%; padding:12px; border-color:var(--accent); color:var(--accent);" onclick="window.doTeacherLogin(event)">Войти как сотрудник</button>
-
+    <h3>👨‍🏫 Вход сотрудника</h3>
+    <input id="loginStaffName" type="text" placeholder="Логин (admin / teacher)">
+    <input id="loginStaffPass" type="password" placeholder="Пароль">
+    <button id="staffLoginBtn" class="btn ghost" style="width:100%; padding:12px;" onclick="window.doTeacherLogin()">Войти как сотрудник</button>
   </div>
 </div>
 
@@ -61,20 +66,19 @@
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v30.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v34.0</footer>
 
-<!-- ВАЖНО: ?v=30 ЗАСТАВИТ БРАУЗЕР СКАЧАТЬ НОВЫЙ СКРИПТ -->
-<script src="data.js?v=30"></script>
-<script src="data-extra.js?v=30"></script>
-<script src="info.js?v=30"></script>
-<script src="script.js?v=30"></script>
-<script src="extra.js?v=30"></script>
-<script src="final.js?v=30"></script>
-<script src="links.js?v=30"></script>
-<script src="rating.js?v=30"></script>
-<script src="schedule.js?v=30"></script>
-<script src="journal.js?v=30"></script>
-<script src="minigames.js?v=30"></script>
-<script src="assistant.js?v=30"></script>
+<script src="data.js?v=34"></script>
+<script src="data-extra.js?v=34"></script>
+<script src="info.js?v=34"></script>
+<script src="script.js?v=34"></script>
+<script src="extra.js?v=34"></script>
+<script src="final.js?v=34"></script>
+<script src="links.js?v=34"></script>
+<script src="rating.js?v=34"></script>
+<script src="schedule.js?v=34"></script>
+<script src="journal.js?v=34"></script>
+<script src="minigames.js?v=34"></script>
+<script src="assistant.js?v=34"></script>
 </body>
 </html>
