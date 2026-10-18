@@ -1,10 +1,9 @@
 /* ============================================================
-   МДК 07.01 — script.js (v57.0 — FULL FIX)
+   МДК 07.01 — script.js (v59.0 — FULL FIX)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
-// ДОБАВЛЕНО: achievements: {}
 var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [], achievements: {} };
 
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
@@ -17,11 +16,8 @@ function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, fu
 function findTopic(id){ var c = getCourse(); if (!c) return null; for (var i = 0; i < c.sections.length; i++){ if (!c.sections[i].topics) continue; for (var j = 0; j < c.sections[i].topics.length; j++){ if (c.sections[i].topics[j].id === id) return { section: c.sections[i], topic: c.sections[i].topics[j] }; } } return null; }
 function studentKey(s){ s = s || state.student; if (!s || !s.name) return null; return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()); }
 
-// Глобальный перехватчик ошибок загрузки картинок (скрывает битые иконки 404)
 window.addEventListener('error', function(e) {
-    if (e.target.tagName === 'IMG') {
-        e.target.style.display = 'none';
-    }
+    if (e.target.tagName === 'IMG') { e.target.style.display = 'none'; }
 }, true);
 
 window.showToast = function(msg, type) {
@@ -61,31 +57,39 @@ function saveStudentData(){
   }
 }
 
+/* ОТПРАВКА ПРАКТИЧЕСКИХ РАБОТ НА ПОЧТУ (через FormSubmit) */
 window.uploadFile = function(event, code, title) {
   var file = event.target.files[0]; if (!file) return;
   if (file.size > 15 * 1024 * 1024) { alert("Файл больше 15 МБ!"); return; }
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var base64 = e.target.result.split(',')[1];
-    var params = new URLSearchParams();
-    params.append("action", "uploadwork"); params.append("key", studentKey()); params.append("name", state.student.name); params.append("group", state.student.group); params.append("workCode", code); params.append("workTitle", title); params.append("fileName", file.name); params.append("fileType", file.type); params.append("fileData", base64);
-    
-    fetch(APPS_SCRIPT_URL, { method: "POST", body: params })
-      .then(r => r.json())
-      .then(d => { 
-        if (d.ok) {
-            alert("✅ УСПЕХ! Работа загружена."); 
-        } else {
-            // Улучшенная обработка ошибки Google Apps Script
-            if (d.error && d.error.includes("DriveApp")) {
-                alert("❌ ОШИБКА: У серверного скрипта (Google Apps Script) нет прав на запись в Google Drive.\n\nРешение: Откройте редактор Apps Script, запустите любую функцию, чтобы обновить разрешения (Authorization), или проверьте доступ к папке на Диске.");
-            } else {
-                alert("❌ ОШИБКА: " + (d.error||"Неизвестная ошибка сервера")); 
-            }
-        }
-    }).catch(() => alert("❌ ОШИБКА СЕТИ. Проверьте интернет."));
-  };
-  reader.readAsDataURL(file);
+  
+  window.showToast("Отправка файла на почту преподавателя...", "info");
+  
+  var formData = new FormData();
+  formData.append("ФИО", state.student.name);
+  formData.append("Группа", state.student.group);
+  formData.append("Работа", code + " - " + title);
+  formData.append("_subject", "Новая работа: " + code + " от " + state.student.name);
+  formData.append("attachment", file);
+
+  fetch("https://formsubmit.co/ajax/anna.shirockix@gmail.com", {
+    method: "POST",
+    body: formData,
+    headers: { 'Accept': 'application/json' }
+  })
+  .then(response => response.json())
+  .then(data => {
+      if(data.success) {
+          alert("✅ УСПЕХ! Работа отправлена на почту преподавателя.");
+          event.target.value = ""; 
+      } else {
+          alert("❌ ОШИБКА при отправке. Возможно, требуется активация почты (проверьте ящик anna.shirockix@gmail.com).");
+          console.error(data);
+      }
+  })
+  .catch(error => {
+      alert("❌ ОШИБКА СЕТИ. Проверьте интернет.");
+      console.error(error);
+  });
 };
 
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
@@ -142,7 +146,6 @@ function renderHome(){
     app.appendChild(list);
   });
 
-  // ПАСПОРТА СТАНКОВ
   if (c.passports && c.passports.length) {
     app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
     var pGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
@@ -154,7 +157,6 @@ function renderHome(){
     app.appendChild(pGrid);
   }
 
-  // ОХРАНА ТРУДА
   if (c.safety && c.safety.length) {
     app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
     var sGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
@@ -164,7 +166,6 @@ function renderHome(){
     app.appendChild(sGrid);
   }
 
-  // ВИДЕО
   if (c.videos && c.videos.length) {
     app.appendChild(el('<div class="steps-title">Видеоматериалы</div>'));
     var vGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
@@ -172,7 +173,6 @@ function renderHome(){
     app.appendChild(vGrid);
   }
 
-  // КАРТОЧКИ ЗНАНИЙ
   var flashCards = [
     { q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ.", topic: "Основы" },
     { q: "Что делает G00?", a: "Быстрое позиционирование.", topic: "G-коды" },
@@ -189,7 +189,6 @@ function renderHome(){
   renderHomeCard(); 
   flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%flashCards.length; renderHomeCard(); });
 
-  // ОФОРМЛЕНИЕ ПРАКТИЧЕСКИХ РАБОТ (ВОЗВРАЩЕНО)
   if (c.practiceFormatting) {
     app.appendChild(el('<div class="steps-title">' + c.practiceFormatting.title + '</div>'));
     var fmtBlock = el('<section class="module"><p style="color:var(--text-soft); margin-bottom:20px;">' + c.practiceFormatting.intro + '</p><div id="fmtBlocks"></div></section>');
@@ -197,14 +196,46 @@ function renderHome(){
     c.practiceFormatting.blocks.forEach(function(b) {
       var bEl = el('<div style="margin-bottom:24px; background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0; margin-bottom:12px; color:var(--accent);">' + b.title + '</h3><ul style="margin-top:0; padding-left:20px;"></ul></div>');
       var ul = bEl.querySelector("ul");
-      b.items.forEach(function(item) {
-        ul.appendChild(el('<li style="margin-bottom:8px;">' + item + '</li>'));
-      });
+      b.items.forEach(function(item) { ul.appendChild(el('<li style="margin-bottom:8px;">' + item + '</li>')); });
       fmtContainer.appendChild(bEl);
     });
     app.appendChild(fmtBlock);
   }
 }
+
+/* ДОБАВЛЕНА ФУНКЦИЯ СПРАВОЧНИКА G/M */
+window.renderGCodeReferencePage = function() {
+  var app = $("app"); app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Справочник G/M";
+  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  
+  if (!window.GCODE_REFERENCE) {
+      app.appendChild(el('<div class="module">Справочник не загружен.</div>'));
+      return;
+  }
+
+  app.appendChild(el('<section class="hero"><h1>Справочник G- и M-кодов</h1><p>' + window.GCODE_REFERENCE.intro + '</p></section>'));
+  
+  window.GCODE_REFERENCE.groups.forEach(function(group) {
+      var block = el('<section class="module"><h2>' + group.title + '</h2><div class="gcode-ref-list"></div></section>');
+      var list = block.querySelector('.gcode-ref-list');
+      group.items.forEach(function(item) {
+          list.appendChild(el('<div class="gcode-ref-item"><div class="gcode-ref-code">' + item.code + '</div><div><div class="gcode-ref-name">' + item.name + '</div><div class="gcode-ref-desc">' + item.desc + '</div><div class="gcode-ref-example"><code>' + escapeHtml(item.example) + '</code></div></div></div>'));
+      });
+      app.appendChild(block);
+  });
+  
+  if (window.GCODE_REFERENCE.examples) {
+      var exBlock = el('<section class="module"><h2>Примеры программ</h2></section>');
+      window.GCODE_REFERENCE.examples.forEach(function(ex) {
+          var exDiv = el('<div style="margin-bottom:24px;"><h3>' + ex.title + '</h3><pre style="background:var(--card-soft);padding:16px;border-radius:8px;overflow-x:auto;font-size:14px;border:1px solid var(--border);"><code>' + escapeHtml(ex.code) + '</code></pre><ul style="font-size:14px;color:var(--text-soft);"></ul></div>');
+          var ul = exDiv.querySelector('ul');
+          ex.explanation.forEach(function(exp) { ul.appendChild(el('<li>' + exp + '</li>')); });
+          exBlock.appendChild(exDiv);
+      });
+      app.appendChild(exBlock);
+  }
+};
 
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
@@ -249,7 +280,7 @@ function renderTopic(id, tab){
           p.variants.rows.forEach(function(r){ html += '<tr>'; r.forEach(function(c){ html += '<td style="border:1px solid var(--border);padding:8px;">' + c + '</td>'; }); html += '</tr>'; });
           html += '</tbody></table></div></div>';
         }
-        html += '<div style="margin-top:16px;"><input type="file" id="file_' + p.code.replace(/\s+/g, '') + '" style="display:none" onchange="window.uploadFile(event, \'' + p.code + '\', \'' + p.title + '\')"><button class="btn" onclick="document.getElementById(\'file_' + p.code.replace(/\s+/g, '') + '\').click()">📎 Прикрепить работу</button></div>';
+        html += '<div style="margin-top:16px;"><input type="file" id="file_' + p.code.replace(/\s+/g, '') + '" style="display:none" onchange="window.uploadFile(event, \'' + p.code + '\', \'' + p.title + '\')"><button class="btn" onclick="document.getElementById(\'file_' + p.code.replace(/\s+/g, '') + '\').click()">📎 Отправить работу на почту</button></div>';
         html += '</div>';
         panel.appendChild(el(html));
       });

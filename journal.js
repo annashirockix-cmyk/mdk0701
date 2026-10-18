@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v58.0 — FIX)
+   МДК 07.01 — journal.js (v59.0 — BEAUTIFUL UI)
    ============================================================ */
 "use strict";
 
@@ -12,7 +12,6 @@ window.renderJournalPage = function() {
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
   
   if (isTeacher) {
-    // Исправлена кнопка (var(--blue) заменен на var(--accent))
     var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
     app.appendChild(topPanel);
     topPanel.querySelector("#reportBtn").onclick = function() {
@@ -40,43 +39,67 @@ window.renderJournalPage = function() {
     }
     if (!displayStudents.length) { tableWrap.innerHTML = "<p class='sub'>Ваших данных пока нет.</p>"; return; }
     
-    var tableContainer = el('<div class="journal-container"></div>');
-    var table = el('<table class="journal-table"></table>');
-    table.appendChild(el('<thead><tr><th>Студент</th><th>Группа</th><th>Оценки (Детализация)</th></tr></thead>'));
+    var tableContainer = el('<div class="journal-container" style="overflow-x:auto;"></div>');
+    var table = el('<table class="journal-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"></table>');
+    
+    // Обновленная шапка таблицы
+    table.appendChild(el('<thead><tr>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:25%;">Студент</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:50%;">Сданные темы и работы</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:25%; text-align:center;">Оценка / Попытка</th>'
+        + '</tr></thead>'));
+        
     var tbody = el('<tbody></tbody>');
     
     displayStudents.forEach(s => {
-      var tr = el('<tr></tr>');
-      tr.appendChild(el('<td style="text-align:left; font-weight:bold;">' + s.name + '</td>'));
-      tr.appendChild(el('<td style="font-weight:bold;">' + s.group + '</td>'));
+      var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
       
-      var tdGrade = el('<td style="text-align:left; font-size:13px;"></td>');
+      // 1. ФИО
+      tr.appendChild(el('<td style="padding:12px; vertical-align:top; font-weight:bold;">' + s.name + '<br><span style="font-size:12px;color:var(--muted);font-weight:normal;">гр. ' + s.group + '</span></td>'));
       
-      var html = "";
+      var tdWorks = el('<td style="padding:12px; vertical-align:top;"></td>');
+      var tdStats = el('<td style="padding:12px; vertical-align:top; text-align:center;"></td>');
+      
+      var worksHtml = "";
+      var statsHtml = "";
+      var hasWorks = false;
+
       try {
         var p = JSON.parse(s.payload);
-        var gradesList = [];
+        
         if (p.results) {
           Object.keys(p.results).forEach(k => {
-             var tName = k === "__final_exam__" ? "Экзамен" : k;
+             var tName = k === "__final_exam__" ? "Итоговый экзамен" : k;
              var topic = findTopic(k);
-             if (topic) tName = topic.topic.code;
-             gradesList.push(`<span style="display:inline-block;background:var(--card-soft);padding:2px 6px;border-radius:4px;margin:2px;">${tName}: <b>${p.results[k].grade}</b></span>`);
+             if (topic) tName = topic.topic.code + ' - ' + topic.topic.title;
+             
+             worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Тест)</span></div>`;
+             statsHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);">Оценка: <b style="color:var(--accent); font-size:16px;">${p.results[k].grade}</b></div>`;
+             hasWorks = true;
           });
         }
+        
         if (p.selfResults) {
           Object.keys(p.selfResults).forEach(k => { 
             var topic = findTopic(k);
-            var tName = topic ? topic.topic.code : k;
-            gradesList.push(`<span style="display:inline-block;background:var(--card-soft);padding:2px 6px;border-radius:4px;margin:2px;">${tName} (Сам.): <b>${p.selfResults[k].grade}</b></span>`); 
+            var tName = topic ? topic.topic.code + ' - ' + topic.topic.title : k;
+            worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Сам. работа)</span></div>`;
+            statsHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);">Оценка: <b style="color:var(--accent); font-size:16px;">${p.selfResults[k].grade}</b></div>`;
+            hasWorks = true;
           });
         }
-        if (gradesList.length) html = gradesList.join(" ");
-        else html = "<i>Нет оценок за тесты</i>";
-      } catch(e) { html = "<i>Нет данных</i>"; }
+      } catch(e) {}
       
-      tdGrade.innerHTML = html;
-      tr.appendChild(tdGrade);
+      if (hasWorks) {
+          tdWorks.innerHTML = worksHtml;
+          tdStats.innerHTML = statsHtml;
+      } else {
+          tdWorks.innerHTML = '<i style="color:var(--muted);">Нет сданных работ</i>';
+          tdStats.innerHTML = '—';
+      }
+      
+      tr.appendChild(tdWorks);
+      tr.appendChild(tdStats);
       tbody.appendChild(tr);
     });
     
