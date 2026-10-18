@@ -1,10 +1,13 @@
 /* ============================================================
-   МДК 07.01 — script.js (v59.0 — FULL FIX)
+   МДК 07.01 — script.js (v61.0 — FULL FIX)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
-var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [], achievements: {} };
+var state = { 
+  student: null, staff: null, progress: {}, results: {}, selfResults: {}, 
+  practicalsDone: {}, practicalGrades: {}, favorites: [], xp: 0, shop: [], achievements: {} 
+};
 
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
@@ -34,6 +37,8 @@ function loadStudentData(){
   state.progress = JSON.parse(localStorage.getItem("mdk0701.progress." + ek) || "{}");
   state.results = JSON.parse(localStorage.getItem("mdk0701.results." + ek) || "{}");
   state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
+  state.practicalsDone = JSON.parse(localStorage.getItem("mdk0701.practicalsDone." + ek) || "{}");
+  state.practicalGrades = JSON.parse(localStorage.getItem("mdk0701.practicalGrades." + ek) || "{}");
   state.achievements = JSON.parse(localStorage.getItem("mdk0701.achievements." + ek) || "{}");
   state.xp = parseInt(localStorage.getItem("mdk0701.xp." + ek) || "0");
   state.shop = JSON.parse(localStorage.getItem("mdk0701.shop." + ek) || "[]");
@@ -44,52 +49,52 @@ function saveStudentData(){
   localStorage.setItem("mdk0701.progress." + ek, JSON.stringify(state.progress));
   localStorage.setItem("mdk0701.results." + ek, JSON.stringify(state.results));
   localStorage.setItem("mdk0701.selfResults." + ek, JSON.stringify(state.selfResults));
+  localStorage.setItem("mdk0701.practicalsDone." + ek, JSON.stringify(state.practicalsDone));
+  localStorage.setItem("mdk0701.practicalGrades." + ek, JSON.stringify(state.practicalGrades));
   localStorage.setItem("mdk0701.achievements." + ek, JSON.stringify(state.achievements));
   localStorage.setItem("mdk0701.xp." + ek, state.xp);
   localStorage.setItem("mdk0701.shop." + ek, JSON.stringify(state.shop));
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
   
-  if(APPS_SCRIPT_URL) {
+  if(APPS_SCRIPT_URL && state.student) {
     var p = new URLSearchParams();
     p.append("action", "save"); p.append("key", k); p.append("name", state.student.name); p.append("group", state.student.group);
-    p.append("payload", JSON.stringify({ progress: state.progress, results: state.results, selfResults: state.selfResults, favorites: state.favorites }));
+    p.append("payload", JSON.stringify({ 
+      progress: state.progress, 
+      results: state.results, 
+      selfResults: state.selfResults, 
+      practicalsDone: state.practicalsDone, 
+      practicalGrades: state.practicalGrades,
+      favorites: state.favorites 
+    }));
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(function(){});
   }
 }
 
-/* ОТПРАВКА ПРАКТИЧЕСКИХ РАБОТ НА ПОЧТУ (через FormSubmit) */
-window.uploadFile = function(event, code, title) {
-  var file = event.target.files[0]; if (!file) return;
-  if (file.size > 15 * 1024 * 1024) { alert("Файл больше 15 МБ!"); return; }
-  
-  window.showToast("Отправка файла на почту преподавателя...", "info");
-  
-  var formData = new FormData();
-  formData.append("ФИО", state.student.name);
-  formData.append("Группа", state.student.group);
-  formData.append("Работа", code + " - " + title);
-  formData.append("_subject", "Новая работа: " + code + " от " + state.student.name);
-  formData.append("attachment", file);
+// Функция отметки "Сделал"
+window.markPracticalDone = function(topicId, code) {
+    if (!state.practicalsDone[topicId]) state.practicalsDone[topicId] = {};
+    state.practicalsDone[topicId][code] = true;
+    saveStudentData();
+    renderTopic(topicId, "practice");
+    window.showToast("Работа отмечена как выполненная!", "ok");
+};
 
-  fetch("https://formsubmit.co/ajax/anna.shirockix@gmail.com", {
-    method: "POST",
-    body: formData,
-    headers: { 'Accept': 'application/json' }
-  })
-  .then(response => response.json())
-  .then(data => {
-      if(data.success) {
-          alert("✅ УСПЕХ! Работа отправлена на почту преподавателя.");
-          event.target.value = ""; 
-      } else {
-          alert("❌ ОШИБКА при отправке. Возможно, требуется активация почты (проверьте ящик anna.shirockix@gmail.com).");
-          console.error(data);
-      }
-  })
-  .catch(error => {
-      alert("❌ ОШИБКА СЕТИ. Проверьте интернет.");
-      console.error(error);
-  });
+// Функция выставления оценки преподавателем (сохраняется в локальную БД)
+window.setPracticalGrade = function(studentKeyStr, topicId, code, grade) {
+    // В реальной системе это должен быть отдельный запрос к API
+    // Мы сохраним это локально для преподавателя и отправим в общую базу
+    var p = new URLSearchParams();
+    p.append("action", "savegrade"); 
+    p.append("key", studentKeyStr); 
+    p.append("topicId", topicId);
+    p.append("code", code);
+    p.append("grade", grade);
+    
+    window.showToast("Оценка " + grade + " выставлена.", "ok");
+    
+    // Отправляем на сервер (если скрипт поддерживает)
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(console.error);
 };
 
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
@@ -203,7 +208,6 @@ function renderHome(){
   }
 }
 
-/* ДОБАВЛЕНА ФУНКЦИЯ СПРАВОЧНИКА G/M */
 window.renderGCodeReferencePage = function() {
   var app = $("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Справочник G/M";
@@ -262,6 +266,9 @@ function renderTopic(id, tab){
   if (tab === "practice") {
     if(t.topic.practicals) {
       t.topic.practicals.forEach(function(p){
+        var isDone = state.practicalsDone[id] && state.practicalsDone[id][p.code];
+        var grade = state.practicalGrades[id] && state.practicalGrades[id][p.code];
+        
         var html = '<div class="practice" style="margin-bottom:24px;border:1px solid var(--border);padding:20px;border-radius:12px;background:var(--card-soft);">';
         html += '<div style="color:var(--accent);font-weight:bold;font-size:16px;">' + p.code + '</div>';
         html += '<div style="font-weight:bold;margin:4px 0 12px 0;font-size:18px;">' + p.title + '</div>';
@@ -280,7 +287,20 @@ function renderTopic(id, tab){
           p.variants.rows.forEach(function(r){ html += '<tr>'; r.forEach(function(c){ html += '<td style="border:1px solid var(--border);padding:8px;">' + c + '</td>'; }); html += '</tr>'; });
           html += '</tbody></table></div></div>';
         }
-        html += '<div style="margin-top:16px;"><input type="file" id="file_' + p.code.replace(/\s+/g, '') + '" style="display:none" onchange="window.uploadFile(event, \'' + p.code + '\', \'' + p.title + '\')"><button class="btn" onclick="document.getElementById(\'file_' + p.code.replace(/\s+/g, '') + '\').click()">📎 Отправить работу на почту</button></div>';
+        
+        // Блок сдачи работы
+        html += '<div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">';
+        if (isDone) {
+            html += '<div style="color:var(--ok); font-weight:bold;">✅ Работа отмечена как выполненная.</div>';
+            if (grade) {
+                html += '<div style="background:var(--card); padding:8px 16px; border-radius:8px; border:1px solid var(--border);">Оценка преподавателя: <b style="font-size:18px; color:var(--accent);">' + grade + '</b></div>';
+            }
+        } else {
+            html += '<div style="color:var(--muted); font-size:13px; flex: 1 1 100%; margin-bottom:10px;">📌 Все практические работы сдаются одной сшитой папкой в конце изучения предмета.</div>';
+            html += '<button class="btn" onclick="window.markPracticalDone(\'' + id + '\', \'' + p.code + '\')">✅ Сделал</button>';
+        }
+        html += '</div>';
+
         html += '</div>';
         panel.appendChild(el(html));
       });

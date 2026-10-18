@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — easter-eggs.js
+   МДК 07.01 — easter-eggs.js (v61.0 — FIXED)
    ============================================================ */
 "use strict";
 
@@ -7,7 +7,9 @@ var konamiCode = ['c', 'n', 'c'];
 var konamiIndex = 0;
 
 document.addEventListener('keydown', function(e) {
-  var key = e.key.toLowerCase();
+  // ИСПРАВЛЕНИЕ: защита от undefined, если e.key не существует
+  var key = e.key ? e.key.toLowerCase() : "";
+  
   if (key === konamiCode[konamiIndex]) {
     konamiIndex++;
     if (konamiIndex === konamiCode.length) {
@@ -29,7 +31,16 @@ document.addEventListener("click", function(e) {
       logoClicks = 0;
       if (window.showToast) window.showToast("Вы нашли пасхалку! 🎉", "ok");
       var badge = brand.querySelector(".brand-badge");
-      if (badge) { badge.textContent = "G-CODE PRO"; badge.style.background = "var(--gold)"; badge.style.color = "#000"; setTimeout(() => { badge.textContent = "МДК 07.01"; badge.style.background = ""; badge.style.color = ""; }, 3000); }
+      if (badge) { 
+          badge.textContent = "G-CODE PRO"; 
+          badge.style.background = "var(--gold)"; 
+          badge.style.color = "#000"; 
+          setTimeout(() => { 
+              badge.textContent = "МДК 07.01"; 
+              badge.style.background = ""; 
+              badge.style.color = ""; 
+          }, 3000); 
+      }
     }
   } else { logoClicks = 0; }
 });
