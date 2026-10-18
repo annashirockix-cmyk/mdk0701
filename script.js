@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v61.0 — FULL FIX)
+   МДК 07.01 — script.js (v63.0 — FINAL FULL)
    ============================================================ */
 "use strict";
 
@@ -71,7 +71,6 @@ function saveStudentData(){
   }
 }
 
-// Функция отметки "Сделал"
 window.markPracticalDone = function(topicId, code) {
     if (!state.practicalsDone[topicId]) state.practicalsDone[topicId] = {};
     state.practicalsDone[topicId][code] = true;
@@ -80,28 +79,11 @@ window.markPracticalDone = function(topicId, code) {
     window.showToast("Работа отмечена как выполненная!", "ok");
 };
 
-// Функция выставления оценки преподавателем (сохраняется в локальную БД)
-window.setPracticalGrade = function(studentKeyStr, topicId, code, grade) {
-    // В реальной системе это должен быть отдельный запрос к API
-    // Мы сохраним это локально для преподавателя и отправим в общую базу
-    var p = new URLSearchParams();
-    p.append("action", "savegrade"); 
-    p.append("key", studentKeyStr); 
-    p.append("topicId", topicId);
-    p.append("code", code);
-    p.append("grade", grade);
-    
-    window.showToast("Оценка " + grade + " выставлена.", "ok");
-    
-    // Отправляем на сервер (если скрипт поддерживает)
-    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(console.error);
-};
-
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
   var themes = ["light", "dark", "sepia", "ocean", "forest"]; var names = ["Светлая", "Тёмная", "Сепия", "Океан", "Лес"];
-  var modal = el(`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;" id="themeModal"><div style="background:var(--card);padding:24px;border-radius:16px;width:90%;max-width:400px;"><h3 style="margin-top:0;">Выберите тему</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;" id="themeGrid"></div><button class="btn ghost" style="width:100%" onclick="document.getElementById('themeModal').remove()">Закрыть</button></div></div>`);
+  var modal = el(`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;" id="themeModal"><div style="background:var(--card);padding:24px;border-radius:16px;width:90%;max-width:400px; animation: popIn 0.3s;"><h3 style="margin-top:0;">Выберите тему</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;" id="themeGrid"></div><button class="btn ghost" style="width:100%" onclick="document.getElementById('themeModal').remove()">Закрыть</button></div></div>`);
   var grid = modal.querySelector("#themeGrid");
   themes.forEach(function(t, i){ var btn = el('<button class="btn ' + (t===current ? '' : 'ghost') + '" style="padding:12px;">' + names[i] + '</button>'); btn.onclick = function() { applyTheme(t); modal.remove(); }; grid.appendChild(btn); });
   document.body.appendChild(modal);
@@ -150,6 +132,19 @@ function renderHome(){
     sec.topics.forEach(function(t) { list.appendChild(el('<div class="topic" onclick="location.hash=\'#/topic/' + t.id + '\'"><span class="t-code">' + t.code + '</span><span class="t-title">' + t.title + '</span></div>')); });
     app.appendChild(list);
   });
+
+  // БЛОК ИВЕНТА
+  var eventBlock = el(`<div class="event-card" onclick="location.hash='#/tictactoe'">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+              <h2 style="margin:0 0 10px 0; font-size:24px; color:#ff003c; text-shadow: 0 0 10px rgba(255,0,60,0.5);">🚨 СМЕРТЕЛЬНАЯ ВЕЧЕРИНКА</h2>
+              <p style="margin:0; color:#aaa; font-size:14px;">Терминал ЧПУ вышел из-под контроля. Сыграй с ним в крестики-нолики, чтобы отключить протокол самоуничтожения.</p>
+          </div>
+          <div style="font-size:40px; animation: pulse 1s infinite;">💀</div>
+      </div>
+      <div style="margin-top:20px; display:inline-block; background:#ff003c; color:#000; padding:8px 16px; border-radius:8px; font-weight:bold; font-size:14px;">Войти в терминал →</div>
+  </div>`);
+  app.appendChild(eventBlock);
 
   if (c.passports && c.passports.length) {
     app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
@@ -288,7 +283,6 @@ function renderTopic(id, tab){
           html += '</tbody></table></div></div>';
         }
         
-        // Блок сдачи работы
         html += '<div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">';
         if (isDone) {
             html += '<div style="color:var(--ok); font-weight:bold;">✅ Работа отмечена как выполненная.</div>';
