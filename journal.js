@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v81.0 — XP GRANT UI)
+   МДК 07.01 — journal.js (v83.0 — REPORT FIX)
    ============================================================ */
 "use strict";
 
@@ -24,17 +24,43 @@ window.renderJournalPage = function() {
       app.appendChild(quickPanel);
   }
 
-  // Кнопка отчета
+  // КНОПКА ОТПРАВКИ ОТЧЕТА
   if (isTeacher) {
     var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
     app.appendChild(topPanel);
+    
     topPanel.querySelector("#reportBtn").onclick = function() {
-      var email = prompt("Введите email для отчета:", "anna.shirockix@gmail.com"); if (!email) return;
-      var p = new URLSearchParams(); p.append("action", "journalreport"); p.append("group", state.staff.group || "ТМ-3"); p.append("email", email);
+      var email = prompt("Введите email для отчета:", "anna.shirockix@gmail.com"); 
+      if (!email) return;
+      
+      var btn = this;
+      btn.textContent = "Отправка...";
+      btn.disabled = true;
+      
+      var p = new URLSearchParams(); 
+      p.append("action", "journalreport"); 
+      p.append("group", state.staff.group || "Все"); 
+      p.append("email", email);
+      
       window.showToast("Отчет отправляется...", "info");
-      fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r=>r.json()).then(res=>{
-         if(res.ok) window.showToast("Отчет отправлен!", "ok"); else window.showToast("Ошибка отправки.", "err");
-      });
+      
+      fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
+        .then(r => r.json())
+        .then(res => {
+            if(res.ok) {
+                window.showToast("Отчет успешно отправлен!", "ok");
+            } else {
+                window.showToast("Ошибка сервера: " + (res.error || "Неизвестно"), "err");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            window.showToast("Ошибка сети при отправке.", "err");
+        })
+        .finally(() => {
+            btn.textContent = "📧 Отправить отчет";
+            btn.disabled = false;
+        });
     };
   }
 
@@ -44,7 +70,6 @@ window.renderJournalPage = function() {
     tableWrap.innerHTML = "";
     if (!d.ok || !d.students.length) { tableWrap.innerHTML = "Студентов пока нет."; return; }
     
-    // Заполняем список для быстрой выдачи
     if (isTeacher) {
         var sel = document.getElementById("quickStudentSelect");
         d.students.forEach(s => {
