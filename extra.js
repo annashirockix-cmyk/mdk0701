@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v55.0 — FULL FEATURES)
+   МДК 07.01 — extra.js (v56.0 — FULL)
    ============================================================ */
 "use strict";
 
@@ -37,7 +37,6 @@ window.renderDashboard = function(){
     return;
   }
 
-  // ГРАФИК
   app.appendChild(el(`<section class="module"><h2>📈 Мой прогресс</h2><div style="max-width:300px;margin:0 auto;"><canvas id="studentChart"></canvas></div></section>`));
   setTimeout(() => {
     new Chart(document.getElementById('studentChart').getContext('2d'), { type: 'doughnut', data: { labels: ['Пройдено', 'Осталось'], datasets: [{ data: [state.xp/10, 100 - (state.xp/10)], backgroundColor: ['#2d7a4f', '#e8e2d8'] }] }, options: { cutout: '70%' } });
@@ -76,7 +75,6 @@ window.renderDashboard = function(){
   var grid = document.getElementById("achGrid");
   
   achList.forEach(a => {
-    // Для простоты считаем, что если XP > 50, то ачивка открыта (визуальная имитация)
     var isUnlocked = state.xp > (a.id.replace("t","") * 10) || state.achievements[a.id];
     grid.appendChild(el(`<div style="background:var(--card-soft);border:1px solid ${isUnlocked ? 'var(--gold)' : 'var(--border)'};padding:16px;border-radius:12px;text-align:center;opacity:${isUnlocked ? '1' : '0.4'};"><div style="font-size:32px;margin-bottom:8px;">${isUnlocked ? a.icon : '🔒'}</div><div style="font-weight:bold;font-size:13px;">${a.title}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${a.desc}</div></div>`));
   });

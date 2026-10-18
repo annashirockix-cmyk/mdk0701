@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v55.0 — SHOP & ASSISTANT FIX)
+   МДК 07.01 — script.js (v56.0 — FULL RESTORE)
    ============================================================ */
 "use strict";
 
@@ -109,17 +109,62 @@ function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay"
 function renderHome(){
   var app = $("app"); app.innerHTML = ""; var c = getCourse();
   if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
+  
   app.appendChild(el('<section class="hero"><h1>' + c.title + '</h1><p>' + c.module + '</p></section>'));
+  
   c.sections.forEach(function(sec) {
     app.appendChild(el('<div class="steps-title">' + sec.code + ' · ' + sec.title + '</div>'));
     var list = document.createElement("div");
     sec.topics.forEach(function(t) { list.appendChild(el('<div class="topic" onclick="location.hash=\'#/topic/' + t.id + '\'"><span class="t-code">' + t.code + '</span><span class="t-title">' + t.title + '</span></div>')); });
     app.appendChild(list);
   });
-  if (c.passports && c.passports.length) { app.appendChild(el('<div class="steps-title">Паспорта станков</div><div class="module"><p>Раздел доступен в полной версии.</p></div>')); }
-  if (c.videos && c.videos.length) { app.appendChild(el('<div class="steps-title">Видеоматериалы</div><div class="module"><p>Раздел доступен в полной версии.</p></div>')); }
-  // Карточки
-  app.appendChild(el('<div class="steps-title">Интерактив</div><section class="module"><h2>🎴 Карточки знаний</h2><div class="flashcard" onclick="this.classList.toggle(\'flipped\')" style="width:100%;height:150px;cursor:pointer;perspective:1000px;"><div class="flashcard-inner" style="position:relative;width:100%;height:100%;text-align:center;transition:transform 0.6s;transform-style:preserve-3d;"><div style="position:absolute;width:100%;height:100%;backface-visibility:hidden;background:var(--card-soft);border:2px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;">Что такое G-код?</div><div style="position:absolute;width:100%;height:100%;backface-visibility:hidden;background:var(--card-soft);border:2px solid var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotateY(180deg);">Язык ЧПУ</div></div></div></section>'));
+
+  // ПАСПОРТА СТАНКОВ
+  if (c.passports && c.passports.length) {
+    app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
+    var pGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
+    c.passports.forEach(function(p) {
+      var card = el('<div class="module" style="margin:0;padding:16px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;"><div><b style="color:var(--accent)">' + p.code + '</b><div style="font-weight:bold;margin:8px 0;">' + p.title + '</div><div style="font-size:12px;color:var(--muted);">' + p.summary + '</div></div><div style="margin-top:12px;color:var(--accent);font-weight:bold;">Открыть PDF →</div></div>');
+      card.onclick = (function(file) { return function() { window.open(file, "_blank"); }; })(p.file);
+      pGrid.appendChild(card);
+    });
+    app.appendChild(pGrid);
+  }
+
+  // ОХРАНА ТРУДА
+  if (c.safety && c.safety.length) {
+    app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
+    var sGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
+    c.safety.forEach(function(s) {
+      sGrid.appendChild(el('<a class="module" href="' + s.file + '" download style="margin:0;padding:16px;display:flex;flex-direction:column;justify-content:space-between;"><div><b style="color:var(--accent)">' + s.code + '</b><div style="font-weight:bold;margin:8px 0;">' + s.title + '</div><div style="font-size:12px;color:var(--muted);">' + s.summary + '</div></div><div style="margin-top:12px;color:var(--accent);font-weight:bold;">Скачать .docx →</div></a>'));
+    });
+    app.appendChild(sGrid);
+  }
+
+  // ВИДЕО
+  if (c.videos && c.videos.length) {
+    app.appendChild(el('<div class="steps-title">Видеоматериалы</div>'));
+    var vGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
+    c.videos.forEach(function(v) { vGrid.appendChild(el('<div class="module" style="margin:0;padding:16px;"><div style="font-weight:bold;margin-bottom:8px;">' + v.title + '</div><video controls src="' + v.src + '" style="width:100%;border-radius:8px;background:#000;"></video></div>')); });
+    app.appendChild(vGrid);
+  }
+
+  // КАРТОЧКИ ЗНАНИЙ
+  var flashCards = [
+    { q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ.", topic: "Основы" },
+    { q: "Что делает G00?", a: "Быстрое позиционирование.", topic: "G-коды" },
+    { q: "Что делает G01?", a: "Линейная интерполяция.", topic: "G-коды" }
+  ];
+  app.appendChild(el('<div class="steps-title">Интерактив</div>'));
+  var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div style="text-align:center;"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
+  app.appendChild(flashBlock);
+  var hArea = flashBlock.querySelector("#homeFlashcardArea"), hIndex = 0;
+  function renderHomeCard() { 
+    var card = flashCards[hIndex]; 
+    hArea.innerHTML = `<div class="flashcard" onclick="this.classList.toggle('flipped')"><div class="flashcard-inner"><div class="flashcard-front"><div style="color:var(--accent);margin-bottom:10px">${card.topic}</div><h3>${card.q}</h3></div><div class="flashcard-back"><h3>Ответ</h3><p>${card.a}</p></div></div></div>`; 
+  }
+  renderHomeCard(); 
+  flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%flashCards.length; renderHomeCard(); });
 }
 
 function renderTopic(id, tab){
@@ -132,58 +177,127 @@ function renderTopic(id, tab){
   app.appendChild(tw); var panel = el('<section class="panel"></section>'); app.appendChild(panel);
 
   if (tab === "lecture") {
-    if(t.topic.lectures) t.topic.lectures.forEach(function(l){ panel.appendChild(el('<h3>' + l.code + '. ' + l.title + '</h3><div class="lecture-content">' + (l.content || '<p>Материал готовится.</p>') + '</div>')); });
+    if(t.topic.lectures) {
+      t.topic.lectures.forEach(function(l){
+        panel.appendChild(el('<h3>' + l.code + '. ' + l.title + '</h3>'));
+        panel.appendChild(el('<div class="lecture-content">' + (l.content || '<p>Материал готовится.</p>') + '</div>'));
+      });
+    }
     var isDone = state.progress[id] && state.progress[id].done >= 5;
     var markBtn = el('<button class="btn" style="width:100%; margin-top:20px;" ' + (isDone ? 'disabled' : '') + '>' + (isDone ? '✅ Тема изучена' : 'Отметить как изученное (+20 XP)') + '</button>');
     markBtn.onclick = function() { if (!state.progress[id]) state.progress[id] = {}; state.progress[id].done = 5; state.xp += 20; saveStudentData(); window.showToast("Лекция изучена!", "ok"); markBtn.textContent = "✅ Тема изучена"; markBtn.disabled = true; };
     panel.appendChild(markBtn);
   }
+  
   if (tab === "practice") {
-    if(t.topic.practicals) t.topic.practicals.forEach(function(p){
-      var html = '<div class="practice" style="margin-bottom:24px;border:1px solid var(--border);padding:20px;border-radius:12px;background:var(--card-soft);"><div style="color:var(--accent);font-weight:bold;font-size:16px;">' + p.code + '</div><div style="font-weight:bold;margin:4px 0 12px 0;font-size:18px;">' + p.title + '</div>';
-      if(p.task) html += '<div style="margin-bottom:12px;"><b>Задание:</b> ' + p.task + '</div>';
-      if(p.variants && p.variants.rows) { html += '<div style="margin-top:16px;"><b style="color:var(--accent);">Варианты:</b><div style="overflow-x:auto;margin-top:8px;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr>'; if(p.variants.header) p.variants.header.forEach(function(h){ html += '<th style="border:1px solid var(--border);padding:8px;background:var(--card);">' + h + '</th>'; }); html += '</tr></thead><tbody>'; p.variants.rows.forEach(function(r){ html += '<tr>'; r.forEach(function(c){ html += '<td style="border:1px solid var(--border);padding:8px;">' + c + '</td>'; }); html += '</tr>'; }); html += '</tbody></table></div></div>'; }
-      html += '<div style="margin-top:16px;"><input type="file" id="file_' + p.code.replace(/\s+/g, '') + '" style="display:none" onchange="window.uploadFile(event, \'' + p.code + '\', \'' + p.title + '\')"><button class="btn" onclick="document.getElementById(\'file_' + p.code.replace(/\s+/g, '') + '\').click()">📎 Прикрепить работу</button></div></div>';
-      panel.appendChild(el(html));
-    });
+    if(t.topic.practicals) {
+      t.topic.practicals.forEach(function(p){
+        var html = '<div class="practice" style="margin-bottom:24px;border:1px solid var(--border);padding:20px;border-radius:12px;background:var(--card-soft);">';
+        html += '<div style="color:var(--accent);font-weight:bold;font-size:16px;">' + p.code + '</div>';
+        html += '<div style="font-weight:bold;margin:4px 0 12px 0;font-size:18px;">' + p.title + '</div>';
+        if(p.goal) html += '<div style="font-size:14px;color:var(--muted);margin-bottom:12px;"><b>Цель:</b> ' + p.goal + '</div>';
+        if(p.task) html += '<div style="margin-bottom:12px;"><b>Задание:</b> ' + p.task + '</div>';
+        if(p.example) html += '<div style="margin-bottom:12px;background:var(--accent-soft);padding:12px;border-radius:8px;border-left:4px solid var(--accent);"><b>Пример:</b> ' + p.example + '</div>';
+        if(p.solution && p.solution.length) {
+          html += '<div style="margin-bottom:16px;border:1px dashed var(--border);padding:12px;border-radius:8px;background:var(--card);"><b style="color:var(--accent);">Ход решения:</b><ol style="margin:8px 0 0 20px;padding:0;font-size:14px;">';
+          p.solution.forEach(function(s){ html += '<li style="margin-bottom:6px;">' + s + '</li>'; });
+          html += '</ol></div>';
+        }
+        if(p.variants && p.variants.rows) {
+          html += '<div style="margin-top:16px;"><b style="color:var(--accent);">Варианты:</b><div style="overflow-x:auto;margin-top:8px;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr>';
+          if(p.variants.header) p.variants.header.forEach(function(h){ html += '<th style="border:1px solid var(--border);padding:8px;background:var(--card);">' + h + '</th>'; });
+          html += '</tr></thead><tbody>';
+          p.variants.rows.forEach(function(r){ html += '<tr>'; r.forEach(function(c){ html += '<td style="border:1px solid var(--border);padding:8px;">' + c + '</td>'; }); html += '</tr>'; });
+          html += '</tbody></table></div></div>';
+        }
+        html += '<div style="margin-top:16px;"><input type="file" id="file_' + p.code.replace(/\s+/g, '') + '" style="display:none" onchange="window.uploadFile(event, \'' + p.code + '\', \'' + p.title + '\')"><button class="btn" onclick="document.getElementById(\'file_' + p.code.replace(/\s+/g, '') + '\').click()">📎 Прикрепить работу</button></div>';
+        html += '</div>';
+        panel.appendChild(el(html));
+      });
+    }
   }
+
   if (tab === "self") {
-    if(t.topic.selfChecks) {
+    if (state.selfResults[id]) {
+      panel.appendChild(el(`<div style="text-align:center;padding:40px;">
+        <h2 style="font-size:28px;">✅ Работа сдана</h2>
+        <p style="font-size:18px;color:var(--text-soft);margin:16px 0;">Ваша оценка: <b style="font-size:24px;color:var(--accent);">${state.selfResults[id].grade}</b></p>
+        <p class="sub">Повторное прохождение закрыто.</p>
+      </div>`));
+    } else if(t.topic.selfChecks) {
       var selfWrap = el('<div></div>'); panel.appendChild(selfWrap);
       t.topic.selfChecks.forEach(function(q, i){ selfWrap.appendChild(el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><input type="text" class="self-input" data-idx="' + i + '" placeholder="Ваш ответ"><div class="self-feedback" id="fb_' + i + '" style="font-size:13px; margin-top:4px;"></div></div>')); });
-      var resultBox = el('<div id="selfResult" style="font-size:20px;font-weight:bold;margin-top:20px;text-align:center;"></div>'); panel.appendChild(resultBox);
-      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Проверить все ответы</button>'); panel.appendChild(checkBtn);
+      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить</button>');
+      panel.appendChild(checkBtn);
       checkBtn.onclick = function() {
         var correctCount = 0;
-        selfWrap.querySelectorAll(".self-input").forEach(function(inp) { var idx = Number(inp.getAttribute("data-idx")); var q = t.topic.selfChecks[idx]; var fb = selfWrap.querySelector("#fb_" + idx); if (inp.value.trim().toLowerCase() === q.a.trim().toLowerCase()) { fb.textContent = "✔ Верно"; fb.style.color = "var(--ok)"; correctCount++; } else { fb.textContent = "✘ Неверно. Ответ: " + q.a; fb.style.color = "var(--err)"; } });
-        var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); state.selfResults[id] = { grade: grade }; saveStudentData();
-        resultBox.textContent = "Правильных ответов: " + correctCount + " из " + t.topic.selfChecks.length + " (Оценка: " + grade + ")";
+        selfWrap.querySelectorAll(".self-input").forEach(function(inp) { 
+          var idx = Number(inp.getAttribute("data-idx")); 
+          var q = t.topic.selfChecks[idx]; 
+          var fb = selfWrap.querySelector("#fb_" + idx); 
+          if (inp.value.trim().toLowerCase() === q.a.trim().toLowerCase()) { 
+            fb.textContent = "✔ Верно"; fb.style.color = "var(--ok)"; correctCount++; 
+          } else { 
+            fb.textContent = "✘ Неверно. Ответ: " + q.a; fb.style.color = "var(--err)"; 
+          } 
+        });
+        var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); 
+        state.selfResults[id] = { grade: grade }; 
+        saveStudentData();
+        window.showToast("Работа сдана!", "ok");
+        renderTopic(id, "self");
       };
     }
   }
+
   if (tab === "test") {
-    if(t.topic.test) {
+    if (state.results[id]) {
+      panel.appendChild(el(`<div style="text-align:center;padding:40px;">
+        <h2 style="font-size:28px;">✅ Тест сдан</h2>
+        <p style="font-size:18px;color:var(--text-soft);margin:16px 0;">Ваша оценка: <b style="font-size:24px;color:var(--accent);">${state.results[id].grade}</b></p>
+        <p class="sub">Повторное прохождение закрыто.</p>
+      </div>`));
+    } else if(t.topic.test) {
       var timerBox = el('<div style="font-size:20px;font-weight:bold;color:var(--err);margin-bottom:16px;">⏱ 15:00</div>'); panel.appendChild(timerBox);
       var testWrap = el('<div></div>'); panel.appendChild(testWrap);
-      t.topic.test.forEach(function(q, qi){ var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + q.q + '</div></div>'); q.options.forEach(function(opt, oi){ qb.appendChild(el('<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + opt + '</span></label>')); }); testWrap.appendChild(qb); });
-      var resultBox = el('<div id="testResult" style="font-size:20px;font-weight:bold;margin-top:20px;text-align:center;"></div>'); panel.appendChild(resultBox);
-      var finishBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Подвести итог</button>'); panel.appendChild(finishBtn);
-      var timeLeft = 15 * 60; var timerId = setInterval(function() { if (!document.body.contains(timerBox)) { clearInterval(timerId); return; } timeLeft--; timerBox.textContent = "⏱ " + String(Math.floor(timeLeft/60)).padStart(2,'0') + ":" + String(timeLeft%60).padStart(2,'0'); if (timeLeft <= 0) { clearInterval(timerId); finishBtn.click(); } }, 1000);
+      t.topic.test.forEach(function(q, qi){
+        var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + q.q + '</div></div>');
+        q.options.forEach(function(opt, oi){ qb.appendChild(el('<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + opt + '</span></label>')); });
+        testWrap.appendChild(qb);
+      });
+      var finishBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить тест</button>'); panel.appendChild(finishBtn);
+      var timeLeft = 15 * 60; var timerId = setInterval(function() {
+        if (!document.body.contains(timerBox)) { clearInterval(timerId); return; }
+        timeLeft--; timerBox.textContent = "⏱ " + String(Math.floor(timeLeft/60)).padStart(2,'0') + ":" + String(timeLeft%60).padStart(2,'0');
+        if (timeLeft <= 0) { clearInterval(timerId); finishBtn.click(); }
+      }, 1000);
       finishBtn.onclick = function() {
         clearInterval(timerId); var correct = 0;
-        t.topic.test.forEach(function(q, qi) { var ch = testWrap.querySelector('input[name="q' + qi + '"]:checked'); var opts = testWrap.querySelectorAll('.question')[qi].querySelectorAll('.option'); opts.forEach(function(o){ o.classList.remove('correct','wrong'); }); if (ch) { var chosen = Number(ch.value); if (chosen === q.correct) { correct++; opts[chosen].classList.add('correct'); } else { opts[chosen].classList.add('wrong'); opts[q.correct].classList.add('correct'); } } else { opts[q.correct].classList.add('correct'); } });
-        var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); state.results[id] = { grade: grade }; saveStudentData();
-        resultBox.textContent = "Ваш результат: " + correct + " из " + t.topic.test.length + " (Оценка: " + grade + ")"; finishBtn.disabled = true;
+        t.topic.test.forEach(function(q, qi) {
+          var ch = testWrap.querySelector('input[name="q' + qi + '"]:checked');
+          if (ch && Number(ch.value) === q.correct) correct++;
+        });
+        var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); 
+        state.results[id] = { grade: grade }; 
+        saveStudentData();
+        window.showToast("Тест сдан!", "ok"); 
+        renderTopic(id, "test");
       };
     }
   }
 }
 
-/* МАГАЗИН С ЦЕНАМИ И НОВЫМИ ТОВАРАМИ */
+function renderSimulatorPage(){
+  var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  var block = el('<section class="module"><h2>🖥️ Симулятор</h2><textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0\nG01 X50 Y50\nG01 X100 Y50\nG01 X100 Y0\nG01 X0 Y0</textarea><button class="btn" id="runCodeBtn" style="width:100%;margin-bottom:10px;">▶ Выполнить</button><div style="background:var(--card-soft);border:1px solid var(--border);border-radius:8px;overflow:hidden;"><canvas id="simCanvas" width="600" height="400" style="width:100%;height:auto;background:#fff;"></canvas></div></section>');
+  app.appendChild(block); var canvas = block.querySelector("#simCanvas"), ctx = canvas.getContext("2d"); var runBtn = block.querySelector("#runCodeBtn"), input = block.querySelector("#gcodeInput");
+  function drawGrid() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = "#eee"; for (var i = 0; i < canvas.width; i += 20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); } for (var j = 0; j < canvas.height; j += 20) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke(); } ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke(); }
+  drawGrid(); runBtn.onclick = function() { drawGrid(); var lines = input.value.split("\n"); var curX = canvas.width/2, curY = canvas.height/2; ctx.beginPath(); ctx.moveTo(curX, curY); ctx.strokeStyle = "red"; ctx.lineWidth = 3; var isDown = false; lines.forEach(function(line) { line = line.trim().toUpperCase(); if(!line) return; var gMatch = line.match(/G0[0-3]/); if(!gMatch) return; var xMatch = line.match(/X(-?\d+(\.\d+)?)/); var yMatch = line.match(/Y(-?\d+(\.\d+)?)/); if(xMatch) curX = canvas.width/2 + parseFloat(xMatch[1]) * 2; if(yMatch) curY = canvas.height/2 - parseFloat(yMatch[1]) * 2; if(gMatch[0] === "G00") { ctx.moveTo(curX, curY); } else { ctx.lineTo(curX, curY); isDown = true; } }); if(isDown) ctx.stroke(); window.showToast("Траектория построена!", "ok"); };
+}
+
 function renderShopPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   app.appendChild(el('<section class="hero"><h1>Магазин XP</h1><p>У вас: 🌟 <b>' + state.xp + ' XP</b></p></section>'));
-  
   var items = [
     { id: "golden", icon: "👑", title: "Золотой аватар", price: 100 },
     { id: "nick", icon: "🏷️", title: "Кастомный Ник", price: 200 },
@@ -191,19 +305,12 @@ function renderShopPage(){
     { id: "exam_time", icon: "⏱", title: "+5 минут к экзамену", price: 500 },
     { id: "theme", icon: "🌌", title: "Тема 'Космос'", price: 1000 }
   ];
-  
   var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');
   items.forEach(function(it){
     var has = state.shop.includes(it.id);
     var btn = el('<button class="btn" style="width:100%;margin-top:10px;" ' + (has || state.xp < it.price ? 'disabled' : '') + '>' + (has ? 'Куплено' : (state.xp < it.price ? 'Мало XP' : 'Купить')) + '</button>');
     if (!has && state.xp >= it.price) { btn.onclick = function() { state.xp -= it.price; state.shop.push(it.id); saveStudentData(); renderShopPage(); window.showToast("Покупка совершена!", "ok"); }; }
-    
-    var card = el(`<div style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;display:flex;flex-direction:column;justify-content:space-between;">
-      <div><div style="font-size:40px;margin-bottom:10px;">${it.icon}</div><div style="font-weight:bold;">${it.title}</div></div>
-      <div style="margin-top:10px;">
-        <div style="color:var(--accent);font-weight:bold;margin-bottom:8px;">${it.price} XP</div>
-      </div>
-    </div>`);
+    var card = el(`<div style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;display:flex;flex-direction:column;justify-content:space-between;"><div><div style="font-size:40px;margin-bottom:10px;">${it.icon}</div><div style="font-weight:bold;">${it.title}</div></div><div style="margin-top:10px;"><div style="color:var(--accent);font-weight:bold;margin-bottom:8px;">${it.price} XP</div></div></div>`);
     card.appendChild(btn); grid.appendChild(card);
   });
   app.appendChild(grid);
@@ -213,7 +320,6 @@ function renderPortfolioPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
-function renderSimulatorPage(){ var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a><section class="module"><h2>Симулятор</h2><p>Раздел доступен в полной версии.</p></section>')); }
 
 function route(){
   closeDrawer();

@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — assistant.js (v19.0 — FIXED)
+   МДК 07.01 — assistant.js (v20.0 — FIXED)
    ============================================================ */
 "use strict";
 
@@ -9,7 +9,7 @@ window.openAssistant = function(){
   
   var panel = document.createElement("div");
   panel.id = "assistantPanel"; 
-  panel.style = "position:fixed;bottom:20px;right:20px;width:350px;max-width:90vw;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.5);z-index:99999;display:flex;flex-direction:column;transform:translateY(120%);transition:transform 0.3s;";
+  panel.style = "position:fixed;bottom:90px;right:20px;width:350px;max-width:90vw;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.5);z-index:99999;display:flex;flex-direction:column;transform:translateY(120%);transition:transform 0.3s;";
   
   panel.innerHTML = `
     <div style="display:flex;justify-content:space-between;padding:16px;border-bottom:1px solid var(--border);background:var(--card-soft);border-radius:16px 16px 0 0;">
@@ -42,3 +42,17 @@ window.openAssistant = function(){
     }, 500);
   });
 };
+
+function initAssistantButton(){
+  if (document.getElementById("asFab")) return;
+  var btn = document.createElement("button");
+  btn.id = "asFab";
+  btn.style = "position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;";
+  btn.innerHTML = "🤖";
+  btn.addEventListener("click", window.openAssistant);
+  document.body.appendChild(btn);
+}
+window.initAssistantButton = initAssistantButton;
+window.addEventListener("DOMContentLoaded", () => {
+  initAssistantButton();
+});
