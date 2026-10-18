@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="style.css?v=72">
+<link rel="stylesheet" href="style.css?v=74">
 <script>
   (function(){ try { var t = localStorage.getItem("mdk0701.theme"); if (!t || t === "auto"){ var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; t = d ? "dark" : "light"; } document.documentElement.setAttribute("data-theme", t); } catch(e){} })();
 </script>
@@ -21,7 +21,9 @@
     <input id="loginName" type="text" placeholder="ФИО (Иванов Иван)">
     <input id="loginGroup" type="text" placeholder="Группа (ТМ-21)">
     <button class="btn" style="width:100%; padding:12px;" onclick="window.doStudentLogin()">Войти как студент</button>
+    
     <div style="text-align:center; margin:20px 0; color:var(--muted); font-size:13px; font-weight:bold;">─── или ───</div>
+    
     <h3>👨‍🏫 Вход сотрудника</h3>
     <input id="loginStaffName" type="text" placeholder="Логин (admin / teacher)">
     <input id="loginStaffPass" type="password" placeholder="Пароль">
@@ -35,7 +37,7 @@
   <div class="crumbs" id="crumbs"></div>
   
   <!-- УВЕДОМЛЕНИЯ -->
-  <a href="#/notifications" class="notif-bell" id="notifBell" style="position:relative; margin-right:15px; text-decoration:none; font-size:20px; cursor:pointer;">
+  <a href="#/notifications" class="notif-bell" id="notifBell" style="position:relative; margin-right:15px; text-decoration:none; font-size:20px; cursor:pointer;" title="Уведомления">
       🔔 <span id="notifBadge" style="position:absolute; top:-5px; right:-8px; background:var(--err); color:#fff; font-size:10px; font-weight:bold; border-radius:50%; padding:2px 5px; display:none;">0</span>
   </a>
 
@@ -46,7 +48,13 @@
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <aside class="drawer" id="drawer" style="display:flex; flex-direction:column;">
   <div class="drawer-head">
-    <div class="drawer-user"><span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span><div><div id="userChipName">Гость</div><div id="userChipGroup" style="font-size:12px;color:var(--muted)">Роль: Гость</div></div></div>
+    <div class="drawer-user">
+        <span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span>
+        <div>
+            <div id="userChipName">Гость</div>
+            <div id="userChipGroup" style="font-size:12px;color:var(--muted)">Роль: Гость</div>
+        </div>
+    </div>
     <button class="drawer-close" id="drawerClose">✕</button>
   </div>
   <nav class="drawer-nav" style="flex:1; overflow-y:auto;">
@@ -60,6 +68,7 @@
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
     
+    <!-- Вкладка Заявки (скрыта по умолчанию, показывается через renderUserChip для учителей) -->
     <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;">📥 <span>Заявки</span></a>
     
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
@@ -67,9 +76,12 @@
     <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
     <a class="drawer-item" data-go="#/final-exam">🎓 <span>Экзамен</span></a>
     <a class="drawer-item" data-go="#/final-training">🏋️ <span>Тренировка</span></a>
+    
+    <!-- ИГРЫ -->
     <a class="drawer-item" data-go="#/event">💀 <span>Смертельная вечеринка</span></a>
     <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
     <a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
+    
     <a class="drawer-item" data-go="#/chat">💭 <span>Чат группы</span></a>
     <a class="drawer-item" data-go="#/comments">💬 <span>Отзывы о курсе</span></a>
     
@@ -78,19 +90,19 @@
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v72.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v74.0</footer>
 
-<script src="data.js?v=72"></script>
-<script src="data-extra.js?v=72"></script>
-<script src="info.js?v=72"></script>
-<script src="script.js?v=72"></script>
-<script src="extra.js?v=72"></script>
-<script src="final.js?v=72"></script>
-<script src="links.js?v=72"></script>
-<script src="rating.js?v=72"></script>
-<script src="journal.js?v=72"></script>
-<script src="minigames.js?v=72"></script>
-<script src="assistant.js?v=72"></script>
-<script src="easter-eggs.js?v=72"></script>
+<script src="data.js?v=74"></script>
+<script src="data-extra.js?v=74"></script>
+<script src="info.js?v=74"></script>
+<script src="script.js?v=74"></script>
+<script src="extra.js?v=74"></script>
+<script src="final.js?v=74"></script>
+<script src="links.js?v=74"></script>
+<script src="rating.js?v=74"></script>
+<script src="journal.js?v=74"></script>
+<script src="minigames.js?v=74"></script>
+<script src="assistant.js?v=74"></script>
+<script src="easter-eggs.js?v=74"></script>
 </body>
 </html>

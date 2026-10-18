@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v73.0 — FINAL FULL CODE)
+   МДК 07.01 — script.js (v74.0 — FINAL FULL CODE)
    ============================================================ */
 "use strict";
 
@@ -24,6 +24,7 @@ function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, fu
 function findTopic(id){ var c = getCourse(); if (!c) return null; for (var i = 0; i < c.sections.length; i++){ if (!c.sections[i].topics) continue; for (var j = 0; j < c.sections[i].topics.length; j++){ if (c.sections[i].topics[j].id === id) return { section: c.sections[i], topic: c.sections[i].topics[j] }; } } return null; }
 function studentKey(s){ s = s || state.student; if (!s || !s.name) return null; return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()); }
 
+// Глобальный перехватчик ошибок загрузки картинок (скрывает битые иконки)
 window.addEventListener('error', function(e) {
     if (e.target.tagName === 'IMG') { e.target.style.display = 'none'; }
 }, true);
