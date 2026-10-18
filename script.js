@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v76.0 — TEACHER PRIVILEGES & ANIME)
+   МДК 07.01 — script.js (v79.0 — FULL THEMES & BG)
    ============================================================ */
 "use strict";
 
@@ -233,16 +233,15 @@ window.grantXP = function(studentKeyStr, studentName) {
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
-  var themes = ["light", "dark", "sepia", "ocean", "forest", "matrix", "cosmos", "gold", "anime"]; 
-  var names = ["Светлая", "Тёмная", "Сепия", "Океан", "Лес", "Матрица", "Космос", "Золото", "Аниме"];
+  var themes = ["light", "dark", "sepia", "ocean", "forest", "matrix", "cosmos", "gold", "anime", "hacker", "cyber", "matrioska"]; 
+  var names = ["Светлая", "Тёмная", "Сепия", "Океан", "Лес", "Матрица", "Космос", "Золото", "Аниме", "Хакер", "Кибер", "Матрешка"];
   var modal = el(`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;" id="themeModal"><div style="background:var(--card);padding:24px;border-radius:16px;width:90%;max-width:400px; animation: popIn 0.3s;"><h3 style="margin-top:0;">Выберите тему</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;" id="themeGrid"></div><button class="btn ghost" style="width:100%" onclick="document.getElementById('themeModal').remove()">Закрыть</button></div></div>`);
   var grid = modal.querySelector("#themeGrid");
   
   themes.forEach(function(t, i){ 
       var btn = el('<button class="btn ' + (t===current ? '' : 'ghost') + '" style="padding:12px;">' + names[i] + '</button>'); 
       btn.onclick = function() { 
-          // Если не учитель и тема платная и не куплена - запрет
-          if (!state.staff && ["matrix", "cosmos", "gold", "anime"].includes(t) && !state.shop.includes("theme_" + t)) {
+          if (!state.staff && ["matrix", "cosmos", "gold", "anime", "hacker", "cyber", "matrioska"].includes(t) && !state.shop.includes("theme_" + t)) {
               window.showToast("Тема не куплена!", "err"); return;
           }
           applyTheme(t); modal.remove(); 
@@ -566,7 +565,10 @@ function renderShopPage(){
     { id: "theme_matrix", icon: "🟩", title: "Тема 'Матрица'", price: 500, type: "theme", theme: "matrix" },
     { id: "theme_cosmos", icon: "🌌", title: "Тема 'Космос'", price: 800, type: "theme", theme: "cosmos" },
     { id: "theme_gold", icon: "🪙", title: "Тема 'Золото'", price: 1000, type: "theme", theme: "gold" },
-    { id: "theme_anime", icon: "⛩️", title: "Тема 'Аниме'", price: 1500, type: "theme", theme: "anime" }
+    { id: "theme_anime", icon: "⛩️", title: "Тема 'Аниме'", price: 1500, type: "theme", theme: "anime" },
+    { id: "theme_hacker", icon: "💻", title: "Тема 'Хакер'", price: 2000, type: "theme", theme: "hacker" },
+    { id: "theme_cyber", icon: "🤖", title: "Тема 'Кибер'", price: 2500, type: "theme", theme: "cyber" },
+    { id: "theme_matrioska", icon: "🪆", title: "Тема 'Матрешка'", price: 3000, type: "theme", theme: "matrioska" }
   ];
   
   var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');

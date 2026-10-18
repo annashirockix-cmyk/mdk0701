@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v73.0 — FIX PRACTICAL GRADES)
+   МДК 07.01 — journal.js (v79.0 — FIX PRACTICAL GRADES)
    ============================================================ */
 "use strict";
 
@@ -55,7 +55,6 @@ window.renderJournalPage = function() {
       var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
       var currentStudentKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
       
-      // 1. ФИО + Кнопка выдачи XP
       var nameCellHtml = `<div style="font-weight:bold;">${s.name}</div>
                           <div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
       if (isTeacher) {
@@ -72,9 +71,8 @@ window.renderJournalPage = function() {
       var sum = 0, count = 0;
       
       try {
-        var p = JSON.parse(s.payload);
+        var p = JSON.parse(s.payload || "{}");
         
-        // ТЕСТЫ И САМОСТОЯТЕЛЬНЫЕ
         if (p.results) {
           Object.keys(p.results).forEach(k => {
              var tName = k === "__final_exam__" ? "Итоговый экзамен" : k;
@@ -97,7 +95,6 @@ window.renderJournalPage = function() {
           });
         }
 
-        // ПРАКТИЧЕСКИЕ РАБОТЫ
         if (p.practicalsDone) {
             Object.keys(p.practicalsDone).forEach(topicId => {
                 Object.keys(p.practicalsDone[topicId]).forEach(pCode => {
@@ -112,7 +109,6 @@ window.renderJournalPage = function() {
                         <div style="font-size:12px; margin-bottom:4px;"><b>${tName}</b> - ${pCode}</div>`;
                     
                     if (isTeacher) {
-                        // ИСПРАВЛЕНО: добавлено сохранение выбранного значения
                         pracHtml += `<select onchange="window.approvePractical('${currentStudentKey}', '${topicId}', '${pCode}', this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:bold;">
                             <option value="">— Оценка —</option>
                             <option value="5" ${grade == "5" ? "selected" : ""}>5</option>
