@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — style.css (v70.0 FINAL STYLES)
+   МДК 07.01 — style.css (v76.0 FINAL STYLES)
    ============================================================ */
 
 [hidden] { display: none !important; }
@@ -23,6 +23,9 @@ html[data-theme="forest"]{ --bg:#eef3ec; --card:#ffffff; --card-soft:#f5f9f3; --
 html[data-theme="matrix"]{ --bg:#000000; --card:#0a0a0a; --card-soft:#111; --border:#003300; --text:#00ff00; --accent:#00cc00; --ok:#00ff00; --err:#ff0000; --shadow:0 0 10px rgba(0,255,0,0.2); --code-bg:#001100; --code-text:#00ff00; --gold:#adff2f; }
 html[data-theme="cosmos"]{ --bg:#0b0f19; --card:#151b2b; --card-soft:#1e2638; --border:#2a3a5b; --text:#e0e7ff; --accent:#8b5cf6; --ok:#10b981; --err:#ef4444; --shadow:0 0 20px rgba(139,92,246,0.2); --code-bg:#2a3a5b; --code-text:#a78bfa; --gold:#fbbf24; }
 html[data-theme="gold"]{ --bg:#1a1a1a; --card:#2a2a2a; --card-soft:#333; --border:#4a4a4a; --text:#ffd700; --accent:#ffb300; --ok:#4caf50; --err:#f44336; --shadow:0 4px 12px rgba(255,215,0,0.2); --code-bg:#3a3a3a; --code-text:#ffd700; --gold:#ffeb3b; }
+html[data-theme="anime"]{ 
+  --bg:#0a0b10; --card:#121420; --card-soft:#1a1d2e; --border:#2d3352; --text:#e0e6ed; --accent:#9d4edd; --accent-soft:#2a1b38; --ok:#00f5d4; --err:#ff006e; --shadow:0 0 20px rgba(157, 78, 221, 0.15); --code-bg:#1a1d2e; --code-text:#00f5d4; --gold:#ffb703; color-scheme: dark;
+}
 
 /* БАЗА */
 * { box-sizing: border-box; }
@@ -138,7 +141,7 @@ a { color: inherit; text-decoration: none; }
 .book-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .book-desc { font-size: 13px; color: var(--text-soft); }
 
-/* СПРАВОЧНИК G-КОДОВ (ВОССТАНОВЛЕНО) */
+/* СПРАВОЧНИК G-КОДОВ */
 .gcode-ref-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 .gcode-ref-item { display: flex; gap: 16px; background: var(--card-soft); border: 1px solid var(--border); border-radius: 10px; padding: 16px; transition: transform 0.2s; }
 .gcode-ref-item:hover { transform: translateX(5px); border-color: var(--accent); }

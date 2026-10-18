@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v74.0 — FIXED SCHEDULE & NOTIFICATIONS)
+   МДК 07.01 — extra.js (v76.0 — TEACHER PRIVILEGES)
    ============================================================ */
 "use strict";
 
@@ -12,7 +12,7 @@ window.renderProfilePage = function() {
   var isStaff = !!state.staff;
   var name = isStaff ? state.staff.name : (state.nick || state.student.name);
   var group = isStaff ? "Сотрудник" : "Группа " + state.student.group;
-  var role = isStaff ? "👨‍🏫" : (state.shop.includes("golden") ? "👑" : "👨‍🎓");
+  var role = isStaff ? "👨‍🏫" : ((state.shop.includes("golden") || state.staff) ? "👑" : "👨‍🎓");
   var sign = state.sign ? `<p style="color:var(--accent); font-style:italic; margin-top:10px;">"${state.sign}"</p>` : "";
 
   app.appendChild(el(`<div class="module" style="display:flex;gap:20px;align-items:center;padding:30px;">
@@ -25,6 +25,11 @@ window.renderProfilePage = function() {
       <a href="#/dashboard" class="btn" style="text-align:center;padding:15px;">📊 Статистика и Достижения</a>
       <a href="#/portfolio" class="btn ghost" style="text-align:center;padding:15px;">🎓 Портфолио</a>
     </div>`));
+  } else {
+      app.appendChild(el(`<div class="module" style="background:var(--accent-soft); border-color:var(--accent);">
+          <h3 style="margin-top:0; color:var(--accent);">Панель преподавателя</h3>
+          <p>Вам доступны все премиум-функции (темы, ники, аватары) без затрат XP.</p>
+      </div>`));
   }
 };
 
@@ -241,7 +246,6 @@ window.renderRequestsPage = function() {
     }).catch(() => { container.innerHTML = "Ошибка загрузки."; });
 };
 
-/* РАСПИСАНИЕ С СИНХРОНИЗАЦИЕЙ (Свободный ввод групп) */
 window.renderSchedulePage = function() {
     var app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Расписание";
     app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
@@ -255,7 +259,6 @@ window.renderSchedulePage = function() {
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
                 <select id="schDay" class="self-input" style="margin:0;"><option>Понедельник</option><option>Вторник</option><option>Среда</option><option>Четверг</option><option>Пятница</option><option>Суббота</option></select>
                 <input id="schTime" type="text" class="self-input" style="margin:0;" placeholder="Время (8:00-9:35)">
-                <!-- ЗАМЕНЕНО НА СВОБОДНЫЙ ВВОД -->
                 <input id="schGroup" type="text" class="self-input" style="margin:0;" placeholder="Группа (например, ТМ-21)">
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">

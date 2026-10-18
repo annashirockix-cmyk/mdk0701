@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v74.0 — FINAL FULL CODE)
+   МДК 07.01 — script.js (v76.0 — TEACHER PRIVILEGES & ANIME)
    ============================================================ */
 "use strict";
 
@@ -12,7 +12,6 @@ var state = {
   notifications: [], schedule: [] 
 };
 
-// Загрузка сессии
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
 
@@ -24,7 +23,6 @@ function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, fu
 function findTopic(id){ var c = getCourse(); if (!c) return null; for (var i = 0; i < c.sections.length; i++){ if (!c.sections[i].topics) continue; for (var j = 0; j < c.sections[i].topics.length; j++){ if (c.sections[i].topics[j].id === id) return { section: c.sections[i], topic: c.sections[i].topics[j] }; } } return null; }
 function studentKey(s){ s = s || state.student; if (!s || !s.name) return null; return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()); }
 
-// Глобальный перехватчик ошибок загрузки картинок (скрывает битые иконки)
 window.addEventListener('error', function(e) {
     if (e.target.tagName === 'IMG') { e.target.style.display = 'none'; }
 }, true);
@@ -235,14 +233,16 @@ window.grantXP = function(studentKeyStr, studentName) {
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
-  var themes = ["light", "dark", "sepia", "ocean", "forest", "matrix", "cosmos", "gold"]; 
-  var names = ["Светлая", "Тёмная", "Сепия", "Океан", "Лес", "Матрица", "Космос", "Золото"];
+  var themes = ["light", "dark", "sepia", "ocean", "forest", "matrix", "cosmos", "gold", "anime"]; 
+  var names = ["Светлая", "Тёмная", "Сепия", "Океан", "Лес", "Матрица", "Космос", "Золото", "Аниме"];
   var modal = el(`<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;" id="themeModal"><div style="background:var(--card);padding:24px;border-radius:16px;width:90%;max-width:400px; animation: popIn 0.3s;"><h3 style="margin-top:0;">Выберите тему</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;" id="themeGrid"></div><button class="btn ghost" style="width:100%" onclick="document.getElementById('themeModal').remove()">Закрыть</button></div></div>`);
   var grid = modal.querySelector("#themeGrid");
+  
   themes.forEach(function(t, i){ 
       var btn = el('<button class="btn ' + (t===current ? '' : 'ghost') + '" style="padding:12px;">' + names[i] + '</button>'); 
       btn.onclick = function() { 
-          if (["matrix", "cosmos", "gold"].includes(t) && !state.shop.includes("theme_" + t)) {
+          // Если не учитель и тема платная и не куплена - запрет
+          if (!state.staff && ["matrix", "cosmos", "gold", "anime"].includes(t) && !state.shop.includes("theme_" + t)) {
               window.showToast("Тема не куплена!", "err"); return;
           }
           applyTheme(t); modal.remove(); 
@@ -288,7 +288,7 @@ function renderUserChip(){
   else if (state.student) { 
       $("userChipName").textContent = state.nick || state.student.name; 
       $("userChipGroup").textContent = "Гр. " + state.student.group; 
-      if (state.shop.includes("golden")) { $("userChipAvatar").textContent = "👑"; } 
+      if (state.shop.includes("golden") || state.staff) { $("userChipAvatar").textContent = "👑"; } 
       else { $("userChipAvatar").textContent = "👨‍🎓"; }
   }
   updateNotifBadge();
@@ -565,16 +565,22 @@ function renderShopPage(){
     { id: "sign", icon: "✍️", title: "Подпись в профиле", price: 300, type: "input", field: "sign", placeholder: "Введите вашу подпись..." },
     { id: "theme_matrix", icon: "🟩", title: "Тема 'Матрица'", price: 500, type: "theme", theme: "matrix" },
     { id: "theme_cosmos", icon: "🌌", title: "Тема 'Космос'", price: 800, type: "theme", theme: "cosmos" },
-    { id: "theme_gold", icon: "🪙", title: "Тема 'Золото'", price: 1000, type: "theme", theme: "gold" }
+    { id: "theme_gold", icon: "🪙", title: "Тема 'Золото'", price: 1000, type: "theme", theme: "gold" },
+    { id: "theme_anime", icon: "⛩️", title: "Тема 'Аниме'", price: 1500, type: "theme", theme: "anime" }
   ];
   
   var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');
   
   items.forEach(function(it){
-    var has = state.shop.includes(it.id);
+    var has = state.shop.includes(it.id) || state.staff;
     var btn = el('<button class="btn" style="width:100%;margin-top:10px;" ' + (has || state.xp < it.price ? 'disabled' : '') + '>' + (has ? 'Куплено' : (state.xp < it.price ? 'Мало XP' : 'Купить')) + '</button>');
     
-    if (!has && state.xp >= it.price) { 
+    if (state.staff) {
+        btn.textContent = "Доступно (Учитель)";
+        btn.style.background = "var(--accent-soft)";
+        btn.style.color = "var(--accent)";
+        btn.style.border = "1px solid var(--accent)";
+    } else if (!has && state.xp >= it.price) { 
         btn.onclick = function() { 
             if (it.type === "input") {
                 var val = prompt(it.placeholder, state[it.field] || "");
