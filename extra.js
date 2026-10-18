@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v56.0 — FULL)
+   МДК 07.01 — extra.js (v64.0)
    ============================================================ */
 "use strict";
 
@@ -33,7 +33,7 @@ window.renderDashboard = function(){
   
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin");
   if (isTeacher) {
-    app.appendChild(el('<section class="module"><h2>📊 Панель преподавателя</h2><p>Данные доступны во вкладке "Журнал".</p></section>'));
+    app.appendChild(el('<section class="module"><h2>📊 Панель преподавателя</h2><p>Данные доступны во вкладке "Журнал" и "Заявки".</p></section>'));
     return;
   }
 
@@ -42,7 +42,6 @@ window.renderDashboard = function(){
     new Chart(document.getElementById('studentChart').getContext('2d'), { type: 'doughnut', data: { labels: ['Пройдено', 'Осталось'], datasets: [{ data: [state.xp/10, 100 - (state.xp/10)], backgroundColor: ['#2d7a4f', '#e8e2d8'] }] }, options: { cutout: '70%' } });
   }, 100);
 
-  // 25 ДОСТИЖЕНИЙ
   var achList = [
     { id: "t1", icon: "🥉", title: "Новичок", desc: "Первый вход" },
     { id: "t2", icon: "🎓", title: "Студент", desc: "Пройти 1 лекцию" },
@@ -75,7 +74,7 @@ window.renderDashboard = function(){
   var grid = document.getElementById("achGrid");
   
   achList.forEach(a => {
-    var isUnlocked = state.xp > (a.id.replace("t","") * 10) || state.achievements[a.id];
+    var isUnlocked = state.xp > (Number(a.id.replace("t","")) * 10) || (state.achievements && state.achievements[a.id]);
     grid.appendChild(el(`<div style="background:var(--card-soft);border:1px solid ${isUnlocked ? 'var(--gold)' : 'var(--border)'};padding:16px;border-radius:12px;text-align:center;opacity:${isUnlocked ? '1' : '0.4'};"><div style="font-size:32px;margin-bottom:8px;">${isUnlocked ? a.icon : '🔒'}</div><div style="font-weight:bold;font-size:13px;">${a.title}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${a.desc}</div></div>`));
   });
 };
@@ -141,4 +140,95 @@ window.renderCommentsPage = function(){
     p.append("group", state.student ? state.student.group : "—"); p.append("text", t);
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(()=>loadComments());
   };
+};
+
+/* ЗАЯВКИ (ДЛЯ УЧИТЕЛЯ) */
+window.renderRequestsPage = function() {
+    var app = document.getElementById("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Заявки";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    
+    if (!state.staff) { app.appendChild(el('<div class="module">Доступно только преподавателям.</div>')); return; }
+    
+    app.appendChild(el('<section class="hero"><h1>Входящие заявки</h1><p>Проверка практических работ и выдача попыток.</p></section>'));
+    var container = el('<section class="module"><div class="skeleton" style="height:100px;"></div></section>');
+    app.appendChild(container);
+
+    fetch(APPS_SCRIPT_URL + "?action=getstudents").then(r => r.json()).then(d => {
+        container.innerHTML = "";
+        if (!d.ok || !d.students.length) { container.innerHTML = "Студентов пока нет."; return; }
+        
+        var hasRequests = false;
+
+        d.students.forEach(s => {
+            try {
+                var p = JSON.parse(s.payload);
+                var sKey = (s.name + "|" + s.group).toLowerCase();
+                
+                // 1. Заявки на практические
+                if (p.practicalsDone) {
+                    Object.keys(p.practicalsDone).forEach(topicId => {
+                        Object.keys(p.practicalsDone[topicId]).forEach(code => {
+                            if (p.practicalsDone[topicId][code] === "pending") {
+                                hasRequests = true;
+                                var topic = findTopic(topicId);
+                                var tName = topic ? topic.topic.title : topicId;
+                                
+                                var reqCard = el(`<div class="module" style="border-left:4px solid var(--accent); padding:16px; margin-bottom:12px;" id="req_${topicId}_${code}">
+                                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                                        <div>
+                                            <b>${s.name}</b> (гр. ${s.group})<br>
+                                            <span style="color:var(--muted); font-size:13px;">Сдал практическую: ${tName} (${code})</span>
+                                        </div>
+                                        <div style="display:flex; gap:10px; align-items:center;">
+                                            <select id="grade_${topicId}_${code}" style="padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+                                                <option value="5">Оценка 5</option>
+                                                <option value="4">Оценка 4</option>
+                                                <option value="3">Оценка 3</option>
+                                                <option value="2">Оценка 2</option>
+                                            </select>
+                                            <button class="btn" onclick="window.approvePractical('${sKey}', '${topicId}', '${code}', document.getElementById('grade_${topicId}_${code}').value)">Подтвердить</button>
+                                        </div>
+                                    </div>
+                                </div>`);
+                                container.appendChild(reqCard);
+                            }
+                        });
+                    });
+                }
+
+                // 2. Заявки на попытки
+                if (p.requests) {
+                    Object.keys(p.requests).forEach(reqKey => {
+                        if (p.requests[reqKey] === "pending") {
+                            hasRequests = true;
+                            var parts = reqKey.split("_");
+                            var topicId = parts[0];
+                            var type = parts[1];
+                            var typeName = type === "test" ? "Тест" : "Сам. работа";
+                            var topic = findTopic(topicId);
+                            var tName = topic ? topic.topic.title : topicId;
+
+                            var reqCard = el(`<div class="module" style="border-left:4px solid #d97706; padding:16px; margin-bottom:12px;" id="req_${reqKey}">
+                                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                                    <div>
+                                        <b>${s.name}</b> (гр. ${s.group})<br>
+                                        <span style="color:var(--muted); font-size:13px;">Просит доп. попытку: ${tName} (${typeName})</span>
+                                    </div>
+                                    <div>
+                                        <button class="btn" style="background:#d97706;" onclick="window.approveAttempt('${sKey}', '${reqKey}')">Выдать попытку</button>
+                                    </div>
+                                </div>
+                            </div>`);
+                            container.appendChild(reqCard);
+                        }
+                    });
+                }
+
+            } catch(e) {}
+        });
+
+        if (!hasRequests) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);"><h3>Заявок пока нет 🎉</h3><p>Все проверено!</p></div>';
+        }
+    }).catch(() => { container.innerHTML = "Ошибка загрузки."; });
 };

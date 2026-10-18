@@ -1,12 +1,13 @@
 /* ============================================================
-   МДК 07.01 — script.js (v63.0 — FINAL FULL)
+   МДК 07.01 — script.js (v64.0 — REQUESTS & ROUTING)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
 var state = { 
   student: null, staff: null, progress: {}, results: {}, selfResults: {}, 
-  practicalsDone: {}, practicalGrades: {}, favorites: [], xp: 0, shop: [], achievements: {} 
+  practicalsDone: {}, practicalGrades: {}, requests: {}, allowedAttempts: {},
+  favorites: [], xp: 0, shop: [], achievements: {} 
 };
 
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
@@ -39,6 +40,8 @@ function loadStudentData(){
   state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
   state.practicalsDone = JSON.parse(localStorage.getItem("mdk0701.practicalsDone." + ek) || "{}");
   state.practicalGrades = JSON.parse(localStorage.getItem("mdk0701.practicalGrades." + ek) || "{}");
+  state.requests = JSON.parse(localStorage.getItem("mdk0701.requests." + ek) || "{}");
+  state.allowedAttempts = JSON.parse(localStorage.getItem("mdk0701.allowedAttempts." + ek) || "{}");
   state.achievements = JSON.parse(localStorage.getItem("mdk0701.achievements." + ek) || "{}");
   state.xp = parseInt(localStorage.getItem("mdk0701.xp." + ek) || "0");
   state.shop = JSON.parse(localStorage.getItem("mdk0701.shop." + ek) || "[]");
@@ -51,6 +54,8 @@ function saveStudentData(){
   localStorage.setItem("mdk0701.selfResults." + ek, JSON.stringify(state.selfResults));
   localStorage.setItem("mdk0701.practicalsDone." + ek, JSON.stringify(state.practicalsDone));
   localStorage.setItem("mdk0701.practicalGrades." + ek, JSON.stringify(state.practicalGrades));
+  localStorage.setItem("mdk0701.requests." + ek, JSON.stringify(state.requests));
+  localStorage.setItem("mdk0701.allowedAttempts." + ek, JSON.stringify(state.allowedAttempts));
   localStorage.setItem("mdk0701.achievements." + ek, JSON.stringify(state.achievements));
   localStorage.setItem("mdk0701.xp." + ek, state.xp);
   localStorage.setItem("mdk0701.shop." + ek, JSON.stringify(state.shop));
@@ -60,23 +65,49 @@ function saveStudentData(){
     var p = new URLSearchParams();
     p.append("action", "save"); p.append("key", k); p.append("name", state.student.name); p.append("group", state.student.group);
     p.append("payload", JSON.stringify({ 
-      progress: state.progress, 
-      results: state.results, 
-      selfResults: state.selfResults, 
-      practicalsDone: state.practicalsDone, 
-      practicalGrades: state.practicalGrades,
-      favorites: state.favorites 
+      progress: state.progress, results: state.results, selfResults: state.selfResults, 
+      practicalsDone: state.practicalsDone, practicalGrades: state.practicalGrades,
+      requests: state.requests, allowedAttempts: state.allowedAttempts, favorites: state.favorites 
     }));
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(function(){});
   }
 }
 
+// ОТПРАВКА ЗАЯВКИ НА ПРАКТИКУ
 window.markPracticalDone = function(topicId, code) {
     if (!state.practicalsDone[topicId]) state.practicalsDone[topicId] = {};
-    state.practicalsDone[topicId][code] = true;
+    state.practicalsDone[topicId][code] = "pending";
     saveStudentData();
     renderTopic(topicId, "practice");
-    window.showToast("Работа отмечена как выполненная!", "ok");
+    window.showToast("Заявка на проверку отправлена преподавателю!", "ok");
+};
+
+// ЗАПРОС ПОПЫТКИ
+window.requestAttempt = function(topicId, type) {
+    var reqKey = topicId + "_" + type;
+    if (!state.requests) state.requests = {};
+    state.requests[reqKey] = "pending";
+    saveStudentData();
+    renderTopic(topicId, type);
+    window.showToast("Запрос на доп. попытку отправлен!", "ok");
+};
+
+// ДЕЙСТВИЯ ПРЕПОДАВАТЕЛЯ (СИМУЛЯЦИЯ)
+window.approvePractical = function(studentKey, topicId, code, grade) {
+    var p = new URLSearchParams();
+    p.append("action", "approvework"); p.append("key", studentKey); p.append("topicId", topicId); p.append("code", code); p.append("grade", grade);
+    window.showToast("Оценка " + grade + " выставлена!", "ok");
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(console.error);
+    // В реальности здесь нужно обновить UI
+    document.getElementById("req_" + topicId + "_" + code).remove();
+};
+
+window.approveAttempt = function(studentKey, reqKey) {
+    var p = new URLSearchParams();
+    p.append("action", "approveattempt"); p.append("key", studentKey); p.append("reqKey", reqKey);
+    window.showToast("Попытка одобрена!", "ok");
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(console.error);
+    document.getElementById("req_" + reqKey).remove();
 };
 
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
@@ -134,7 +165,7 @@ function renderHome(){
   });
 
   // БЛОК ИВЕНТА
-  var eventBlock = el(`<div class="event-card" onclick="location.hash='#/tictactoe'">
+  var eventBlock = el(`<div class="event-card" onclick="location.hash='#/event'">
       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
               <h2 style="margin:0 0 10px 0; font-size:24px; color:#ff003c; text-shadow: 0 0 10px rgba(255,0,60,0.5);">🚨 СМЕРТЕЛЬНАЯ ВЕЧЕРИНКА</h2>
@@ -261,7 +292,7 @@ function renderTopic(id, tab){
   if (tab === "practice") {
     if(t.topic.practicals) {
       t.topic.practicals.forEach(function(p){
-        var isDone = state.practicalsDone[id] && state.practicalsDone[id][p.code];
+        var status = state.practicalsDone[id] && state.practicalsDone[id][p.code];
         var grade = state.practicalGrades[id] && state.practicalGrades[id][p.code];
         
         var html = '<div class="practice" style="margin-bottom:24px;border:1px solid var(--border);padding:20px;border-radius:12px;background:var(--card-soft);">';
@@ -284,11 +315,11 @@ function renderTopic(id, tab){
         }
         
         html += '<div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">';
-        if (isDone) {
-            html += '<div style="color:var(--ok); font-weight:bold;">✅ Работа отмечена как выполненная.</div>';
-            if (grade) {
-                html += '<div style="background:var(--card); padding:8px 16px; border-radius:8px; border:1px solid var(--border);">Оценка преподавателя: <b style="font-size:18px; color:var(--accent);">' + grade + '</b></div>';
-            }
+        if (status === "approved") {
+            html += '<div style="color:var(--ok); font-weight:bold;">✅ Работа подтверждена преподавателем.</div>';
+            if (grade) html += '<div style="background:var(--card); padding:8px 16px; border-radius:8px; border:1px solid var(--border);">Оценка: <b style="font-size:18px; color:var(--accent);">' + grade + '</b></div>';
+        } else if (status === "pending") {
+            html += '<div style="color:#d97706; font-weight:bold;">⏳ На проверке у преподавателя.</div>';
         } else {
             html += '<div style="color:var(--muted); font-size:13px; flex: 1 1 100%; margin-bottom:10px;">📌 Все практические работы сдаются одной сшитой папкой в конце изучения предмета.</div>';
             html += '<button class="btn" onclick="window.markPracticalDone(\'' + id + '\', \'' + p.code + '\')">✅ Сделал</button>';
@@ -301,14 +332,22 @@ function renderTopic(id, tab){
     }
   }
 
-  if (tab === "self") {
-    if (state.selfResults[id]) {
+  if (tab === "self" || tab === "test") {
+    var result = state.results[id] || state.selfResults[id];
+    var reqKey = id + "_" + tab;
+    var reqStatus = state.requests && state.requests[reqKey];
+    var attempts = state.allowedAttempts && state.allowedAttempts[reqKey] ? state.allowedAttempts[reqKey] : 1;
+    
+    if (result && attempts <= 1) { // Уже сдал, попыток нет
       panel.appendChild(el(`<div style="text-align:center;padding:40px;">
         <h2 style="font-size:28px;">✅ Работа сдана</h2>
-        <p style="font-size:18px;color:var(--text-soft);margin:16px 0;">Ваша оценка: <b style="font-size:24px;color:var(--accent);">${state.selfResults[id].grade}</b></p>
+        <p style="font-size:18px;color:var(--text-soft);margin:16px 0;">Ваша оценка: <b style="font-size:24px;color:var(--accent);">${result.grade}</b></p>
         <p class="sub">Повторное прохождение закрыто.</p>
+        ${reqStatus === 'pending' 
+            ? '<p style="color:#d97706;font-weight:bold;">⏳ Запрос на попытку отправлен</p>' 
+            : `<button class="btn" onclick="window.requestAttempt('${id}', '${tab}')">Запросить доп. попытку</button>`}
       </div>`));
-    } else if(t.topic.selfChecks) {
+    } else if (tab === "self" && t.topic.selfChecks) {
       var selfWrap = el('<div></div>'); panel.appendChild(selfWrap);
       t.topic.selfChecks.forEach(function(q, i){ selfWrap.appendChild(el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><input type="text" class="self-input" data-idx="' + i + '" placeholder="Ваш ответ"><div class="self-feedback" id="fb_' + i + '" style="font-size:13px; margin-top:4px;"></div></div>')); });
       var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить</button>');
@@ -331,17 +370,7 @@ function renderTopic(id, tab){
         window.showToast("Работа сдана!", "ok");
         renderTopic(id, "self");
       };
-    }
-  }
-
-  if (tab === "test") {
-    if (state.results[id]) {
-      panel.appendChild(el(`<div style="text-align:center;padding:40px;">
-        <h2 style="font-size:28px;">✅ Тест сдан</h2>
-        <p style="font-size:18px;color:var(--text-soft);margin:16px 0;">Ваша оценка: <b style="font-size:24px;color:var(--accent);">${state.results[id].grade}</b></p>
-        <p class="sub">Повторное прохождение закрыто.</p>
-      </div>`));
-    } else if(t.topic.test) {
+    } else if (tab === "test" && t.topic.test) {
       var timerBox = el('<div style="font-size:20px;font-weight:bold;color:var(--err);margin-bottom:16px;">⏱ 15:00</div>'); panel.appendChild(timerBox);
       var testWrap = el('<div></div>'); panel.appendChild(testWrap);
       t.topic.test.forEach(function(q, qi){
@@ -418,13 +447,15 @@ function route(){
       else if (parts[0] === "profile") window.renderProfilePage && window.renderProfilePage();
       else if (parts[0] === "dashboard") window.renderDashboard && window.renderDashboard();
       else if (parts[0] === "journal") window.renderJournalPage && window.renderJournalPage();
+      else if (parts[0] === "requests") window.renderRequestsPage && window.renderRequestsPage();
       else if (parts[0] === "rating") window.renderRatingPage && window.renderRatingPage();
       else if (parts[0] === "schedule") window.renderSchedulePage && window.renderSchedulePage();
       else if (parts[0] === "links") window.renderLinksPage && window.renderLinksPage();
       else if (parts[0] === "gcode-reference") window.renderGCodeReferencePage && window.renderGCodeReferencePage();
       else if (parts[0] === "final-exam") window.renderFinalExamPage && window.renderFinalExamPage();
       else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
-      else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
+      else if (parts[0] === "event") window.renderDeadlyPartyPage && window.renderDeadlyPartyPage();
+      else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage(); // старая игра
       else if (parts[0] === "chat") window.renderChatPage && window.renderChatPage();
       else if (parts[0] === "comments") window.renderCommentsPage && window.renderCommentsPage();
       else renderHome();
@@ -446,7 +477,6 @@ window.addEventListener("DOMContentLoaded", function() {
   document.querySelectorAll("[data-go]").forEach(function(item) { item.addEventListener("click", function(e) { e.preventDefault(); location.hash = item.getAttribute("data-go"); closeDrawer(); }); });
   
   if (window.initAssistantButton) window.initAssistantButton();
-
   renderUserChip(); route();
 });
 window.addEventListener("hashchange", route);

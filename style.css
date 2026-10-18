@@ -264,3 +264,38 @@ a { color: inherit; text-decoration: none; }
   .ttt-board { grid-template-columns: repeat(3, 70px); }
   .ttt-cell { width: 70px; height: 70px; font-size: 32px; }
 }
+/* ============================================================
+   АНИМАЦИИ ДЛЯ СМЕРТЕЛЬНОЙ ВЕЧЕРИНКИ
+   ============================================================ */
+@keyframes flashGreen {
+    0% { background: rgba(0, 255, 204, 0); }
+    50% { background: rgba(0, 255, 204, 0.4); }
+    100% { background: rgba(0, 255, 204, 0); }
+}
+
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 10px rgba(255, 0, 60, 0.2); }
+    50% { box-shadow: 0 0 30px rgba(255, 0, 60, 0.8); }
+    100% { box-shadow: 0 0 10px rgba(255, 0, 60, 0.2); }
+}
+
+/* Стили для поля ввода Судоку */
+.sudoku-cell {
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    outline: none;
+    background: var(--card);
+    color: var(--text);
+}
+.sudoku-cell:focus {
+    background: var(--accent-soft);
+}
+.sudoku-cell:disabled {
+    background: var(--card-soft);
+    color: var(--muted);
+}
