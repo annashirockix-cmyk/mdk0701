@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v50.0 — CHAT & ALERTS)
+   МДК 07.01 — script.js (v51.0 — FILES & ROUTING)
    ============================================================ */
 "use strict";
 
@@ -51,10 +51,10 @@ function saveStudentData(){
   }
 }
 
-// ЗАГРУЗКА ФАЙЛОВ С УВЕДОМЛЕНИЕМ
+// УВЕЛИЧЕН ЛИМИТ ДО 15 МБ
 window.uploadFile = function(event, code, title) {
   var file = event.target.files[0]; if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { alert("Файл больше 5 МБ!"); return; }
+  if (file.size > 15 * 1024 * 1024) { alert("Файл больше 15 МБ!"); return; }
   
   alert("Начинаем отправку файла " + file.name + "... Пожалуйста, подождите.");
   var reader = new FileReader();
@@ -65,9 +65,9 @@ window.uploadFile = function(event, code, title) {
 
     fetch(APPS_SCRIPT_URL, { method: "POST", body: params })
     .then(r => r.json()).then(d => {
-      if (d.ok) alert("✅ УСПЕХ! Работа загружена на сервер. Преподаватель её увидит.");
+      if (d.ok) alert("✅ УСПЕХ! Работа загружена на сервер.");
       else alert("❌ ОШИБКА: " + (d.error||"неизвестно"));
-    }).catch(() => alert("❌ ОШИБКА СЕТИ. Убедитесь, что вы открываете сайт по ссылке с GitHub (http), а не локально (file://)."));
+    }).catch(() => alert("❌ ОШИБКА СЕТИ. Убедитесь, что вы открываете сайт по ссылке с GitHub."));
   };
   reader.readAsDataURL(file);
 };
@@ -120,36 +120,25 @@ function renderHome(){
   var app = $("app"); app.innerHTML = ""; var c = getCourse();
   if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
   app.appendChild(el('<section class="hero"><h1>' + c.title + '</h1><p>' + c.module + '</p></section>'));
-  
   c.sections.forEach(function(sec) {
     app.appendChild(el('<div class="steps-title">' + sec.code + ' · ' + sec.title + '</div>'));
     var list = document.createElement("div");
     sec.topics.forEach(function(t) { list.appendChild(el('<div class="topic" onclick="location.hash=\'#/topic/' + t.id + '\'"><span class="t-code">' + t.code + '</span><span class="t-title">' + t.title + '</span></div>')); });
     app.appendChild(list);
   });
-
   if (c.passports && c.passports.length) {
     app.appendChild(el('<div class="steps-title">Паспорта станков</div>'));
     var pGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
-    c.passports.forEach(function(p) { pGrid.appendChild(el('<div class="module" style="margin:0;padding:16px;cursor:pointer;"><b style="color:var(--accent)">' + p.code + '</b><div style="font-weight:bold;margin:8px 0;">' + p.title + '</div><div style="font-size:12px;color:var(--muted);">' + p.summary + '</div></div>')); });
+    c.passports.forEach(function(p) { pGrid.appendChild(el('<div class="module" style="margin:0;padding:16px;"><b style="color:var(--accent)">' + p.code + '</b><div style="font-weight:bold;margin:8px 0;">' + p.title + '</div></div>')); });
     app.appendChild(pGrid);
   }
-
-  if (c.safety && c.safety.length) {
-    app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
-    var sGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
-    c.safety.forEach(function(s) { sGrid.appendChild(el('<div class="module" style="margin:0;padding:16px;"><b style="color:var(--accent)">' + s.code + '</b><div style="font-weight:bold;margin:8px 0;">' + s.title + '</div><div style="font-size:12px;color:var(--muted);">' + s.summary + '</div></div>')); });
-    app.appendChild(sGrid);
-  }
-
   if (c.videos && c.videos.length) {
     app.appendChild(el('<div class="steps-title">Видеоматериалы</div>'));
     var vGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
     c.videos.forEach(function(v) { vGrid.appendChild(el('<div class="module" style="margin:0;padding:16px;"><div style="font-weight:bold;margin-bottom:8px;">' + v.title + '</div><video controls src="' + v.src + '" style="width:100%;border-radius:8px;background:#000;"></video></div>')); });
     app.appendChild(vGrid);
   }
-
-  var flashcards = [{ q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ.", topic: "Основы" }, { q: "Что делает G00?", a: "Быстрое позиционирование.", topic: "G-коды" }, { q: "Что делает G01?", a: "Линейная интерполяция.", topic: "G-коды" }, { q: "G02 и G03?", a: "Дуга по/против часовой.", topic: "G-коды" }, { q: "Что такое M03?", a: "Шпиндель по часовой.", topic: "M-коды" }];
+  var flashcards = [{ q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ.", topic: "Основы" }, { q: "Что делает G00?", a: "Быстрое позиционирование.", topic: "G-коды" }, { q: "Что делает G01?", a: "Линейная интерполяция.", topic: "G-коды" }];
   app.appendChild(el('<div class="steps-title">Интерактив</div>'));
   var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div style="text-align:center;"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
   app.appendChild(flashBlock);
@@ -222,7 +211,7 @@ function renderTopic(id, tab){
   }
 }
 
-/* ====== СИМУЛЯТОР ====== */
+/* ====== ОСТАЛЬНЫЕ СТРАНИЦЫ ====== */
 function renderSimulatorPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   var block = el('<section class="module"><h2>🖥️ Симулятор</h2><textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0\nG01 X50 Y50\nG01 X100 Y50\nG01 X100 Y0\nG01 X0 Y0</textarea><button class="btn" id="runCodeBtn" style="width:100%;margin-bottom:10px;">▶ Выполнить</button><div style="background:var(--card-soft);border:1px solid var(--border);border-radius:8px;overflow:hidden;"><canvas id="simCanvas" width="600" height="400" style="width:100%;height:auto;background:#fff;"></canvas></div></section>');
@@ -231,7 +220,6 @@ function renderSimulatorPage(){
   drawGrid(); runBtn.onclick = function() { drawGrid(); var lines = input.value.split("\n"); var curX = canvas.width/2, curY = canvas.height/2; ctx.beginPath(); ctx.moveTo(curX, curY); ctx.strokeStyle = "red"; ctx.lineWidth = 3; var isDown = false; lines.forEach(function(line) { line = line.trim().toUpperCase(); if(!line) return; var gMatch = line.match(/G0[0-3]/); if(!gMatch) return; var xMatch = line.match(/X(-?\d+(\.\d+)?)/); var yMatch = line.match(/Y(-?\d+(\.\d+)?)/); if(xMatch) curX = canvas.width/2 + parseFloat(xMatch[1]) * 2; if(yMatch) curY = canvas.height/2 - parseFloat(yMatch[1]) * 2; if(gMatch[0] === "G00") { ctx.moveTo(curX, curY); } else { ctx.lineTo(curX, curY); isDown = true; } }); if(isDown) ctx.stroke(); window.showToast("Траектория построена!", "ok"); };
 }
 
-/* ====== МАГАЗИН И ПОРТФОЛИО ====== */
 function renderShopPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   app.appendChild(el('<section class="hero"><h1>Магазин XP</h1><p>У вас: 🌟 <b>' + state.xp + ' XP</b></p></section>'));
@@ -240,12 +228,13 @@ function renderShopPage(){
   items.forEach(function(it){ var has = state.shop.includes(it.id); var btn = el('<button class="btn" style="width:100%;margin-top:10px;" ' + (has || state.xp < it.price ? 'disabled' : '') + '>' + (has ? 'Куплено' : (state.xp < it.price ? 'Мало XP' : 'Купить')) + '</button>'); if (!has && state.xp >= it.price) { btn.onclick = function() { state.xp -= it.price; state.shop.push(it.id); saveStudentData(); renderShopPage(); }; } var card = el('<div style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;"><div style="font-size:40px;">' + it.icon + '</div><div style="font-weight:bold;margin:10px 0;">' + it.title + '</div></div>'); card.appendChild(btn); grid.appendChild(card); });
   app.appendChild(grid);
 }
+
 function renderPortfolioPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
-/* ====== РОУТИНГ (ДОБАВЛЕНЫ ЧАТ И ОТЗЫВЫ) ====== */
+/* ====== РОУТИНГ ====== */
 function route(){
   closeDrawer();
   var hash = location.hash.replace(/^#/, "") || "/"; var parts = hash.split("/").filter(Boolean); var app = $("app"); if(!app) return;
