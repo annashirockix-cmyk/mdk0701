@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v79.0 — FULL THEMES & BG)
+   МДК 07.01 — script.js (v82.0 — FINAL FULL CODE)
    ============================================================ */
 "use strict";
 
@@ -216,17 +216,29 @@ window.approveAttempt = function(studentKeyStr, reqKey) {
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(console.error);
 };
 
-window.grantXP = function(studentKeyStr, studentName) {
+window.grantXP = function(studentKeyStr, studentName, presetAmount) {
     if (!state.staff) return;
-    var amount = prompt("Сколько XP выдать студенту " + studentName + "?", "50");
+    
+    var amount = presetAmount;
+    if (!amount) {
+        amount = prompt("Сколько XP выдать студенту " + studentName + "?", "50");
+    }
+    
     if (!amount || isNaN(amount) || Number(amount) <= 0) return;
+    
     var p = new URLSearchParams();
-    p.append("action", "grantxp"); p.append("key", studentKeyStr); p.append("amount", parseInt(amount));
+    p.append("action", "grantxp"); 
+    p.append("key", studentKeyStr); 
+    p.append("amount", parseInt(amount));
+    
     window.showToast("Начисление " + amount + " XP...", "info");
-    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r => r.json()).then(d => {
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
+      .then(r => r.json())
+      .then(d => {
         if (d.ok) window.showToast("Успешно начислено " + amount + " XP!", "ok");
         else window.showToast("Ошибка: " + (d.error || "Неизвестно"), "err");
-    }).catch(() => window.showToast("Ошибка сети.", "err"));
+      })
+      .catch(() => window.showToast("Ошибка сети.", "err"));
 };
 
 // --- ТЕМЫ ---

@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v79.0 — FIX PRACTICAL GRADES)
+   МДК 07.01 — journal.js (v81.0 — XP GRANT UI)
    ============================================================ */
 "use strict";
 
@@ -11,6 +11,20 @@ window.renderJournalPage = function() {
   
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
   
+  // ПАНЕЛЬ БЫСТРОЙ ВЫДАЧИ XP
+  if (isTeacher) {
+      var quickPanel = el(`<section class="module" style="background:var(--accent-soft); border-color:var(--accent); margin-bottom:24px;">
+          <h3 style="margin-top:0; color:var(--accent);">🎁 Быстрая выдача XP</h3>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <select id="quickStudentSelect" class="self-input" style="flex:1; min-width:200px; margin:0;"></select>
+              <input id="quickXPAmount" type="number" class="self-input" style="width:100px; margin:0;" placeholder="XP" value="50" min="1">
+              <button class="btn" id="quickGrantBtn" style="background:var(--gold); color:#000;">Выдать</button>
+          </div>
+      </section>`);
+      app.appendChild(quickPanel);
+  }
+
+  // Кнопка отчета
   if (isTeacher) {
     var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
     app.appendChild(topPanel);
@@ -30,6 +44,24 @@ window.renderJournalPage = function() {
     tableWrap.innerHTML = "";
     if (!d.ok || !d.students.length) { tableWrap.innerHTML = "Студентов пока нет."; return; }
     
+    // Заполняем список для быстрой выдачи
+    if (isTeacher) {
+        var sel = document.getElementById("quickStudentSelect");
+        d.students.forEach(s => {
+            sel.appendChild(el(`<option value="${(s.name + "|" + s.group).toLowerCase()}">${s.name} (${s.group})</option>`));
+        });
+        
+        document.getElementById("quickGrantBtn").onclick = function() {
+            var sKey = sel.value;
+            var sName = sel.options[sel.selectedIndex].text.split(' (')[0];
+            var amount = parseInt(document.getElementById("quickXPAmount").value) || 50;
+            if (!sKey) return;
+            if (confirm(`Выдать ${amount} XP студенту ${sName}?`)) {
+                window.grantXP(sKey, sName, amount);
+            }
+        };
+    }
+
     var displayStudents = d.students;
     if (!state.staff && state.student) {
       displayStudents = d.students.filter(function(s) {
@@ -55,10 +87,10 @@ window.renderJournalPage = function() {
       var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
       var currentStudentKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
       
-      var nameCellHtml = `<div style="font-weight:bold;">${s.name}</div>
+      var nameCellHtml = `<div style="font-weight:bold; font-size:16px;">${s.name}</div>
                           <div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
       if (isTeacher) {
-          nameCellHtml += `<button class="btn ghost" style="padding:4px 8px; font-size:11px; border-color:var(--gold); color:var(--gold);" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🌟 Выдать XP</button>`;
+          nameCellHtml += `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🎁 Выдать XP</button>`;
       }
       tr.appendChild(el(`<td style="padding:12px; vertical-align:top;">${nameCellHtml}</td>`));
       
