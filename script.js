@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v51.0 — FILES & ROUTING)
+   МДК 07.01 — script.js (v52.0 — FIX LECTURES)
    ============================================================ */
 "use strict";
 
@@ -51,7 +51,6 @@ function saveStudentData(){
   }
 }
 
-// УВЕЛИЧЕН ЛИМИТ ДО 15 МБ
 window.uploadFile = function(event, code, title) {
   var file = event.target.files[0]; if (!file) return;
   if (file.size > 15 * 1024 * 1024) { alert("Файл больше 15 МБ!"); return; }
@@ -72,7 +71,6 @@ window.uploadFile = function(event, code, title) {
   reader.readAsDataURL(file);
 };
 
-/* ====== ТЕМЫ ====== */
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
@@ -83,7 +81,6 @@ function openThemeModal(){
   document.body.appendChild(modal);
 }
 
-/* ====== ВХОД/ВЫХОД ====== */
 window.doStudentLogin = function() {
   var n = $("loginName").value.trim(); var g = $("loginGroup").value.trim();
   if (!n || !g) { alert("Введите ФИО и Группу!"); return; }
@@ -115,7 +112,6 @@ function renderUserChip(){
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); }
 
-/* ====== ГЛАВНАЯ ====== */
 function renderHome(){
   var app = $("app"); app.innerHTML = ""; var c = getCourse();
   if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
@@ -147,7 +143,6 @@ function renderHome(){
   renderHomeCard(); flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%flashcards.length; renderHomeCard(); });
 }
 
-/* ====== ТЕМА ====== */
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = "";
@@ -158,7 +153,13 @@ function renderTopic(id, tab){
   app.appendChild(tw); var panel = el('<section class="panel"></section>'); app.appendChild(panel);
 
   if (tab === "lecture") {
-    if(t.topic.lectures) t.topic.lectures.forEach(function(l){ panel.appendChild(el('<h3>' + l.code + '. ' + l.title + '</h3><div class="lecture-content">' + (l.content || '<p>Материал готовится.</p>') + '</div>')); });
+    if(t.topic.lectures) {
+      // ИСПРАВЛЕНО: Разделяем заголовок и контент
+      t.topic.lectures.forEach(function(l){
+        panel.appendChild(el('<h3>' + l.code + '. ' + l.title + '</h3>'));
+        panel.appendChild(el('<div class="lecture-content">' + (l.content || '<p>Материал готовится.</p>') + '</div>'));
+      });
+    }
     var isDone = state.progress[id] && state.progress[id].done >= 5;
     var markBtn = el('<button class="btn" style="width:100%; margin-top:20px;" ' + (isDone ? 'disabled' : '') + '>' + (isDone ? '✅ Тема изучена' : 'Отметить как изученное (+20 XP)') + '</button>');
     markBtn.onclick = function() { if (!state.progress[id]) state.progress[id] = {}; state.progress[id].done = 5; state.xp += 20; saveStudentData(); window.showToast("Лекция изучена! +20 XP.", "ok"); markBtn.textContent = "✅ Тема изучена"; markBtn.disabled = true; };
@@ -211,7 +212,6 @@ function renderTopic(id, tab){
   }
 }
 
-/* ====== ОСТАЛЬНЫЕ СТРАНИЦЫ ====== */
 function renderSimulatorPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   var block = el('<section class="module"><h2>🖥️ Симулятор</h2><textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0\nG01 X50 Y50\nG01 X100 Y50\nG01 X100 Y0\nG01 X0 Y0</textarea><button class="btn" id="runCodeBtn" style="width:100%;margin-bottom:10px;">▶ Выполнить</button><div style="background:var(--card-soft);border:1px solid var(--border);border-radius:8px;overflow:hidden;"><canvas id="simCanvas" width="600" height="400" style="width:100%;height:auto;background:#fff;"></canvas></div></section>');
@@ -234,7 +234,6 @@ function renderPortfolioPage(){
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
-/* ====== РОУТИНГ ====== */
 function route(){
   closeDrawer();
   var hash = location.hash.replace(/^#/, "") || "/"; var parts = hash.split("/").filter(Boolean); var app = $("app"); if(!app) return;
