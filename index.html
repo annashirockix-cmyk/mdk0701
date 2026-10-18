@@ -5,10 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>МДК 07.01</title>
 <link rel="manifest" href="manifest.json">
-<!-- Иконка для устранения ошибки 404 favicon.ico -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="style.css?v=70">
+<link rel="stylesheet" href="style.css?v=72">
 <script>
   (function(){ try { var t = localStorage.getItem("mdk0701.theme"); if (!t || t === "auto"){ var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; t = d ? "dark" : "light"; } document.documentElement.setAttribute("data-theme", t); } catch(e){} })();
 </script>
@@ -34,6 +33,12 @@
   <button class="burger-btn" id="burgerBtn"><span></span><span></span><span></span></button>
   <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
   <div class="crumbs" id="crumbs"></div>
+  
+  <!-- УВЕДОМЛЕНИЯ -->
+  <a href="#/notifications" class="notif-bell" id="notifBell" style="position:relative; margin-right:15px; text-decoration:none; font-size:20px; cursor:pointer;">
+      🔔 <span id="notifBadge" style="position:absolute; top:-5px; right:-8px; background:var(--err); color:#fff; font-size:10px; font-weight:bold; border-radius:50%; padding:2px 5px; display:none;">0</span>
+  </a>
+
   <div class="topbar-status"><span class="status-pill" id="xpCount">🌟 0 XP</span></div>
   <button id="themeToggle" class="btn ghost" style="padding: 8px 12px; margin-left: 10px; border-radius: 8px;">🎨 Тема</button>
 </header>
@@ -47,13 +52,14 @@
   <nav class="drawer-nav" style="flex:1; overflow-y:auto;">
     <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
     <a class="drawer-item" data-go="#/profile">👤 <span>Личный кабинет</span></a>
+    <a class="drawer-item" data-go="#/notifications">🔔 <span>Уведомления</span></a>
+    <a class="drawer-item" data-go="#/schedule">📅 <span>Расписание</span></a>
     <a class="drawer-item" data-go="#/simulator">🖥️ <span>Симулятор G-кода</span></a>
     <a class="drawer-item" data-go="#/shop">🛒 <span>Магазин XP</span></a>
     <a class="drawer-item" data-go="#/portfolio">🎓 <span>Портфолио</span></a>
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
     
-    <!-- Вкладка Заявки (скрыта по умолчанию, показывается через renderUserChip для учителей) -->
     <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;">📥 <span>Заявки</span></a>
     
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
@@ -61,12 +67,9 @@
     <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
     <a class="drawer-item" data-go="#/final-exam">🎓 <span>Экзамен</span></a>
     <a class="drawer-item" data-go="#/final-training">🏋️ <span>Тренировка</span></a>
-    
-    <!-- ИГРЫ -->
     <a class="drawer-item" data-go="#/event">💀 <span>Смертельная вечеринка</span></a>
     <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
     <a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
-    
     <a class="drawer-item" data-go="#/chat">💭 <span>Чат группы</span></a>
     <a class="drawer-item" data-go="#/comments">💬 <span>Отзывы о курсе</span></a>
     
@@ -75,20 +78,19 @@
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v70.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v72.0</footer>
 
-<script src="data.js?v=70"></script>
-<script src="data-extra.js?v=70"></script>
-<script src="info.js?v=70"></script>
-<script src="script.js?v=70"></script>
-<script src="extra.js?v=70"></script>
-<script src="final.js?v=70"></script>
-<script src="links.js?v=70"></script>
-<script src="rating.js?v=70"></script>
-<script src="schedule.js?v=70"></script>
-<script src="journal.js?v=70"></script>
-<script src="minigames.js?v=70"></script>
-<script src="assistant.js?v=70"></script>
-<script src="easter-eggs.js?v=70"></script>
+<script src="data.js?v=72"></script>
+<script src="data-extra.js?v=72"></script>
+<script src="info.js?v=72"></script>
+<script src="script.js?v=72"></script>
+<script src="extra.js?v=72"></script>
+<script src="final.js?v=72"></script>
+<script src="links.js?v=72"></script>
+<script src="rating.js?v=72"></script>
+<script src="journal.js?v=72"></script>
+<script src="minigames.js?v=72"></script>
+<script src="assistant.js?v=72"></script>
+<script src="easter-eggs.js?v=72"></script>
 </body>
 </html>

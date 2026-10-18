@@ -179,3 +179,25 @@ a { color: inherit; text-decoration: none; }
   .tabs { flex-direction: column; } 
   .tab { width: 100%; text-align: center; } 
 }
+/* Иконка уведомлений */
+.notif-bell {
+    color: var(--text-soft);
+    transition: transform 0.2s;
+}
+.notif-bell:hover {
+    transform: scale(1.1) rotate(10deg);
+    color: var(--accent);
+}
+
+/* Стили для таблиц расписания */
+.journal-table th {
+    background: var(--card-soft);
+    color: var(--text-soft);
+    font-weight: 600;
+}
+.journal-table tr:hover {
+    background: rgba(0,0,0,0.02);
+}
+html[data-theme="dark"] .journal-table tr:hover {
+    background: rgba(255,255,255,0.02);
+}

@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v59.0 — BEAUTIFUL UI)
+   МДК 07.01 — journal.js (v73.0 — FIX PRACTICAL GRADES)
    ============================================================ */
 "use strict";
 
@@ -42,31 +42,39 @@ window.renderJournalPage = function() {
     var tableContainer = el('<div class="journal-container" style="overflow-x:auto;"></div>');
     var table = el('<table class="journal-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"></table>');
     
-    // Обновленная шапка таблицы
     table.appendChild(el('<thead><tr>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:25%;">Студент</th>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:50%;">Сданные темы и работы</th>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:25%; text-align:center;">Оценка / Попытка</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:20%;">Студент</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:10%; text-align:center;">Средний балл</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:45%;">Сданные темы и работы</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:25%;">Практические</th>'
         + '</tr></thead>'));
         
     var tbody = el('<tbody></tbody>');
     
     displayStudents.forEach(s => {
       var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
+      var currentStudentKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
       
-      // 1. ФИО
-      tr.appendChild(el('<td style="padding:12px; vertical-align:top; font-weight:bold;">' + s.name + '<br><span style="font-size:12px;color:var(--muted);font-weight:normal;">гр. ' + s.group + '</span></td>'));
+      // 1. ФИО + Кнопка выдачи XP
+      var nameCellHtml = `<div style="font-weight:bold;">${s.name}</div>
+                          <div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
+      if (isTeacher) {
+          nameCellHtml += `<button class="btn ghost" style="padding:4px 8px; font-size:11px; border-color:var(--gold); color:var(--gold);" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🌟 Выдать XP</button>`;
+      }
+      tr.appendChild(el(`<td style="padding:12px; vertical-align:top;">${nameCellHtml}</td>`));
       
       var tdWorks = el('<td style="padding:12px; vertical-align:top;"></td>');
-      var tdStats = el('<td style="padding:12px; vertical-align:top; text-align:center;"></td>');
+      var tdPracticals = el('<td style="padding:12px; vertical-align:top;"></td>');
       
       var worksHtml = "";
-      var statsHtml = "";
+      var pracHtml = "";
       var hasWorks = false;
-
+      var sum = 0, count = 0;
+      
       try {
         var p = JSON.parse(s.payload);
         
+        // ТЕСТЫ И САМОСТОЯТЕЛЬНЫЕ
         if (p.results) {
           Object.keys(p.results).forEach(k => {
              var tName = k === "__final_exam__" ? "Итоговый экзамен" : k;
@@ -74,7 +82,7 @@ window.renderJournalPage = function() {
              if (topic) tName = topic.topic.code + ' - ' + topic.topic.title;
              
              worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Тест)</span></div>`;
-             statsHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);">Оценка: <b style="color:var(--accent); font-size:16px;">${p.results[k].grade}</b></div>`;
+             sum += p.results[k].grade; count++;
              hasWorks = true;
           });
         }
@@ -84,22 +92,55 @@ window.renderJournalPage = function() {
             var topic = findTopic(k);
             var tName = topic ? topic.topic.code + ' - ' + topic.topic.title : k;
             worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Сам. работа)</span></div>`;
-            statsHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);">Оценка: <b style="color:var(--accent); font-size:16px;">${p.selfResults[k].grade}</b></div>`;
+            sum += p.selfResults[k].grade; count++;
             hasWorks = true;
           });
         }
-      } catch(e) {}
+
+        // ПРАКТИЧЕСКИЕ РАБОТЫ
+        if (p.practicalsDone) {
+            Object.keys(p.practicalsDone).forEach(topicId => {
+                Object.keys(p.practicalsDone[topicId]).forEach(pCode => {
+                    var isDone = p.practicalsDone[topicId][pCode];
+                    if (!isDone) return;
+                    
+                    var topic = findTopic(topicId);
+                    var tName = topic ? topic.topic.code : topicId;
+                    var grade = (p.practicalGrades && p.practicalGrades[topicId] && p.practicalGrades[topicId][pCode]) || "";
+                    
+                    pracHtml += `<div style="margin-bottom:8px; padding:8px; background:var(--card-soft); border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:12px; margin-bottom:4px;"><b>${tName}</b> - ${pCode}</div>`;
+                    
+                    if (isTeacher) {
+                        // ИСПРАВЛЕНО: добавлено сохранение выбранного значения
+                        pracHtml += `<select onchange="window.approvePractical('${currentStudentKey}', '${topicId}', '${pCode}', this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:bold;">
+                            <option value="">— Оценка —</option>
+                            <option value="5" ${grade == "5" ? "selected" : ""}>5</option>
+                            <option value="4" ${grade == "4" ? "selected" : ""}>4</option>
+                            <option value="3" ${grade == "3" ? "selected" : ""}>3</option>
+                            <option value="2" ${grade == "2" ? "selected" : ""}>2</option>
+                        </select>`;
+                    } else {
+                        pracHtml += `<span style="font-size:14px; font-weight:bold; color:var(--accent);">${grade ? "Оценка: " + grade : "На проверке"}</span>`;
+                    }
+                    pracHtml += `</div>`;
+                });
+            });
+        }
+      } catch(e) { console.error(e); }
       
-      if (hasWorks) {
-          tdWorks.innerHTML = worksHtml;
-          tdStats.innerHTML = statsHtml;
-      } else {
-          tdWorks.innerHTML = '<i style="color:var(--muted);">Нет сданных работ</i>';
-          tdStats.innerHTML = '—';
-      }
+      var avg = count > 0 ? (sum / count).toFixed(2) : "—";
+      
+      tr.appendChild(el(`<td style="padding:12px; vertical-align:top; text-align:center; font-size:18px; font-weight:bold; color:var(--accent);">${avg}</td>`));
+      
+      if (hasWorks) tdWorks.innerHTML = worksHtml;
+      else tdWorks.innerHTML = '<i style="color:var(--muted);">Нет сданных тестов</i>';
+      
+      if (pracHtml) tdPracticals.innerHTML = pracHtml;
+      else tdPracticals.innerHTML = '<i style="color:var(--muted);">Нет заявок</i>';
       
       tr.appendChild(tdWorks);
-      tr.appendChild(tdStats);
+      tr.appendChild(tdPracticals);
       tbody.appendChild(tr);
     });
     
