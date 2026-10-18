@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v57.0 — BEAUTIFUL UI)
+   МДК 07.01 — journal.js (v58.0 — FIX)
    ============================================================ */
 "use strict";
 
@@ -12,7 +12,8 @@ window.renderJournalPage = function() {
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
   
   if (isTeacher) {
-    var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--blue);">📧 Отправить отчет</button></div>');
+    // Исправлена кнопка (var(--blue) заменен на var(--accent))
+    var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
     app.appendChild(topPanel);
     topPanel.querySelector("#reportBtn").onclick = function() {
       var email = prompt("Введите email для отчета:", "anna.shirockix@gmail.com"); if (!email) return;

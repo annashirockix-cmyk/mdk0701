@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — style.css (v47.0 FINAL)
+   МДК 07.01 — style.css (v58.0 FINAL)
    ============================================================ */
 
 [hidden] { display: none !important; }
@@ -7,15 +7,26 @@
 /* ЦВЕТОВЫЕ ТЕМЫ */
 :root, html[data-theme="light"]{
   --bg:#f5f2ec; --card:#ffffff; --card-soft:#fcfaf7; --border:#e8e2d8; --text:#222222; --text-soft:#4a4a4a; --muted:#8a8578;
-  --accent:#c14a2a; --accent-soft:#f7e8e1; --ok:#2d7a4f; --err:#c0392b; --shadow:0 4px 12px rgba(0,0,0,0.05); color-scheme: light;
+  --accent:#c14a2a; --accent-soft:#f7e8e1; --ok:#2d7a4f; --err:#c0392b; --shadow:0 4px 12px rgba(0,0,0,0.05); 
+  --code-bg:#f0f0f0; --code-text:#c0392b; color-scheme: light;
 }
 html[data-theme="dark"]{
   --bg:#0e0e10; --card:#171719; --card-soft:#1c1c1f; --border:#2a2a2e; --text:#e8e6e1; --text-soft:#c8c5bd; --muted:#8f8b80;
-  --accent:#ff6b3d; --accent-soft:#2a1c15; --ok:#58c98a; --err:#ff6e5e; --shadow:0 4px 12px rgba(0,0,0,0.3); color-scheme: dark;
+  --accent:#ff6b3d; --accent-soft:#2a1c15; --ok:#58c98a; --err:#ff6e5e; --shadow:0 4px 12px rgba(0,0,0,0.3); 
+  --code-bg:#2a2a2e; --code-text:#ff6b3d; color-scheme: dark;
 }
-html[data-theme="sepia"]{ --bg:#f4ecd8; --card:#fbf5e6; --card-soft:#f8f0dc; --border:#e0d3b8; --text:#3a2e1f; --accent:#a0522d; --ok:#4a7a4a; --err:#a83232; --shadow:0 4px 12px rgba(0,0,0,0.05); }
-html[data-theme="ocean"]{ --bg:#eef4f8; --card:#ffffff; --card-soft:#f4f9fc; --border:#d3e2ec; --text:#16242e; --accent:#1a6da8; --ok:#1e7a5a; --err:#c0392b; --shadow:0 4px 12px rgba(0,0,0,0.05); }
-html[data-theme="forest"]{ --bg:#eef3ec; --card:#ffffff; --card-soft:#f5f9f3; --border:#d4e0ce; --text:#1c2a1c; --accent:#3d7a3d; --ok:#2d7a4f; --err:#a8342a; --shadow:0 4px 12px rgba(0,0,0,0.05); }
+html[data-theme="sepia"]{ 
+  --bg:#f4ecd8; --card:#fbf5e6; --card-soft:#f8f0dc; --border:#e0d3b8; --text:#3a2e1f; --accent:#a0522d; --ok:#4a7a4a; --err:#a83232; --shadow:0 4px 12px rgba(0,0,0,0.05); 
+  --code-bg:#e8dcc0; --code-text:#a0522d;
+}
+html[data-theme="ocean"]{ 
+  --bg:#eef4f8; --card:#ffffff; --card-soft:#f4f9fc; --border:#d3e2ec; --text:#16242e; --accent:#1a6da8; --ok:#1e7a5a; --err:#c0392b; --shadow:0 4px 12px rgba(0,0,0,0.05); 
+  --code-bg:#e1eff7; --code-text:#1a6da8;
+}
+html[data-theme="forest"]{ 
+  --bg:#eef3ec; --card:#ffffff; --card-soft:#f5f9f3; --border:#d4e0ce; --text:#1c2a1c; --accent:#3d7a3d; --ok:#2d7a4f; --err:#a8342a; --shadow:0 4px 12px rgba(0,0,0,0.05); 
+  --code-bg:#e2ecde; --code-text:#3d7a3d;
+}
 
 /* БАЗА */
 * { box-sizing: border-box; }
@@ -112,4 +123,9 @@ a { color: inherit; text-decoration: none; }
 .gcode-ref-desc { color: var(--text-soft); font-size: 14px; margin-bottom: 8px; }
 .gcode-ref-example code { background: var(--code-bg); color: var(--code-text); padding: 4px 8px; border-radius: 6px; font-size: 13px; display: inline-block; }
 
-@media (max-width: 768px) { #app { padding: 16px 12px 60px; } .hero h1 { font-size: 24px; } .tabs { flex-direction: column; } .tab { width: 100%; text-align: center; } }
+@media (max-width: 768px) { 
+  #app { padding: 16px 12px 60px; } 
+  .hero h1 { font-size: 24px; } 
+  .tabs { flex-direction: column; } 
+  .tab { width: 100%; text-align: center; } 
+}

@@ -1,10 +1,11 @@
 /* ============================================================
-   МДК 07.01 — script.js (v56.0 — FULL RESTORE)
+   МДК 07.01 — script.js (v57.0 — FULL FIX)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
-var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [] };
+// ДОБАВЛЕНО: achievements: {}
+var state = { student: null, staff: null, progress: {}, results: {}, selfResults: {}, favorites: [], xp: 0, shop: [], achievements: {} };
 
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
@@ -15,6 +16,13 @@ function el(html){ var t = document.createElement("template"); t.innerHTML = Str
 function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function findTopic(id){ var c = getCourse(); if (!c) return null; for (var i = 0; i < c.sections.length; i++){ if (!c.sections[i].topics) continue; for (var j = 0; j < c.sections[i].topics.length; j++){ if (c.sections[i].topics[j].id === id) return { section: c.sections[i], topic: c.sections[i].topics[j] }; } } return null; }
 function studentKey(s){ s = s || state.student; if (!s || !s.name) return null; return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()); }
+
+// Глобальный перехватчик ошибок загрузки картинок (скрывает битые иконки 404)
+window.addEventListener('error', function(e) {
+    if (e.target.tagName === 'IMG') {
+        e.target.style.display = 'none';
+    }
+}, true);
 
 window.showToast = function(msg, type) {
   var container = document.querySelector(".toast-container");
@@ -30,6 +38,7 @@ function loadStudentData(){
   state.progress = JSON.parse(localStorage.getItem("mdk0701.progress." + ek) || "{}");
   state.results = JSON.parse(localStorage.getItem("mdk0701.results." + ek) || "{}");
   state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
+  state.achievements = JSON.parse(localStorage.getItem("mdk0701.achievements." + ek) || "{}");
   state.xp = parseInt(localStorage.getItem("mdk0701.xp." + ek) || "0");
   state.shop = JSON.parse(localStorage.getItem("mdk0701.shop." + ek) || "[]");
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
@@ -39,6 +48,7 @@ function saveStudentData(){
   localStorage.setItem("mdk0701.progress." + ek, JSON.stringify(state.progress));
   localStorage.setItem("mdk0701.results." + ek, JSON.stringify(state.results));
   localStorage.setItem("mdk0701.selfResults." + ek, JSON.stringify(state.selfResults));
+  localStorage.setItem("mdk0701.achievements." + ek, JSON.stringify(state.achievements));
   localStorage.setItem("mdk0701.xp." + ek, state.xp);
   localStorage.setItem("mdk0701.shop." + ek, JSON.stringify(state.shop));
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
@@ -54,13 +64,26 @@ function saveStudentData(){
 window.uploadFile = function(event, code, title) {
   var file = event.target.files[0]; if (!file) return;
   if (file.size > 15 * 1024 * 1024) { alert("Файл больше 15 МБ!"); return; }
-  alert("Начинаем отправку файла " + file.name + "...");
   var reader = new FileReader();
   reader.onload = function(e) {
     var base64 = e.target.result.split(',')[1];
     var params = new URLSearchParams();
     params.append("action", "uploadwork"); params.append("key", studentKey()); params.append("name", state.student.name); params.append("group", state.student.group); params.append("workCode", code); params.append("workTitle", title); params.append("fileName", file.name); params.append("fileType", file.type); params.append("fileData", base64);
-    fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).then(r => r.json()).then(d => { if (d.ok) alert("✅ УСПЕХ! Работа загружена."); else alert("❌ ОШИБКА: " + (d.error||"")); }).catch(() => alert("❌ ОШИБКА СЕТИ."));
+    
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: params })
+      .then(r => r.json())
+      .then(d => { 
+        if (d.ok) {
+            alert("✅ УСПЕХ! Работа загружена."); 
+        } else {
+            // Улучшенная обработка ошибки Google Apps Script
+            if (d.error && d.error.includes("DriveApp")) {
+                alert("❌ ОШИБКА: У серверного скрипта (Google Apps Script) нет прав на запись в Google Drive.\n\nРешение: Откройте редактор Apps Script, запустите любую функцию, чтобы обновить разрешения (Authorization), или проверьте доступ к папке на Диске.");
+            } else {
+                alert("❌ ОШИБКА: " + (d.error||"Неизвестная ошибка сервера")); 
+            }
+        }
+    }).catch(() => alert("❌ ОШИБКА СЕТИ. Проверьте интернет."));
   };
   reader.readAsDataURL(file);
 };
@@ -165,6 +188,22 @@ function renderHome(){
   }
   renderHomeCard(); 
   flashBlock.querySelector("#nextHomeCard").addEventListener("click", ()=>{ hIndex=(hIndex+1)%flashCards.length; renderHomeCard(); });
+
+  // ОФОРМЛЕНИЕ ПРАКТИЧЕСКИХ РАБОТ (ВОЗВРАЩЕНО)
+  if (c.practiceFormatting) {
+    app.appendChild(el('<div class="steps-title">' + c.practiceFormatting.title + '</div>'));
+    var fmtBlock = el('<section class="module"><p style="color:var(--text-soft); margin-bottom:20px;">' + c.practiceFormatting.intro + '</p><div id="fmtBlocks"></div></section>');
+    var fmtContainer = fmtBlock.querySelector("#fmtBlocks");
+    c.practiceFormatting.blocks.forEach(function(b) {
+      var bEl = el('<div style="margin-bottom:24px; background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0; margin-bottom:12px; color:var(--accent);">' + b.title + '</h3><ul style="margin-top:0; padding-left:20px;"></ul></div>');
+      var ul = bEl.querySelector("ul");
+      b.items.forEach(function(item) {
+        ul.appendChild(el('<li style="margin-bottom:8px;">' + item + '</li>'));
+      });
+      fmtContainer.appendChild(bEl);
+    });
+    app.appendChild(fmtBlock);
+  }
 }
 
 function renderTopic(id, tab){
@@ -326,23 +365,28 @@ function route(){
   var hash = location.hash.replace(/^#/, "") || "/"; var parts = hash.split("/").filter(Boolean); var app = $("app"); if(!app) return;
   if (!state.student && !state.staff) { app.innerHTML = ""; return; }
   
-  if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2]);
-  else if (parts[0] === "simulator") renderSimulatorPage();
-  else if (parts[0] === "shop") renderShopPage();
-  else if (parts[0] === "portfolio") renderPortfolioPage();
-  else if (parts[0] === "profile") window.renderProfilePage && window.renderProfilePage();
-  else if (parts[0] === "dashboard") window.renderDashboard && window.renderDashboard();
-  else if (parts[0] === "journal") window.renderJournalPage && window.renderJournalPage();
-  else if (parts[0] === "rating") window.renderRatingPage && window.renderRatingPage();
-  else if (parts[0] === "schedule") window.renderSchedulePage && window.renderSchedulePage();
-  else if (parts[0] === "links") window.renderLinksPage && window.renderLinksPage();
-  else if (parts[0] === "gcode-reference") window.renderGCodeReferencePage && window.renderGCodeReferencePage();
-  else if (parts[0] === "final-exam") window.renderFinalExamPage && window.renderFinalExamPage();
-  else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
-  else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
-  else if (parts[0] === "chat") window.renderChatPage && window.renderChatPage();
-  else if (parts[0] === "comments") window.renderCommentsPage && window.renderCommentsPage();
-  else renderHome();
+  try {
+      if (parts[0] === "topic" && parts[1]) renderTopic(parts[1], parts[2]);
+      else if (parts[0] === "simulator") renderSimulatorPage();
+      else if (parts[0] === "shop") renderShopPage();
+      else if (parts[0] === "portfolio") renderPortfolioPage();
+      else if (parts[0] === "profile") window.renderProfilePage && window.renderProfilePage();
+      else if (parts[0] === "dashboard") window.renderDashboard && window.renderDashboard();
+      else if (parts[0] === "journal") window.renderJournalPage && window.renderJournalPage();
+      else if (parts[0] === "rating") window.renderRatingPage && window.renderRatingPage();
+      else if (parts[0] === "schedule") window.renderSchedulePage && window.renderSchedulePage();
+      else if (parts[0] === "links") window.renderLinksPage && window.renderLinksPage();
+      else if (parts[0] === "gcode-reference") window.renderGCodeReferencePage && window.renderGCodeReferencePage();
+      else if (parts[0] === "final-exam") window.renderFinalExamPage && window.renderFinalExamPage();
+      else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
+      else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
+      else if (parts[0] === "chat") window.renderChatPage && window.renderChatPage();
+      else if (parts[0] === "comments") window.renderCommentsPage && window.renderCommentsPage();
+      else renderHome();
+  } catch (err) {
+      console.error("Routing error:", err);
+      app.innerHTML = '<div class="module" style="text-align:center; padding:40px;"><h2>Ошибка загрузки страницы</h2><p class="sub" style="color:var(--err);">' + err.message + '</p><button class="btn" onclick="location.reload()">Обновить страницу</button></div>';
+  }
   window.scrollTo(0, 0);
 }
 
@@ -356,7 +400,6 @@ window.addEventListener("DOMContentLoaded", function() {
   if($("drawerClose")) $("drawerClose").addEventListener("click", closeDrawer);
   document.querySelectorAll("[data-go]").forEach(function(item) { item.addEventListener("click", function(e) { e.preventDefault(); location.hash = item.getAttribute("data-go"); closeDrawer(); }); });
   
-  // ПРИНУДИТЕЛЬНЫЙ ЗАПУСК ПОМОЩНИКА
   if (window.initAssistantButton) window.initAssistantButton();
 
   renderUserChip(); route();
