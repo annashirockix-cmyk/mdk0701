@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="style.css?v=67">
+<link rel="stylesheet" href="style.css?v=68">
 <script>
   (function(){ try { var t = localStorage.getItem("mdk0701.theme"); if (!t || t === "auto"){ var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; t = d ? "dark" : "light"; } document.documentElement.setAttribute("data-theme", t); } catch(e){} })();
 </script>
@@ -51,7 +51,9 @@
     <a class="drawer-item" data-go="#/portfolio">🎓 <span>Портфолио</span></a>
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
+    <!-- Вкладка Заявки (скрыта по умолчанию, показывается через renderUserChip) -->
     <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;">📥 <span>Заявки</span></a>
+    
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
     <a class="drawer-item" data-go="#/gcode-reference">📖 <span>Справочник G/M</span></a>
     <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
@@ -69,31 +71,20 @@
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v67.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v68.0</footer>
 
-<script>
-  window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-          if (window.state && window.state.staff) {
-              var el = document.getElementById('navRequests');
-              if (el) el.style.display = 'flex';
-          }
-      }, 200);
-  });
-</script>
-
-<script src="data.js?v=67"></script>
-<script src="data-extra.js?v=67"></script>
-<script src="info.js?v=67"></script>
-<script src="script.js?v=67"></script>
-<script src="extra.js?v=67"></script>
-<script src="final.js?v=67"></script>
-<script src="links.js?v=67"></script>
-<script src="rating.js?v=67"></script>
-<script src="schedule.js?v=67"></script>
-<script src="journal.js?v=67"></script>
-<script src="minigames.js?v=67"></script>
-<script src="assistant.js?v=67"></script>
-<script src="easter-eggs.js?v=67"></script>
+<script src="data.js?v=68"></script>
+<script src="data-extra.js?v=68"></script>
+<script src="info.js?v=68"></script>
+<script src="script.js?v=68"></script>
+<script src="extra.js?v=68"></script>
+<script src="final.js?v=68"></script>
+<script src="links.js?v=68"></script>
+<script src="rating.js?v=68"></script>
+<script src="schedule.js?v=68"></script>
+<script src="journal.js?v=68"></script>
+<script src="minigames.js?v=68"></script>
+<script src="assistant.js?v=68"></script>
+<script src="easter-eggs.js?v=68"></script>
 </body>
 </html>

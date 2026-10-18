@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v64.0 — REQUESTS & ROUTING)
+   МДК 07.01 — script.js (v68.0 — REQUESTS FIX)
    ============================================================ */
 "use strict";
 
@@ -73,7 +73,7 @@ function saveStudentData(){
   }
 }
 
-// ОТПРАВКА ЗАЯВКИ НА ПРАКТИКУ
+// ОТПРАВКА ЗАЯВКИ НА ПРАКТИКУ (Студент)
 window.markPracticalDone = function(topicId, code) {
     if (!state.practicalsDone[topicId]) state.practicalsDone[topicId] = {};
     state.practicalsDone[topicId][code] = "pending";
@@ -82,7 +82,7 @@ window.markPracticalDone = function(topicId, code) {
     window.showToast("Заявка на проверку отправлена преподавателю!", "ok");
 };
 
-// ЗАПРОС ПОПЫТКИ
+// ЗАПРОС ПОПЫТКИ (Студент)
 window.requestAttempt = function(topicId, type) {
     var reqKey = topicId + "_" + type;
     if (!state.requests) state.requests = {};
@@ -92,22 +92,30 @@ window.requestAttempt = function(topicId, type) {
     window.showToast("Запрос на доп. попытку отправлен!", "ok");
 };
 
-// ДЕЙСТВИЯ ПРЕПОДАВАТЕЛЯ (СИМУЛЯЦИЯ)
-window.approvePractical = function(studentKey, topicId, code, grade) {
+// ПОДТВЕРЖДЕНИЕ ПРАКТИКИ (Преподаватель)
+window.approvePractical = function(studentKeyStr, topicId, code, grade) {
     var p = new URLSearchParams();
-    p.append("action", "approvework"); p.append("key", studentKey); p.append("topicId", topicId); p.append("code", code); p.append("grade", grade);
+    p.append("action", "approvework"); p.append("key", studentKeyStr); p.append("topicId", topicId); p.append("code", code); p.append("grade", grade);
+    
+    // Визуально убираем заявку
+    var elToRemove = document.getElementById("req_" + topicId + "_" + code);
+    if (elToRemove) elToRemove.remove();
     window.showToast("Оценка " + grade + " выставлена!", "ok");
+
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(console.error);
-    // В реальности здесь нужно обновить UI
-    document.getElementById("req_" + topicId + "_" + code).remove();
 };
 
-window.approveAttempt = function(studentKey, reqKey) {
+// ВЫДАЧА ПОПЫТКИ (Преподаватель)
+window.approveAttempt = function(studentKeyStr, reqKey) {
     var p = new URLSearchParams();
-    p.append("action", "approveattempt"); p.append("key", studentKey); p.append("reqKey", reqKey);
+    p.append("action", "approveattempt"); p.append("key", studentKeyStr); p.append("reqKey", reqKey);
+    
+    // Визуально убираем заявку
+    var elToRemove = document.getElementById("req_" + reqKey);
+    if (elToRemove) elToRemove.remove();
     window.showToast("Попытка одобрена!", "ok");
+
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(console.error);
-    document.getElementById("req_" + reqKey).remove();
 };
 
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
@@ -145,8 +153,18 @@ window.handleLogout = function() {
 };
 
 function renderUserChip(){
-  if (state.staff) { $("userChipName").textContent = state.staff.name; $("userChipGroup").textContent = "Учитель"; $("userChipAvatar").textContent = "👨‍🏫"; } 
-  else if (state.student) { $("userChipName").textContent = state.student.name; $("userChipGroup").textContent = "Гр. " + state.student.group; $("userChipAvatar").textContent = "👨‍🎓"; }
+  if (state.staff) { 
+      $("userChipName").textContent = state.staff.name; 
+      $("userChipGroup").textContent = "Учитель"; 
+      $("userChipAvatar").textContent = "👨‍🏫"; 
+      var reqEl = document.getElementById("navRequests");
+      if (reqEl) reqEl.style.display = "flex";
+  } 
+  else if (state.student) { 
+      $("userChipName").textContent = state.student.name; 
+      $("userChipGroup").textContent = "Гр. " + state.student.group; 
+      $("userChipAvatar").textContent = "👨‍🎓"; 
+  }
 }
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); }
@@ -164,12 +182,11 @@ function renderHome(){
     app.appendChild(list);
   });
 
-  // БЛОК ИВЕНТА
   var eventBlock = el(`<div class="event-card" onclick="location.hash='#/event'">
       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
               <h2 style="margin:0 0 10px 0; font-size:24px; color:#ff003c; text-shadow: 0 0 10px rgba(255,0,60,0.5);">🚨 СМЕРТЕЛЬНАЯ ВЕЧЕРИНКА</h2>
-              <p style="margin:0; color:#aaa; font-size:14px;">Терминал ЧПУ вышел из-под контроля. Сыграй с ним в крестики-нолики, чтобы отключить протокол самоуничтожения.</p>
+              <p style="margin:0; color:#aaa; font-size:14px;">Пройди викторину, чтобы отключить протокол самоуничтожения.</p>
           </div>
           <div style="font-size:40px; animation: pulse 1s infinite;">💀</div>
       </div>
@@ -306,13 +323,6 @@ function renderTopic(id, tab){
           p.solution.forEach(function(s){ html += '<li style="margin-bottom:6px;">' + s + '</li>'; });
           html += '</ol></div>';
         }
-        if(p.variants && p.variants.rows) {
-          html += '<div style="margin-top:16px;"><b style="color:var(--accent);">Варианты:</b><div style="overflow-x:auto;margin-top:8px;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr>';
-          if(p.variants.header) p.variants.header.forEach(function(h){ html += '<th style="border:1px solid var(--border);padding:8px;background:var(--card);">' + h + '</th>'; });
-          html += '</tr></thead><tbody>';
-          p.variants.rows.forEach(function(r){ html += '<tr>'; r.forEach(function(c){ html += '<td style="border:1px solid var(--border);padding:8px;">' + c + '</td>'; }); html += '</tr>'; });
-          html += '</tbody></table></div></div>';
-        }
         
         html += '<div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">';
         if (status === "approved") {
@@ -321,11 +331,10 @@ function renderTopic(id, tab){
         } else if (status === "pending") {
             html += '<div style="color:#d97706; font-weight:bold;">⏳ На проверке у преподавателя.</div>';
         } else {
-            html += '<div style="color:var(--muted); font-size:13px; flex: 1 1 100%; margin-bottom:10px;">📌 Все практические работы сдаются одной сшитой папкой в конце изучения предмета.</div>';
+            html += '<div style="color:var(--muted); font-size:13px; flex: 1 1 100%; margin-bottom:10px;">📌 Все работы сдаются одной папкой.</div>';
             html += '<button class="btn" onclick="window.markPracticalDone(\'' + id + '\', \'' + p.code + '\')">✅ Сделал</button>';
         }
         html += '</div>';
-
         html += '</div>';
         panel.appendChild(el(html));
       });
@@ -455,7 +464,8 @@ function route(){
       else if (parts[0] === "final-exam") window.renderFinalExamPage && window.renderFinalExamPage();
       else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
       else if (parts[0] === "event") window.renderDeadlyPartyPage && window.renderDeadlyPartyPage();
-      else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage(); // старая игра
+      else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
+      else if (parts[0] === "sudoku") window.renderSudokuPage && window.renderSudokuPage();
       else if (parts[0] === "chat") window.renderChatPage && window.renderChatPage();
       else if (parts[0] === "comments") window.renderCommentsPage && window.renderCommentsPage();
       else renderHome();
