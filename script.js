@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v83.0 — FINAL)
+   МДК 07.01 — script.js (v84.0 — SERVER SYNC)
    ============================================================ */
 "use strict";
 
@@ -15,6 +15,7 @@ var state = {
 try { var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
 try { var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
 
+// --- УТИЛИТЫ ---
 function getCourse(){ try { return COURSE; } catch(e){} try { return window.COURSE; } catch(e){} return null; }
 function $(id){ return document.getElementById(id); }
 function el(html){ var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
@@ -35,6 +36,7 @@ window.showToast = function(msg, type) {
   setTimeout(function() { toast.classList.add("out"); setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300); }, 3000);
 };
 
+// --- УВЕДОМЛЕНИЯ ---
 window.addNotification = function(text, type = "info") {
     if (!state.notifications) state.notifications = [];
     state.notifications.unshift({ id: Date.now(), text: text, type: type, date: new Date().toISOString(), read: false });
@@ -55,6 +57,7 @@ function updateNotifBadge() {
     }
 }
 
+// --- ДОСТИЖЕНИЯ ---
 function checkAchievements() {
     var achList = [
         { id: "t1", xp: 10, title: "Новичок" },
@@ -73,8 +76,11 @@ function checkAchievements() {
     });
 }
 
+// --- ЗАГРУЗКА И СОХРАНЕНИЕ ДАННЫХ ---
 function loadStudentData(){
   var k = studentKey(); if (!k) return; var ek = encodeURIComponent(k);
+  
+  // 1. Загружаем из локальной памяти
   state.progress = JSON.parse(localStorage.getItem("mdk0701.progress." + ek) || "{}");
   state.results = JSON.parse(localStorage.getItem("mdk0701.results." + ek) || "{}");
   state.selfResults = JSON.parse(localStorage.getItem("mdk0701.selfResults." + ek) || "{}");
@@ -87,7 +93,6 @@ function loadStudentData(){
   state.sign = localStorage.getItem("mdk0701.sign." + ek) || null;
   state.notifications = JSON.parse(localStorage.getItem("mdk0701.notifications." + ek) || "[]");
   state.schedule = JSON.parse(localStorage.getItem("mdk0701.schedule") || "[]");
-  
   state.xp = parseInt(localStorage.getItem("mdk0701.xp." + ek) || "0");
   state.shop = JSON.parse(localStorage.getItem("mdk0701.shop." + ek) || "[]");
   state.loginStreak = parseInt(localStorage.getItem("mdk0701.loginStreak." + ek) || "0");
@@ -95,6 +100,40 @@ function loadStudentData(){
   
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
   updateNotifBadge();
+
+  // 2. Запрашиваем свежие данные с сервера (оценки, попытки)
+  if (APPS_SCRIPT_URL && state.student) {
+      fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k))
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok && d.payload) {
+                var serverData = JSON.parse(d.payload);
+                var changed = false;
+                
+                if (serverData.practicalGrades) { state.practicalGrades = serverData.practicalGrades; changed = true; }
+                if (serverData.allowedAttempts) { state.allowedAttempts = serverData.allowedAttempts; changed = true; }
+                if (serverData.requests) { state.requests = serverData.requests; changed = true; }
+                if (serverData.practicalsDone) { state.practicalsDone = serverData.practicalsDone; changed = true; }
+                if (serverData.xp !== undefined) { state.xp = serverData.xp; changed = true; }
+                
+                if (changed) {
+                    localStorage.setItem("mdk0701.practicalGrades." + ek, JSON.stringify(state.practicalGrades));
+                    localStorage.setItem("mdk0701.allowedAttempts." + ek, JSON.stringify(state.allowedAttempts));
+                    localStorage.setItem("mdk0701.requests." + ek, JSON.stringify(state.requests));
+                    localStorage.setItem("mdk0701.practicalsDone." + ek, JSON.stringify(state.practicalsDone));
+                    localStorage.setItem("mdk0701.xp." + ek, state.xp);
+                    
+                    if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
+                    
+                    // Перерисовываем текущую страницу, чтобы применить изменения
+                    if (location.hash.includes('/topic/')) {
+                        var parts = location.hash.replace(/^#\//, "").split("/");
+                        if(parts[0] === 'topic') renderTopic(parts[1], parts[2]);
+                    }
+                }
+            }
+        }).catch(e => console.warn("Ошибка синхронизации с сервером", e));
+  }
 }
 
 function saveStudentData(){
@@ -132,6 +171,7 @@ function saveStudentData(){
   }
 }
 
+// --- ЕЖЕДНЕВНЫЙ ВХОД ---
 function checkDailyLogin() {
     if (!state.student) return;
     var today = new Date().toDateString();
@@ -161,6 +201,7 @@ function checkDailyLogin() {
     }
 }
 
+// --- ДЕЙСТВИЯ (Студент) ---
 window.markPracticalDone = function(topicId, code) {
     if (!state.practicalsDone[topicId]) state.practicalsDone[topicId] = {};
     state.practicalsDone[topicId][code] = "pending";
@@ -178,6 +219,7 @@ window.requestAttempt = function(topicId, type) {
     addNotification("Вы запросили дополнительную попытку", "info");
 };
 
+// --- ДЕЙСТВИЯ (Преподаватель) ---
 window.approvePractical = function(studentKeyStr, topicId, code, grade) {
     var p = new URLSearchParams();
     p.append("action", "approvework"); 
@@ -234,6 +276,7 @@ window.grantXP = function(studentKeyStr, studentName, presetAmount) {
       .catch(() => window.showToast("Ошибка сети.", "err"));
 };
 
+// --- ТЕМЫ ---
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
@@ -255,6 +298,7 @@ function openThemeModal(){
   document.body.appendChild(modal);
 }
 
+// --- ВХОД/ВЫХОД ---
 window.doStudentLogin = function() {
   var n = $("loginName").value.trim(); var g = $("loginGroup").value.trim();
   if (!n || !g) { alert("Введите ФИО и Группу!"); return; }
@@ -298,6 +342,7 @@ function renderUserChip(){
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); }
 
+// --- РЕНДЕР ГЛАВНОЙ ---
 function renderHome(){
   var app = $("app"); app.innerHTML = ""; var c = getCourse();
   if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
@@ -380,6 +425,7 @@ function renderHome(){
   }
 }
 
+// --- РЕНДЕР СПРАВОЧНИКА ---
 window.renderGCodeReferencePage = function() {
   var app = $("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Справочник G/M";
@@ -413,6 +459,7 @@ window.renderGCodeReferencePage = function() {
   }
 };
 
+// --- РЕНДЕР ТЕМЫ ---
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = "";
@@ -537,6 +584,10 @@ function renderTopic(id, tab){
         });
         var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); 
         state.results[id] = { grade: grade }; 
+        // Уменьшаем количество попыток
+        if (state.allowedAttempts && state.allowedAttempts[reqKey]) {
+            state.allowedAttempts[reqKey] = 1; 
+        }
         saveStudentData();
         window.showToast("Тест сдан!", "ok"); 
         renderTopic(id, "test");
@@ -545,6 +596,7 @@ function renderTopic(id, tab){
   }
 }
 
+// --- ОСТАЛЬНЫЕ СТРАНИЦЫ ---
 function renderSimulatorPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   var block = el('<section class="module"><h2>🖥️ Симулятор</h2><textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0\nG01 X50 Y50\nG01 X100 Y50\nG01 X100 Y0\nG01 X0 Y0</textarea><button class="btn" id="runCodeBtn" style="width:100%;margin-bottom:10px;">▶ Выполнить</button><div style="background:var(--card-soft);border:1px solid var(--border);border-radius:8px;overflow:hidden;"><canvas id="simCanvas" width="600" height="400" style="width:100%;height:auto;background:#fff;"></canvas></div></section>');
@@ -610,6 +662,7 @@ function renderPortfolioPage(){
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
+// --- РОУТИНГ ---
 function route(){
   closeDrawer();
   var hash = location.hash.replace(/^#/, "") || "/"; var parts = hash.split("/").filter(Boolean); var app = $("app"); if(!app) return;
