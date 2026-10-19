@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<link rel="stylesheet" href="style.css?v=191">
+<link rel="stylesheet" href="style.css?v=192">
 
 <script>
   (function(){
@@ -19,7 +19,7 @@
 </head>
 <body>
 
-<!-- ОКНО ВХОДА (С формой для преподавателя) -->
+<!-- ОКНО ВХОДА -->
 <div class="login-overlay" id="loginOverlay" hidden>
   <div class="login-card">
     <div style="text-align: center; margin-bottom: 25px;">
@@ -88,6 +88,12 @@
     <a class="drawer-item" data-go="#/safety">🦺 Охрана труда</a>
     <a class="drawer-item" data-go="#/formatting">📝 Оформление</a>
 
+    <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold;">🎮 Игровой сектор</div>
+    <a class="drawer-item" data-go="#/arcade">🕹️ Игровая комната</a>
+    <a class="drawer-item" data-go="#/gcode-test">🛠️ Тест G-кода</a>
+    <a class="drawer-item" data-go="#/rating">🏆 Доска почета</a>
+    <a class="drawer-item" data-go="#/journal">📔 Журнал</a>
+
     <div style="padding: 15px 20px 5px; font-size: 10px; color: #ffd700; text-transform: uppercase; font-weight: bold;">VIP Сектор</div>
     <a class="drawer-item" data-go="#/subscription" style="color: #ffd700; font-weight: bold;">👑 VIP Подписка</a>
     <a class="drawer-item" data-go="#/vip-cheats" id="navVipCheats" style="display:none; color:var(--err);">🕵️ Чит-лист</a>
@@ -105,16 +111,12 @@
     <button class="btn ghost" onclick="history.forward()" style="flex:1; margin:0 5px;">Вперед →</button>
 </div>
 
-<!-- СКРИПТЫ (Строгий порядок) -->
-<script src="data.js?v=191"></script>
-<script src="logic.js?v=191"></script>
-<script src="ui.js?v=191"></script>
-<script src="api.js?v=191"></script>
-<!-- Дополнительные модули (если они есть, они не сломают портал) -->
-<script src="journal.js?v=191"></script>
-<script src="rating.js?v=191"></script>
-<script src="minigames.js?v=191"></script>
-<script src="final.js?v=191"></script>
+<!-- СКРИПТЫ -->
+<script src="data.js?v=192"></script>
+<script src="logic.js?v=192"></script>
+<!-- ui.js теперь содержит ВСЕ страницы и игры -->
+<script src="ui.js?v=192"></script>
+<script src="api.js?v=192"></script>
 
 <script>
   if ("serviceWorker" in navigator) {

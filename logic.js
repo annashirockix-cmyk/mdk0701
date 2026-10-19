@@ -1,24 +1,38 @@
 /* ============================================================
-   logic.js — Логика приложения
+   logic.js — Логика приложения (v192.0)
    ============================================================ */
 "use strict";
 
 window.state = { 
-  activeCourseId: localStorage.getItem("mdk.active") || "07.01",
+  activeCourseId: "07.01",
   student: null, staff: null, results: {}, xp: 0, 
   shop: [], isPremium: false, premiumUntil: null, avatar: null
 };
 
-// Инициализация текущего курса
-window.COURSE = window.MDK_DATA[state.activeCourseId];
+// Безопасная загрузка курса
+try {
+    var savedCourse = localStorage.getItem("mdk.active");
+    if (savedCourse && window.MDK_DATA && window.MDK_DATA[savedCourse]) {
+        window.state.activeCourseId = savedCourse;
+    }
+} catch (e) { console.warn("LocalStorage blocked"); }
+
+window.COURSE = window.MDK_DATA[window.state.activeCourseId];
 
 window.switchCourse = function(id) {
-    localStorage.setItem("mdk.active", id);
+    try { localStorage.setItem("mdk.active", id); } catch(e){}
     location.reload();
 };
 
-try { var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); if (_s && _s.name) state.student = _s; } catch (e){}
-try { var _st = JSON.parse(sessionStorage.getItem("mdk.staff") || "null"); if (_st && _st.role) state.staff = _st; } catch (e){}
+// Безопасная загрузка юзера
+try { 
+    var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); 
+    if (_s && _s.name) window.state.student = _s; 
+} catch (e){}
+try { 
+    var _st = JSON.parse(sessionStorage.getItem("mdk.staff") || "null"); 
+    if (_st && _st.role) window.state.staff = _st; 
+} catch (e){}
 
 window.getLevel = function(xp) { return !xp || xp <= 0 ? 1 : Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100); };
 window.getLevelTitle = function(level) { return level >= 10 ? "Мастер" : "Новичок"; };
@@ -61,17 +75,16 @@ window.doStudentLogin = function() {
   var n = document.getElementById("loginName").value.trim(), g = document.getElementById("loginGroup").value.trim();
   if (!n || !g) return window.showToast("Введите ФИО и Группу!", "err");
   state.student = { name: n, group: g.toUpperCase() };
-  localStorage.setItem("mdk.student", JSON.stringify(state.student));
+  try { localStorage.setItem("mdk.student", JSON.stringify(state.student)); } catch(e){}
   document.getElementById("loginOverlay").hidden = true;
   window.renderUserChip(); window.loadStudentData(); window.route();
 };
 
 window.doTeacherLogin = function() {
   var u = document.getElementById("loginStaffName").value.trim(), p = document.getElementById("loginStaffPass").value.trim();
-  // Заглушка для входа преподавателя
   if(u === "admin" && p === "admin") {
       state.staff = { role: "admin", name: "Преподаватель" };
-      sessionStorage.setItem("mdk.staff", JSON.stringify(state.staff));
+      try { sessionStorage.setItem("mdk.staff", JSON.stringify(state.staff)); } catch(e){}
       document.getElementById("loginOverlay").hidden = true;
       window.renderUserChip(); window.route();
   } else {
@@ -82,7 +95,7 @@ window.doTeacherLogin = function() {
 window.handleLogout = function() {
   if (confirm("Выйти?")) {
     state.student = null; state.staff = null;
-    localStorage.removeItem("mdk.student"); sessionStorage.removeItem("mdk.staff");
+    try { localStorage.removeItem("mdk.student"); sessionStorage.removeItem("mdk.staff"); } catch(e){}
     document.getElementById("loginOverlay").hidden = false;
     window.closeDrawer(); window.route();
   }
