@@ -1,13 +1,9 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v111.0 — STABLE)
-   Убрал дубль renderSchedulePage (конфликтовал с script.js)
-   Добавил недостающие страницы: profile, dashboard, requests,
-   notifications, certificate, event
+   МДК 07.01 — extra.js (v115.0 — LEVELS & PROFILE UI)
    ============================================================ */
 "use strict";
 
 /* ---------------- ЧАТ ---------------- */
-
 window.renderChatPage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Чат группы";
@@ -52,18 +48,13 @@ window.renderChatPage = function(){
     var t = document.getElementById("chatInput").value.trim(); if (!t) return;
     document.getElementById("chatInput").value = "";
     var p = new URLSearchParams();
-    p.append("action", "chatsave");
-    p.append("group", state.student.group);
-    p.append("key", studentKey());
-    p.append("name", state.student.name);
-    p.append("avatar", "👨‍🎓");
-    p.append("text", t);
+    p.append("action", "chatsave"); p.append("group", state.student.group); p.append("key", studentKey());
+    p.append("name", state.student.name); p.append("avatar", "👨‍🎓"); p.append("text", t);
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(loadChat).catch(function(){ alert("Ошибка сети"); });
   };
 };
 
 /* ---------------- ОТЗЫВЫ ---------------- */
-
 window.renderCommentsPage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Отзывы";
@@ -109,8 +100,7 @@ window.renderCommentsPage = function(){
   };
 };
 
-/* ---------------- ЛИЧНЫЙ КАБИНЕТ ---------------- */
-
+/* ---------------- ЛИЧНЫЙ КАБИНЕТ (С УРОВНЯМИ) ---------------- */
 window.renderProfilePage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Профиль";
@@ -121,65 +111,81 @@ window.renderProfilePage = function(){
     return;
   }
 
-  var avatar;
-  if (state.avatar) {
-    avatar = '<img src="' + state.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
-  } else if (state.staff) {
-    avatar = "👨‍🏫";
-  } else if (state.shop.includes("golden")) {
-    avatar = "👑";
-  } else {
-    avatar = "👨‍🎓";
-  }
-
+  var level = getLevel(state.xp);
+  var currentXp = state.xp;
+  var nextLevelXp = getXpForNextLevel(level);
+  var prevLevelXp = getXpForNextLevel(level - 1);
+  var progress = Math.min(100, Math.max(0, ((currentXp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100));
+  
+  var avatar = state.avatar 
+    ? '<img src="' + state.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' 
+    : (state.staff ? "👨‍🏫" : (state.shop.includes("golden") ? "👑" : "👨‍🎓"));
+  
   var name = state.staff ? state.staff.name : (state.nick || (state.student && state.student.name) || "Гость");
   var role = state.staff ? "Роль: " + state.staff.role : ("Студент · Гр. " + (state.student ? state.student.group : "—"));
 
+  // Шапка профиля
   app.appendChild(el('<section class="hero" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
-    '<div style="width:90px;height:90px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;flex-shrink:0;">' + avatar + '</div>' +
+    '<div style="width:90px;height:90px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">' + avatar + '</div>' +
     '<div style="flex:1;min-width:200px;">' +
-      '<h1 style="margin:0 0 6px 0;font-size:24px;">' + escapeHtml(name) + '</h1>' +
+      '<h1 style="margin:0 0 6px 0;font-size:24px;">' + escapeHtml(name) + ' <span style="font-size:16px;background:var(--gold);color:#000;padding:2px 8px;border-radius:8px;">Lv. ' + level + '</span></h1>' +
       '<div style="color:var(--muted);">' + escapeHtml(role) + '</div>' +
       (state.sign ? '<div style="margin-top:8px;font-style:italic;color:var(--text-soft);">' + escapeHtml(state.sign) + '</div>' : '') +
     '</div>' +
   '</section>'));
 
   if (state.student) {
-    app.appendChild(el('<section class="module"><h2>📊 Статистика</h2>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;">' +
-        '<div style="background:var(--card-soft);padding:16px;border-radius:12px;text-align:center;">' +
-          '<div style="font-size:26px;">🌟</div>' +
-          '<div style="font-weight:bold;font-size:22px;color:var(--accent);">' + state.xp + '</div>' +
-          '<div style="font-size:12px;color:var(--muted);">XP</div>' +
+    // Прогресс-бар уровня
+    var lvlBlock = el('<section class="module"><h2>📈 Уровень ' + level + '</h2>' +
+      '<div style="margin:16px 0;">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">' +
+          '<span>' + currentXp + ' XP</span><span>' + (level >= 100 ? 'Максимум' : nextLevelXp + ' XP') + '</span>' +
         '</div>' +
-        '<div style="background:var(--card-soft);padding:16px;border-radius:12px;text-align:center;">' +
-          '<div style="font-size:26px;">🏆</div>' +
-          '<div style="font-weight:bold;font-size:22px;">' + Object.keys(state.achievements || {}).length + '</div>' +
-          '<div style="font-size:12px;color:var(--muted);">Достижений</div>' +
+        '<div style="height:16px;background:var(--card-soft);border-radius:8px;overflow:hidden;border:1px solid var(--border);">' +
+          '<div style="height:100%;background:linear-gradient(90deg, var(--accent), var(--gold));width:' + progress + '%;transition:width 0.5s;"></div>' +
         '</div>' +
-        '<div style="background:var(--card-soft);padding:16px;border-radius:12px;text-align:center;">' +
-          '<div style="font-size:26px;">📝</div>' +
-          '<div style="font-weight:bold;font-size:22px;">' + (Object.keys(state.results || {}).length + Object.keys(state.selfResults || {}).length) + '</div>' +
-          '<div style="font-size:12px;color:var(--muted);">Работ сдано</div>' +
-        '</div>' +
-        '<div style="background:var(--card-soft);padding:16px;border-radius:12px;text-align:center;">' +
-          '<div style="font-size:26px;">🔥</div>' +
-          '<div style="font-weight:bold;font-size:22px;">' + (state.loginStreak || 0) + '</div>' +
-          '<div style="font-size:12px;color:var(--muted);">Дней подряд</div>' +
-        '</div>' +
-      '</div></section>'));
-  }
+      '</div>' +
+      '<p class="sub" style="font-size:13px;">До следующего уровня осталось: <b>' + (nextLevelXp - currentXp) + ' XP</b></p>' +
+    '</section>');
+    app.appendChild(lvlBlock);
 
-  if (state.student && state.achievements && Object.keys(state.achievements).length) {
-    var achMap = {
-      t1: "🥚 Новичок", t2: "🎓 Студент", t3: "📚 Книжный червь",
-      t4: "💡 Умник", t5: "🧠 Знаток", t6: "⭐ Мастер",
-      t_theme: "🎨 Модник", t_avatar: "🖼️ Свой стиль", t_ttt: "❌ Победитель ИИ"
-    };
-    var achBlock = el('<section class="module"><h2>🏅 Достижения</h2><div id="achList"></div></section>');
-    var achList = achBlock.querySelector("#achList");
-    Object.keys(state.achievements).forEach(function(id){
-      achList.appendChild(el('<div style="display:inline-block;margin:4px;padding:8px 14px;background:var(--accent-soft);color:var(--accent);border-radius:8px;font-weight:bold;">' + (achMap[id] || id) + '</div>'));
+    // Бонусы уровня
+    var bonuses = getLevelBonuses(level);
+    var bonusBlock = el('<section class="module"><h2>🎁 Ваши бонусы</h2><div style="display:grid;grid-template-columns:1fr;gap:10px;" id="bonusList"></div></section>');
+    var bWrap = bonusBlock.querySelector("#bonusList");
+    if (bonuses.length === 0) {
+        bWrap.appendChild(el('<div style="color:var(--muted);">Пока нет бонусов. Достигните 5 уровня!</div>'));
+    } else {
+        bonuses.forEach(function(b) {
+            bWrap.appendChild(el('<div style="background:var(--card-soft); padding:12px; border-radius:8px; border:1px solid var(--border);"><b>Ур. ' + b.lvl + ':</b> ' + b.name + '</div>'));
+        });
+    }
+    app.appendChild(bonusBlock);
+
+    // Достижения
+    var achList = getAchievementsList();
+    var unlocked = achList.filter(function(a){ return state.achievements[a.id]; });
+    var locked = achList.filter(function(a){ return !state.achievements[a.id]; });
+    locked.sort(function(a, b){ return (a.xp || 0) - (b.xp || 0); });
+
+    var achBlock = el('<section class="module"><h2>🏅 Достижения (' + unlocked.length + ' / ' + achList.length + ')</h2>' +
+      '<div id="achList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px; max-height:400px; overflow-y:auto; padding-right:10px;"></div>' +
+    '</section>');
+    var achWrap = achBlock.querySelector("#achList");
+    
+    unlocked.forEach(function(a) {
+        achWrap.appendChild(el('<div style="background:var(--accent-soft); padding:10px; border-radius:8px; text-align:center; border:1px solid var(--accent);">' +
+            '<div style="font-size:24px;">' + a.icon + '</div>' +
+            '<div style="font-weight:bold; font-size:12px; margin-top:4px; color:var(--accent);">' + escapeHtml(a.title) + '</div>' +
+            '<div style="font-size:10px; color:var(--text-soft); margin-top:2px;">' + escapeHtml(a.desc) + '</div>' +
+        '</div>'));
+    });
+    locked.slice(0, 20).forEach(function(a) {
+        achWrap.appendChild(el('<div style="background:var(--card-soft); padding:10px; border-radius:8px; text-align:center; border:1px solid var(--border); opacity:0.6;">' +
+            '<div style="font-size:24px; filter:grayscale(100%);">' + a.icon + '</div>' +
+            '<div style="font-weight:bold; font-size:12px; margin-top:4px;">' + escapeHtml(a.title) + '</div>' +
+            '<div style="font-size:10px; color:var(--text-soft); margin-top:2px;">' + escapeHtml(a.desc) + '</div>' +
+        '</div>'));
     });
     app.appendChild(achBlock);
   }
@@ -188,19 +194,12 @@ window.renderProfilePage = function(){
     (state.student ? (
       '<button class="btn" onclick="location.hash=\'#/portfolio\'">🎓 Портфолио</button>' +
       '<button class="btn ghost" onclick="location.hash=\'#/certificate\'">📜 Сертификат</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/shop\'">🛒 Магазин</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/dashboard\'">📊 Статистика</button>'
-    ) : '') +
-    (state.staff ? (
-      '<button class="btn" onclick="location.hash=\'#/journal\'">📔 Журнал</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/requests\'">📥 Заявки</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/schedule\'">📅 Расписание</button>'
+      '<button class="btn ghost" onclick="location.hash=\'#/shop\'">🛒 Магазин</button>'
     ) : '') +
   '</div></section>'));
 };
 
-/* ---------------- ДАШБОРД (ГРАФИКИ) ---------------- */
-
+/* ---------------- ДАШБОРД ---------------- */
 window.renderDashboard = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Статистика";
@@ -278,8 +277,7 @@ window.renderDashboard = function(){
   }
 };
 
-/* ---------------- ЗАЯВКИ (ДЛЯ УЧИТЕЛЯ) ---------------- */
-
+/* ---------------- ЗАЯВКИ ---------------- */
 window.renderRequestsPage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Заявки";
@@ -312,12 +310,7 @@ window.renderRequestsPage = function(){
           Object.keys(p.practicalsDone).forEach(function(tid){
             Object.keys(p.practicalsDone[tid]).forEach(function(code){
               if (p.practicalsDone[tid][code] === "pending") {
-                items.push({
-                  kind: "practical",
-                  topicId: tid,
-                  code: code,
-                  label: "Практика " + code + " · " + (findTopic(tid) ? findTopic(tid).topic.title : tid)
-                });
+                items.push({ kind: "practical", topicId: tid, code: code, label: "Практика " + code + " · " + (findTopic(tid) ? findTopic(tid).topic.title : tid) });
               }
             });
           });
@@ -352,21 +345,17 @@ window.renderRequestsPage = function(){
           } else if (it.kind === "attempt") {
             var b = el('<button class="btn" style="padding:6px 12px;font-size:13px;">✅ Одобрить</button>');
             b.onclick = function(){ window.approveAttempt(sKey, it.reqKey); };
-            actionsWrap.appendChild(b);
+            actionsWrapper.appendChild(b);
           }
           block.appendChild(row);
         });
-
         wrap.appendChild(block);
       });
-
       if (!hasAny) wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);">Заявок нет 🎉</div>';
-    })
-    .catch(function(){ wrap.innerHTML = "Ошибка загрузки."; });
+    }).catch(function(){ wrap.innerHTML = "Ошибка загрузки."; });
 };
 
 /* ---------------- УВЕДОМЛЕНИЯ ---------------- */
-
 window.renderNotificationsPage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Уведомления";
@@ -391,14 +380,12 @@ window.renderNotificationsPage = function(){
   });
   app.appendChild(block);
 
-  // Помечаем прочитанными
   list.forEach(function(n){ n.read = true; });
   if (typeof updateNotifBadge === "function") updateNotifBadge();
   if (typeof saveStudentData === "function") saveStudentData();
 };
 
 /* ---------------- СЕРТИФИКАТ ---------------- */
-
 window.renderCertificatePage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Сертификат";
@@ -420,7 +407,8 @@ window.renderCertificatePage = function(){
     });
   }
   var pct = totalTopics > 0 ? Math.round(doneTopics / totalTopics * 100) : 0;
-  var eligible = pct >= 70 && state.xp >= 500;
+  var lvl = getLevel(state.xp);
+  var eligible = pct >= 70 && lvl >= 10;
 
   app.appendChild(el('<div style="max-width:800px;margin:0 auto;">' +
     '<div style="background:linear-gradient(135deg,var(--card),var(--card-soft));border:3px solid var(--accent);border-radius:20px;padding:50px 40px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.2);">' +
@@ -434,12 +422,10 @@ window.renderCertificatePage = function(){
       '<p style="font-weight:bold;margin:0 0 24px 0;">МДК 07.01 — Технология обработки деталей на станках с программным управлением</p>' +
       '<div style="display:flex;justify-content:space-around;margin:32px 0;flex-wrap:wrap;gap:20px;">' +
         '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Прогресс</div><div style="font-size:22px;font-weight:bold;color:var(--accent);">' + pct + '%</div></div>' +
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Опыт</div><div style="font-size:22px;font-weight:bold;color:var(--gold);">' + state.xp + ' XP</div></div>' +
+        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Уровень</div><div style="font-size:22px;font-weight:bold;color:var(--gold);">' + lvl + '</div></div>' +
         '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Дата</div><div style="font-size:16px;font-weight:bold;">' + new Date().toLocaleDateString() + '</div></div>' +
       '</div>' +
-      (eligible
-        ? '<p style="color:var(--ok);font-weight:bold;">✅ Требования выполнены</p>'
-        : '<p style="color:var(--muted);font-size:13px;">⚠️ Для сертификата нужно: ≥ 70% тем и ≥ 500 XP</p>') +
+      (eligible ? '<p style="color:var(--ok);font-weight:bold;">✅ Требования выполнены</p>' : '<p style="color:var(--muted);font-size:13px;">⚠️ Для сертификата нужно: ≥ 70% тем и 10 Уровень</p>') +
     '</div>' +
     '<div style="text-align:center;margin-top:20px;">' +
       '<button class="btn" onclick="window.print()" ' + (eligible ? '' : 'disabled') + '>🖨 Распечатать</button>' +
@@ -447,8 +433,7 @@ window.renderCertificatePage = function(){
   '</div>'));
 };
 
-/* ---------------- СОБЫТИЕ (СМЕРТЕЛЬНАЯ ВЕЧЕРИНКА) ---------------- */
-
+/* ---------------- СОБЫТИЕ ---------------- */
 window.renderDeadlyPartyPage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Смертельная вечеринка";
@@ -490,9 +475,7 @@ window.renderDeadlyPartyPage = function(){
               '<p>Вы прошли все ' + questions.length + ' вопросов.</p>' +
               '<button class="btn" onclick="if(window.addXP) window.addXP(100);location.hash=\'#/\'">+100 XP и на главную</button>' +
             '</section>'));
-          } else {
-            renderQ();
-          }
+          } else renderQ();
         } else {
           lives--;
           if (window.showToast) window.showToast("❌ Неверно! Осталось жизней: " + lives, "err");

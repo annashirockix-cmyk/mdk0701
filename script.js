@@ -1,6 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v110.0 — FULL REWRITE)
-   Добавлено: customBg, отрицательный XP, рабочий рендер расписания
+   МДК 07.01 — script.js (v115.0 — LEVELS & PERKS)
    ============================================================ */
 "use strict";
 
@@ -24,6 +23,36 @@ try {
   var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); 
   if (_st && _st.role) state.staff = _st; 
 } catch (e){}
+
+/* ---------------- УРОВНИ И ПЛЮШКИ ---------------- */
+
+function getLevel(xp) { 
+    if (!xp || xp <= 0) return 1;
+    return Math.floor(Math.sqrt(xp / 100)) + 1; 
+}
+
+function getXpForNextLevel(level) { 
+    return Math.pow(level, 2) * 100; 
+}
+
+function getLevelBonuses(level) {
+    var bonuses = [];
+    if (level >= 5)   bonuses.push({ lvl: 5, name: "+5% к получаемому XP" });
+    if (level >= 10)  bonuses.push({ lvl: 10, name: "+10% XP, Скидка 5% в магазине" });
+    if (level >= 20)  bonuses.push({ lvl: 20, name: "+20% XP, Скидка 10%" });
+    if (level >= 30)  bonuses.push({ lvl: 30, name: "+30% XP, Скидка 15%" });
+    if (level >= 40)  bonuses.push({ lvl: 40, name: "+40% XP, Скидка 20%" });
+    if (level >= 50)  bonuses.push({ lvl: 50, name: "+50% XP, Скидка 25%" });
+    if (level >= 100) bonuses.push({ lvl: 100, name: "Максимальный уровень! Скидка 50%, +100% XP" });
+    return bonuses;
+}
+
+function updateXpDisplay() {
+    if ($("xpCount")) {
+        var lvl = getLevel(state.xp);
+        $("xpCount").textContent = "🌟 " + state.xp + " XP · Ур. " + lvl;
+    }
+}
 
 /* ---------------- УТИЛИТЫ ---------------- */
 
@@ -52,7 +81,7 @@ window.showToast = function(msg, type) {
 window.addNotification = function(text, type) {
     type = type || "info";
     if (!state.notifications) state.notifications = [];
-    state.notifications.unshift({ id: Date.now(), text: text, type: type, date: new Date().toISOString(), read: false });
+    state.notifications.unshift({ id: Date.now() + Math.random(), text: text, type: type, date: new Date().toISOString(), read: false });
     if (state.notifications.length > 50) state.notifications.pop();
     updateNotifBadge();
 };
@@ -60,7 +89,7 @@ window.addNotification = function(text, type) {
 function updateNotifBadge() {
     var badge = $("notifBadge");
     if (!badge) return;
-    var unread = (state.notifications || []).filter(n => !n.read).length;
+    var unread = (state.notifications || []).filter(function(n){ return !n.read; }).length;
     if (unread > 0) { badge.textContent = unread; badge.style.display = "inline-block"; }
     else { badge.style.display = "none"; }
 }
@@ -68,28 +97,69 @@ function updateNotifBadge() {
 /* ---------------- XP ---------------- */
 
 window.addXP = function(amount) {
-    state.xp += amount;
+    var level = getLevel(state.xp);
+    var multiplier = 1 + Math.floor(level / 10) * 0.1;
+    var finalAmount = Math.round(amount * multiplier);
+    
+    state.xp += finalAmount;
     checkAchievements();
     if (window.saveStudentData) saveStudentData();
-    if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
-    window.showToast("+" + amount + " XP", "ok");
+    updateXpDisplay();
+    
+    var lvlMsg = multiplier > 1 ? " (x" + multiplier.toFixed(1) + ")" : "";
+    window.showToast("+" + finalAmount + " XP" + lvlMsg, "ok");
 };
 
+/* ---------------- ДОСТИЖЕНИЯ (500+) ---------------- */
+
+function getAchievementsList() {
+    var list = [];
+    for (var i = 1; i <= 500; i++) {
+        var xpReq = i * 100;
+        var rank = "Новичок";
+        if (i > 450) rank = "Легенда";
+        else if (i > 350) rank = "Гуру";
+        else if (i > 250) rank = "Эксперт";
+        else if (i > 150) rank = "Мастер";
+        else if (i > 80) rank = "Профессионал";
+        else if (i > 40) rank = "Специалист";
+        else if (i > 15) rank = "Стажер";
+        else if (i > 5) rank = "Ученик";
+        
+        var icon = "🌟";
+        if (i % 100 === 0) icon = "🏆";
+        else if (i % 50 === 0) icon = "👑";
+        else if (i % 10 === 0) icon = "⭐";
+        
+        list.push({
+            id: "xp_" + i,
+            xp: xpReq,
+            title: rank + " " + i,
+            icon: icon,
+            desc: "Набрать " + xpReq + " XP"
+        });
+    }
+    // Спец. достижения
+    list.push({ id: "t_theme", title: "Модник", icon: "🎨", desc: "Купить и применить тему", xp: 0 });
+    list.push({ id: "t_avatar", title: "Свой стиль", icon: "🖼️", desc: "Установить свой аватар", xp: 0 });
+    list.push({ id: "t_ttt", title: "Победитель ИИ", icon: "❌", desc: "Победить в крестики-нолики 4×4", xp: 0 });
+    list.push({ id: "t_sudoku", title: "Логик", icon: "🔢", desc: "Решить судоку", xp: 0 });
+    list.push({ id: "t_minesweeper", title: "Сапёр", icon: "💣", desc: "Пройти сапёра", xp: 0 });
+    list.push({ id: "t_final_exam", title: "Выпускник", icon: "🎓", desc: "Сдать итоговый экзамен", xp: 0 });
+    list.push({ id: "t_nick", title: "Инкогнито", icon: "🏷️", desc: "Установить ник", xp: 0 });
+    list.push({ id: "t_sign", title: "Философ", icon: "✍️", desc: "Добавить подпись в профиль", xp: 0 });
+    
+    return list;
+}
+
 function checkAchievements() {
-    var achList = [
-        { id: "t1", xp: 50, title: "Новичок" },
-        { id: "t2", xp: 200, title: "Студент" },
-        { id: "t3", xp: 500, title: "Книжный червь" },
-        { id: "t4", xp: 1000, title: "Умник" },
-        { id: "t5", xp: 2500, title: "Знаток" },
-        { id: "t6", xp: 5000, title: "Мастер" }
-    ];
+    var achList = getAchievementsList();
     var hasNew = false;
-    achList.forEach(a => {
-        if (state.xp >= a.xp && !state.achievements[a.id]) {
+    achList.forEach(function(a) {
+        if (a.xp > 0 && state.xp >= a.xp && !state.achievements[a.id]) {
             state.achievements[a.id] = true;
             if (!state.notifications) state.notifications = [];
-            state.notifications.unshift({ id: Date.now(), text: "Получено достижение: " + a.title, type: "ok", date: new Date().toISOString(), read: false });
+            state.notifications.unshift({ id: Date.now() + Math.random(), text: "Получено достижение: " + a.title, type: "ok", date: new Date().toISOString(), read: false });
             hasNew = true;
         }
     });
@@ -101,8 +171,10 @@ window.unlockAchievement = function(id) {
     if (!state.achievements[id]) {
         state.achievements[id] = true;
         if (window.saveStudentData) saveStudentData();
-        window.showToast("🏆 Новое достижение!", "ok");
-        addNotification("Получено достижение: " + id, "ok");
+        var a = getAchievementsList().find(function(x){ return x.id === id; });
+        var title = a ? a.title : id;
+        window.showToast("🏆 Достижение: " + title, "ok");
+        addNotification("Получено достижение: " + title, "ok");
     }
 };
 
@@ -133,10 +205,9 @@ function loadStudentData(){
     state.customBg = localStorage.getItem("mdk0701.customBg." + ek) || null;
   } catch (e) { console.warn("LocalStorage error", e); }
   
-  if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
+  updateXpDisplay();
   updateNotifBadge();
 
-  // Синхронизация с сервером
   if (APPS_SCRIPT_URL && state.student) {
       fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now())
         .then(function(r){ return r.json(); })
@@ -169,13 +240,8 @@ function loadStudentData(){
                         else localStorage.removeItem("mdk0701.customBg." + ek);
                     } catch (e) {}
                     
-                    if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
+                    updateXpDisplay();
                     renderUserChip();
-                    
-                    if (location.hash.includes('/topic/')) {
-                        var parts = location.hash.replace(/^#\//, "").split("/");
-                        if (parts[0] === 'topic') renderTopic(parts[1], parts[2]);
-                    }
                 }
             }
         }).catch(function(e){ console.warn("Sync error", e); });
@@ -208,7 +274,7 @@ function saveStudentData(){
     localStorage.setItem("mdk0701.schedule", JSON.stringify(state.schedule));
   } catch (e) { console.warn("LocalStorage save error", e); }
   
-  if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
+  updateXpDisplay();
   checkAchievements();
 
   if (APPS_SCRIPT_URL && state.student) {
@@ -251,8 +317,7 @@ function checkDailyLogin() {
             state.loginStreak = 1;
         }
         state.lastLoginDate = today;
-        state.xp += xpGained;
-        saveStudentData();
+        window.addXP(xpGained);
         setTimeout(function() { window.showToast("Ежедневный вход: +" + xpGained + " XP" + streakMsg, "ok"); }, 1000);
     }
 }
@@ -282,11 +347,8 @@ window.requestAttempt = function(topicId, type) {
 
 window.approvePractical = function(studentKeyStr, topicId, code, grade) {
     var p = new URLSearchParams();
-    p.append("action", "approvework"); 
-    p.append("key", studentKeyStr); 
-    p.append("topicId", topicId); 
-    p.append("code", code); 
-    p.append("grade", grade);
+    p.append("action", "approvework"); p.append("key", studentKeyStr); 
+    p.append("topicId", topicId); p.append("code", code); p.append("grade", grade);
     
     window.showToast("Сохранение оценки...", "info");
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
@@ -296,9 +358,7 @@ window.approvePractical = function(studentKeyStr, topicId, code, grade) {
                 window.showToast("Оценка " + grade + " выставлена!", "ok");
                 var elToRemove = document.getElementById("req_" + topicId + "_" + code);
                 if (elToRemove) elToRemove.remove();
-            } else {
-                window.showToast("Ошибка сохранения", "err");
-            }
+            } else window.showToast("Ошибка сохранения", "err");
         }).catch(function(){ window.showToast("Ошибка сети", "err"); });
 };
 
@@ -316,18 +376,14 @@ window.grantXP = function(studentKeyStr, studentName, presetAmount) {
     
     var amount = presetAmount;
     if (amount === undefined || amount === null) {
-        amount = prompt(
-            "Сколько XP начислить студенту " + studentName + "?\n" +
-            "(Отрицательное число — чтобы снять XP)", "50");
+        amount = prompt("Сколько XP начислить студенту " + studentName + "?\n(Отрицательное число — чтобы снять XP)", "50");
     }
     
     var numAmount = parseInt(amount, 10);
     if (isNaN(numAmount) || numAmount === 0) return;
     
     var p = new URLSearchParams();
-    p.append("action", "grantxp"); 
-    p.append("key", studentKeyStr); 
-    p.append("amount", numAmount);
+    p.append("action", "grantxp"); p.append("key", studentKeyStr); p.append("amount", numAmount);
     
     var verb = numAmount > 0 ? "Начисление " : "Списание ";
     window.showToast(verb + Math.abs(numAmount) + " XP...", "info");
@@ -340,11 +396,8 @@ window.grantXP = function(studentKeyStr, studentName, presetAmount) {
             var delta = (d.delta !== undefined) ? d.delta : numAmount;
             var sign = delta > 0 ? "+" : "";
             window.showToast("XP " + sign + delta + " (итого: " + newXp + ")", "ok");
-        } else {
-            window.showToast("Ошибка: " + ((d && d.error) || "Неизвестно"), "err");
-        }
-      })
-      .catch(function(){ window.showToast("Ошибка сети.", "err"); });
+        } else window.showToast("Ошибка: " + ((d && d.error) || "Неизвестно"), "err");
+      }).catch(function(){ window.showToast("Ошибка сети.", "err"); });
 };
 
 /* ---------------- ТЕМЫ, ЭФФЕКТЫ, ФОН ---------------- */
@@ -389,22 +442,15 @@ function openThemeModal(){
 /* ---------------- ВХОД/ВЫХОД ---------------- */
 
 window.doStudentLogin = function() {
-  var n = $("loginName").value.trim(); 
-  var g = $("loginGroup").value.trim();
+  var n = $("loginName").value.trim(); var g = $("loginGroup").value.trim();
   if (!n || !g) { window.showToast("Введите ФИО и Группу!", "err"); return; }
   state.student = { name: n, group: g.toUpperCase() };
   try { localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); } catch(e){}
-  $("loginOverlay").hidden = true; 
-  renderUserChip(); 
-  loadStudentData(); 
-  checkDailyLogin(); 
-  route();
+  $("loginOverlay").hidden = true; renderUserChip(); loadStudentData(); checkDailyLogin(); route();
 };
 
 window.doTeacherLogin = function() {
-  var user = $("loginStaffName").value.trim(); 
-  var pass = $("loginStaffPass").value.trim(); 
-  var btn = $("staffLoginBtn");
+  var user = $("loginStaffName").value.trim(); var pass = $("loginStaffPass").value.trim(); var btn = $("staffLoginBtn");
   if (!user || !pass) { window.showToast("Введите логин и пароль!", "err"); return; }
   btn.textContent = "Проверяем..."; btn.disabled = true;
   fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass) + "&t=" + new Date().getTime())
@@ -413,18 +459,13 @@ window.doTeacherLogin = function() {
       if (d && d.ok) { 
           state.staff = { role: d.role, name: d.name }; 
           try { sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){}
-          $("loginOverlay").hidden = true; 
-          renderUserChip(); 
-          route(); 
+          $("loginOverlay").hidden = true; renderUserChip(); route(); 
       } else { 
           window.showToast("Неверный логин или пароль.", "err"); 
-          btn.textContent = "Войти как сотрудник"; 
-          btn.disabled = false; 
+          btn.textContent = "Войти как сотрудник"; btn.disabled = false; 
       }
     }).catch(function() { 
-        window.showToast("Ошибка сети.", "err"); 
-        btn.textContent = "Войти как сотрудник"; 
-        btn.disabled = false; 
+        window.showToast("Ошибка сети.", "err"); btn.textContent = "Войти как сотрудник"; btn.disabled = false; 
     });
 };
 
@@ -433,12 +474,8 @@ window.handleLogout = function() {
     state.student = null; state.staff = null; state.customBg = null;
     try { localStorage.removeItem("mdk0701.student"); sessionStorage.removeItem("mdk0701.staff"); } catch(e){}
     $("loginOverlay").hidden = false; 
-    $("userChipName").textContent = "Гость"; 
-    $("userChipGroup").textContent = "Роль: Гость"; 
-    $("userChipAvatar").innerHTML = "👨‍🎓"; 
-    if ($("xpCount")) $("xpCount").textContent = "🌟 0 XP"; 
-    applyCustomBg();
-    closeDrawer(); route();
+    $("userChipName").textContent = "Гость"; $("userChipGroup").textContent = "Роль: Гость"; $("userChipAvatar").innerHTML = "👨‍🎓"; 
+    updateXpDisplay(); applyCustomBg(); closeDrawer(); route();
   }
 };
 
@@ -468,7 +505,7 @@ function renderUserChip(){
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); }
 
-/* ---------------- РЕНДЕР ГЛАВНОЙ ---------------- */
+/* ---------------- ГЛАВНАЯ ---------------- */
 
 function renderHome(){
   var app = $("app"); app.innerHTML = ""; var c = getCourse();
@@ -504,61 +541,21 @@ function renderHome(){
     app.appendChild(pGrid);
   }
 
-  if (c.safety && c.safety.length) {
-    app.appendChild(el('<div class="steps-title">Охрана труда</div>'));
-    var sGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
-    c.safety.forEach(function(s) {
-      sGrid.appendChild(el('<a class="module" href="' + s.file + '" download style="margin:0;padding:16px;display:flex;flex-direction:column;justify-content:space-between;"><div><b style="color:var(--accent)">' + s.code + '</b><div style="font-weight:bold;margin:8px 0;">' + s.title + '</div><div style="font-size:12px;color:var(--muted);">' + s.summary + '</div></div><div style="margin-top:12px;color:var(--accent);font-weight:bold;">Скачать .docx →</div></a>'));
-    });
-    app.appendChild(sGrid);
-  }
-
   if (c.videos && c.videos.length) {
     app.appendChild(el('<div class="steps-title">Видеоматериалы</div>'));
     var vGrid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;"></div>');
     c.videos.forEach(function(v) { vGrid.appendChild(el('<div class="module" style="margin:0;padding:16px;"><div style="font-weight:bold;margin-bottom:8px;">' + v.title + '</div><video controls src="' + v.src + '" style="width:100%;border-radius:8px;background:#000;"></video></div>')); });
     app.appendChild(vGrid);
   }
-
-  var flashCards = [
-    { q: "Что такое G-код?", a: "Язык программирования станков с ЧПУ.", topic: "Основы" },
-    { q: "Что делает G00?", a: "Быстрое позиционирование.", topic: "G-коды" },
-    { q: "Что делает G01?", a: "Линейная интерполяция.", topic: "G-коды" }
-  ];
-  app.appendChild(el('<div class="steps-title">Интерактив</div>'));
-  var flashBlock = el('<section class="module"><h2>🎴 Карточки знаний</h2><div class="home-flashcards-wrap" id="homeFlashcardArea"></div><div style="text-align:center;"><button class="btn ghost" id="nextHomeCard">Следующая →</button></div></section>');
-  app.appendChild(flashBlock);
-  var hArea = flashBlock.querySelector("#homeFlashcardArea"), hIndex = 0;
-  function renderHomeCard() { 
-    var card = flashCards[hIndex]; 
-    hArea.innerHTML = '<div class="flashcard" onclick="this.classList.toggle(\'flipped\')"><div class="flashcard-inner"><div class="flashcard-front"><div style="color:var(--accent);margin-bottom:10px">' + card.topic + '</div><h3>' + card.q + '</h3></div><div class="flashcard-back"><h3>Ответ</h3><p>' + card.a + '</p></div></div></div>'; 
-  }
-  renderHomeCard(); 
-  flashBlock.querySelector("#nextHomeCard").addEventListener("click", function(){ hIndex=(hIndex+1)%flashCards.length; renderHomeCard(); });
-
-  if (c.practiceFormatting) {
-    app.appendChild(el('<div class="steps-title">' + c.practiceFormatting.title + '</div>'));
-    var fmtBlock = el('<section class="module"><p style="color:var(--text-soft); margin-bottom:20px;">' + c.practiceFormatting.intro + '</p><div id="fmtBlocks"></div></section>');
-    var fmtContainer = fmtBlock.querySelector("#fmtBlocks");
-    c.practiceFormatting.blocks.forEach(function(b) {
-      var bEl = el('<div style="margin-bottom:24px; background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0; margin-bottom:12px; color:var(--accent);">' + b.title + '</h3><ul style="margin-top:0; padding-left:20px;"></ul></div>');
-      var ul = bEl.querySelector("ul");
-      b.items.forEach(function(item) { ul.appendChild(el('<li style="margin-bottom:8px;">' + item + '</li>')); });
-      fmtContainer.appendChild(bEl);
-    });
-    app.appendChild(fmtBlock);
-  }
 }
 
+/* ---------------- G-CODE СПРАВОЧНИК ---------------- */
+
 window.renderGCodeReferencePage = function() {
-  var app = $("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Справочник G/M";
+  var app = $("app"); app.innerHTML = ""; document.getElementById("crumbs").textContent = "Справочник G/M";
   app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   
-  if (!window.GCODE_REFERENCE) {
-      app.appendChild(el('<div class="module">Справочник не загружен.</div>'));
-      return;
-  }
+  if (!window.GCODE_REFERENCE) { app.appendChild(el('<div class="module">Справочник не загружен.</div>')); return; }
 
   app.appendChild(el('<section class="hero"><h1>Справочник G- и M-кодов</h1><p>' + window.GCODE_REFERENCE.intro + '</p></section>'));
   
@@ -570,18 +567,9 @@ window.renderGCodeReferencePage = function() {
       });
       app.appendChild(block);
   });
-  
-  if (window.GCODE_REFERENCE.examples) {
-      var exBlock = el('<section class="module"><h2>Примеры программ</h2></section>');
-      window.GCODE_REFERENCE.examples.forEach(function(ex) {
-          var exDiv = el('<div style="margin-bottom:24px;"><h3>' + ex.title + '</h3><pre style="background:var(--card-soft);padding:16px;border-radius:8px;overflow-x:auto;font-size:14px;border:1px solid var(--border);"><code>' + escapeHtml(ex.code) + '</code></pre><ul style="font-size:14px;color:var(--text-soft);"></ul></div>');
-          var ul = exDiv.querySelector('ul');
-          ex.explanation.forEach(function(exp) { ul.appendChild(el('<li>' + exp + '</li>')); });
-          exBlock.appendChild(exDiv);
-      });
-      app.appendChild(exBlock);
-  }
 };
+
+/* ---------------- ТЕМЫ ---------------- */
 
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
@@ -616,19 +604,6 @@ function renderTopic(id, tab){
         html += '<div style="font-weight:bold;margin:4px 0 12px 0;font-size:18px;">' + p.title + '</div>';
         if(p.goal) html += '<div style="font-size:14px;color:var(--muted);margin-bottom:12px;"><b>Цель:</b> ' + p.goal + '</div>';
         if(p.task) html += '<div style="margin-bottom:12px;"><b>Задание:</b> ' + p.task + '</div>';
-        if(p.example) html += '<div style="margin-bottom:12px;background:var(--accent-soft);padding:12px;border-radius:8px;border-left:4px solid var(--accent);"><b>Пример:</b> ' + p.example + '</div>';
-        if(p.solution && p.solution.length) {
-          html += '<div style="margin-bottom:16px;border:1px dashed var(--border);padding:12px;border-radius:8px;background:var(--card);"><b style="color:var(--accent);">Ход решения:</b><ol style="margin:8px 0 0 20px;padding:0;font-size:14px;">';
-          p.solution.forEach(function(s){ html += '<li style="margin-bottom:6px;">' + s + '</li>'; });
-          html += '</ol></div>';
-        }
-        if(p.variants && p.variants.rows) {
-          html += '<div style="margin-top:16px;"><b style="color:var(--accent);">Варианты:</b><div style="overflow-x:auto;margin-top:8px;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr>';
-          if(p.variants.header) p.variants.header.forEach(function(h){ html += '<th style="border:1px solid var(--border);padding:8px;background:var(--card);">' + h + '</th>'; });
-          html += '</tr></thead><tbody>';
-          p.variants.rows.forEach(function(r){ html += '<tr>'; r.forEach(function(c){ html += '<td style="border:1px solid var(--border);padding:8px;">' + c + '</td>'; }); html += '</tr>'; });
-          html += '</tbody></table></div></div>';
-        }
         
         html += '<div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">';
         if (status === "approved") {
@@ -637,11 +612,9 @@ function renderTopic(id, tab){
         } else if (status === "pending") {
             html += '<div style="color:#d97706; font-weight:bold;">⏳ На проверке у преподавателя.</div>';
         } else {
-            html += '<div style="color:var(--muted); font-size:13px; flex: 1 1 100%; margin-bottom:10px;">📌 Все работы сдаются одной папкой в конце курса.</div>';
             html += '<button class="btn" onclick="window.markPracticalDone(\'' + id + '\', \'' + p.code + '\')">✅ Сделал</button>';
         }
-        html += '</div>';
-        html += '</div>';
+        html += '</div></div>';
         panel.appendChild(el(html));
       });
     }
@@ -658,46 +631,26 @@ function renderTopic(id, tab){
         '<h2 style="font-size:28px;">✅ Работа сдана</h2>' +
         '<p style="font-size:18px;color:var(--text-soft);margin:16px 0;">Ваша оценка: <b style="font-size:24px;color:var(--accent);">' + result.grade + '</b></p>' +
         '<p class="sub">Повторное прохождение закрыто.</p>' +
-        (reqStatus === 'pending' 
-            ? '<p style="color:#d97706;font-weight:bold;">⏳ Запрос на попытку отправлен</p>' 
-            : '<button class="btn" onclick="window.requestAttempt(\'' + id + '\', \'' + tab + '\')">Запросить доп. попытку</button>') +
+        (reqStatus === 'pending' ? '<p style="color:#d97706;font-weight:bold;">⏳ Запрос на попытку отправлен</p>' : '<button class="btn" onclick="window.requestAttempt(\'' + id + '\', \'' + tab + '\')">Запросить доп. попытку</button>') +
       '</div>'));
     } else if (tab === "self" && t.topic.selfChecks) {
       var selfWrap = el('<div></div>'); panel.appendChild(selfWrap);
       t.topic.selfChecks.forEach(function(q, i){ selfWrap.appendChild(el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><input type="text" class="self-input" data-idx="' + i + '" placeholder="Ваш ответ"><div class="self-feedback" id="fb_' + i + '" style="font-size:13px; margin-top:4px;"></div></div>')); });
       
-      var reviewBox = el('<div id="selfReview" style="margin-top:20px;"></div>'); panel.appendChild(reviewBox);
       var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить и проверить</button>');
       panel.appendChild(checkBtn);
       
       checkBtn.onclick = function() {
         var correctCount = 0;
-        var reviewHtml = '<div style="background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0;">📝 Разбор ответов</h3>';
-        
         selfWrap.querySelectorAll(".self-input").forEach(function(inp) { 
           var idx = Number(inp.getAttribute("data-idx")); 
           var q = t.topic.selfChecks[idx]; 
-          var userAns = inp.value.trim().toLowerCase();
-          var isCorrect = (userAns === q.a.trim().toLowerCase());
-          
+          var isCorrect = (inp.value.trim().toLowerCase() === q.a.trim().toLowerCase());
           if (isCorrect) correctCount++;
-          
-          reviewHtml += '<div style="margin-bottom:12px; padding:12px; border-radius:8px; background:' + (isCorrect ? 'rgba(45,122,79,0.1)' : 'rgba(192,57,43,0.1)') + '; border:1px solid ' + (isCorrect ? 'var(--ok)' : 'var(--err)') + ';">' +
-              '<div style="font-weight:bold; margin-bottom:4px;">' + (idx+1) + '. ' + q.q + '</div>' +
-              '<div style="font-size:14px; color:' + (isCorrect ? 'var(--ok)' : 'var(--err)') + ';">Ваш ответ: ' + (inp.value || '<i>Пусто</i>') + '</div>' +
-              '<div style="font-size:14px; color:var(--text); margin-top:4px;">Правильный ответ: <b>' + q.a + '</b></div>' +
-          '</div>';
         });
-        
-        reviewHtml += '</div>';
-        reviewBox.innerHTML = reviewHtml;
-        checkBtn.disabled = true;
-        checkBtn.textContent = "Результаты сохранены";
-        
+        checkBtn.disabled = true; checkBtn.textContent = "Результаты сохранены";
         var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); 
-        state.selfResults[id] = { grade: grade }; 
-        addXP(100);
-        saveStudentData();
+        state.selfResults[id] = { grade: grade }; addXP(100); saveStudentData();
         window.showToast("Работа сдана! Оценка: " + grade, "ok");
       };
     } else if (tab === "test" && t.topic.test) {
@@ -710,7 +663,6 @@ function renderTopic(id, tab){
         testWrap.appendChild(qb);
       });
       
-      var reviewBox = el('<div id="testReview" style="margin-top:20px;"></div>'); panel.appendChild(reviewBox);
       var finishBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить тест</button>'); panel.appendChild(finishBtn);
       
       var timeLeft = 15 * 60; var timerId = setInterval(function() {
@@ -722,39 +674,22 @@ function renderTopic(id, tab){
       finishBtn.onclick = function() {
         clearInterval(timerId); 
         var correct = 0;
-        var reviewHtml = '<div style="background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0;">📝 Разбор ответов</h3>';
-        
         t.topic.test.forEach(function(q, qi) {
           var ch = testWrap.querySelector('input[name="q' + qi + '"]:checked');
-          var userAns = ch ? Number(ch.value) : -1;
-          var isCorrect = (userAns === q.correct);
-          
-          if (isCorrect) correct++;
-          
-          reviewHtml += '<div style="margin-bottom:12px; padding:12px; border-radius:8px; background:' + (isCorrect ? 'rgba(45,122,79,0.1)' : 'rgba(192,57,43,0.1)') + '; border:1px solid ' + (isCorrect ? 'var(--ok)' : 'var(--err)') + ';">' +
-              '<div style="font-weight:bold; margin-bottom:4px;">' + (qi+1) + '. ' + q.q + '</div>' +
-              '<div style="font-size:14px; color:' + (isCorrect ? 'var(--ok)' : 'var(--err)') + ';">Ваш ответ: ' + (userAns !== -1 ? q.options[userAns] : '<i>Нет ответа</i>') + '</div>' +
-              '<div style="font-size:14px; color:var(--text); margin-top:4px;">Правильный ответ: <b>' + q.options[q.correct] + '</b></div>' +
-          '</div>';
+          if (ch && Number(ch.value) === q.correct) correct++;
         });
-        
-        reviewHtml += '</div>';
-        reviewBox.innerHTML = reviewHtml;
-        finishBtn.disabled = true;
-        finishBtn.textContent = "Тест завершен";
-        
+        finishBtn.disabled = true; finishBtn.textContent = "Тест завершен";
         var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); 
         state.results[id] = { grade: grade }; 
-        if (state.allowedAttempts && state.allowedAttempts[reqKey]) {
-            state.allowedAttempts[reqKey] = 1; 
-        }
-        addXP(150);
-        saveStudentData();
+        if (state.allowedAttempts && state.allowedAttempts[reqKey]) state.allowedAttempts[reqKey] = 1; 
+        addXP(150); saveStudentData();
         window.showToast("Тест сдан! Оценка: " + grade, "ok"); 
       };
     }
   }
 }
+
+/* ---------------- СИМУЛЯТОР ---------------- */
 
 function renderSimulatorPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
@@ -767,35 +702,27 @@ function renderSimulatorPage(){
 /* ---------------- МАГАЗИН ---------------- */
 
 function renderShopPage(){
-  var app = $("app"); app.innerHTML = ""; 
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  app.appendChild(el('<section class="hero"><h1>Магазин XP</h1><p>У вас: 🌟 <b>' + state.xp + ' XP</b></p></section>'));
+  var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  
+  var lvl = getLevel(state.xp);
+  var discount = Math.floor(lvl / 10) * 0.05;
+  var discountPct = Math.round(discount * 100);
+  
+  app.appendChild(el('<section class="hero"><h1>Магазин XP</h1><p>У вас: 🌟 <b>' + state.xp + ' XP</b> (Ур. ' + lvl + ')' + (discount > 0 ? '<br><span style="color:var(--ok);font-size:14px;">🎁 Ваша скидка: ' + discountPct + '%</span>' : '') + '</p></section>'));
   
   var items = [
-    /* Аватары */
-    { id: "avatar_custom", icon: "🖼️", title: "Загрузить аватар", price: 1500, type: "upload", desc: "Своя картинка вместо смайлика" },
-    { id: "avatar_animated", icon: "🎞️", title: "Анимированный аватар", price: 3000, type: "upload_animated", desc: "GIF-аватар" },
-    /* Косметика */
-    { id: "nick", icon: "🏷️", title: "Кастомный Ник", price: 500, type: "input", field: "nick", placeholder: "Введите ваш ник..." },
-    { id: "sign", icon: "✍️", title: "Подпись в профиле", price: 500, type: "input", field: "sign", placeholder: "Введите вашу подпись..." },
-    /* Эффекты */
+    { id: "avatar_custom", icon: "🖼️", title: "Загрузить аватар", price: 1500, type: "upload" },
+    { id: "nick", icon: "🏷️", title: "Кастомный Ник", price: 500, type: "input", field: "nick" },
+    { id: "sign", icon: "✍️", title: "Подпись в профиле", price: 500, type: "input", field: "sign" },
     { id: "effect_waves", icon: "🌊", title: "Эффект 'Волны'", price: 800, type: "effect", effect: "waves" },
     { id: "effect_pulse", icon: "💓", title: "Эффект 'Пульс'", price: 1200, type: "effect", effect: "pulse" },
     { id: "effect_matrix", icon: "🟩", title: "Эффект 'Матрица'", price: 2000, type: "effect", effect: "matrix" },
-    /* Темы */
     { id: "theme_matrix", icon: "🟩", title: "Тема 'Матрица'", price: 500, type: "theme", theme: "matrix" },
-    { id: "theme_cosmos", icon: "🌌", title: "Тема 'Космос'", price: 700, type: "theme", theme: "cosmos" },
-    { id: "theme_gold", icon: "🪙", title: "Тема 'Золото'", price: 800, type: "theme", theme: "gold" },
-    { id: "theme_anime", icon: "⛩️", title: "Тема 'Аниме'", price: 1000, type: "theme", theme: "anime" },
-    { id: "theme_hacker", icon: "💻", title: "Тема 'Хакер'", price: 1200, type: "theme", theme: "hacker" },
     { id: "theme_cyber", icon: "🤖", title: "Тема 'Кибер'", price: 1500, type: "theme", theme: "cyber" },
-    { id: "theme_matrioska", icon: "🪆", title: "Тема 'Матрешка'", price: 1500, type: "theme", theme: "matrioska" },
-    /* ФОНЫ — новое */
-    { id: "bg_dots",     icon: "🔵", title: "Фон: Точки",     price: 300, type: "bg", bg: "dots",     desc: "Узор из точек" },
-    { id: "bg_grid",     icon: "▦",  title: "Фон: Сетка",     price: 400, type: "bg", bg: "grid",     desc: "Миллиметровка" },
-    { id: "bg_diagonal", icon: "𝍩",  title: "Фон: Диагональ", price: 350, type: "bg", bg: "diagonal", desc: "Диагональные штрихи" },
-    { id: "bg_waves",    icon: "〰️", title: "Фон: Волны",     price: 500, type: "bg", bg: "waves",    desc: "Круговые волны" },
-    { id: "bg_stars",    icon: "✨", title: "Фон: Звёзды",    price: 700, type: "bg", bg: "stars",    desc: "Звёздное небо" }
+    { id: "bg_dots", icon: "🔵", title: "Фон: Точки", price: 300, type: "bg", bg: "dots" },
+    { id: "bg_grid", icon: "▦", title: "Фон: Сетка", price: 400, type: "bg", bg: "grid" },
+    { id: "bg_waves", icon: "〰️", title: "Фон: Волны", price: 500, type: "bg", bg: "waves" },
+    { id: "bg_stars", icon: "✨", title: "Фон: Звёзды", price: 700, type: "bg", bg: "stars" }
   ];
   
   var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:16px;"></div>');
@@ -803,143 +730,84 @@ function renderShopPage(){
   items.forEach(function(it){
     var owned = state.shop.indexOf(it.id) !== -1 || !!state.staff;
     var btnText = "", btnDisabled = false, btnHandler = null;
+    var finalPrice = Math.floor(it.price * (1 - discount));
     
     if (state.staff) {
-        /* Преподаватель: всё доступно, можно применять/снимать */
         if (it.type === "bg") {
             var isActiveBg = state.customBg === it.bg;
             btnText = isActiveBg ? "Снять фон" : "Применить";
-            btnHandler = function() {
-                state.customBg = isActiveBg ? null : it.bg;
-                applyCustomBg();
-                renderShopPage();
-            };
+            btnHandler = function() { state.customBg = isActiveBg ? null : it.bg; applyCustomBg(); renderShopPage(); };
         } else if (it.type === "theme") {
-            btnText = "Применить тему";
-            btnHandler = function() { applyTheme(it.theme); window.showToast("Тема применена", "ok"); };
+            btnText = "Применить тему"; btnHandler = function() { applyTheme(it.theme); window.showToast("Тема применена", "ok"); };
         } else if (it.type === "effect") {
             var active = (state.effects || []).indexOf(it.effect) !== -1;
             btnText = active ? "Отключить" : "Включить";
             btnHandler = function() {
                 if (active) state.effects = state.effects.filter(function(e){ return e !== it.effect; });
                 else state.effects.push(it.effect);
-                applyEffects();
-                renderShopPage();
+                applyEffects(); renderShopPage();
             };
-        } else {
-            btnText = "Доступно (Учитель)";
-            btnDisabled = true;
-        }
+        } else { btnText = "Доступно (Учитель)"; btnDisabled = true; }
     } else if (!owned) {
-        /* Не куплено студентом */
-        if (state.xp < it.price) {
-            btnText = "Мало XP";
-            btnDisabled = true;
-        } else {
+        if (state.xp < finalPrice) { btnText = "Мало XP"; btnDisabled = true; } 
+        else {
             btnText = "Купить";
             btnHandler = function() {
-                state.xp -= it.price;
+                state.xp -= finalPrice;
                 state.shop.push(it.id);
                 
-                if (it.type === "theme") {
-                    applyTheme(it.theme);
-                    unlockAchievement('t_theme');
-                } else if (it.type === "effect") {
-                    if (state.effects.indexOf(it.effect) === -1) state.effects.push(it.effect);
-                    applyEffects();
-                } else if (it.type === "bg") {
-                    state.customBg = it.bg;
-                    applyCustomBg();
-                } else if (it.type === "input") {
-                    var val = prompt(it.placeholder, state[it.field] || "");
-                    if (val !== null) state[it.field] = val.trim();
-                } else if (it.type === "upload" || it.type === "upload_animated") {
-                    var fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.accept = it.type === "upload" ? "image/*" : "image/gif";
+                if (it.type === "theme") { applyTheme(it.theme); unlockAchievement('t_theme'); }
+                else if (it.type === "effect") { if (state.effects.indexOf(it.effect) === -1) state.effects.push(it.effect); applyEffects(); }
+                else if (it.type === "bg") { state.customBg = it.bg; applyCustomBg(); }
+                else if (it.type === "input") { var val = prompt("Введите значение:", state[it.field] || ""); if (val !== null) state[it.field] = val.trim(); }
+                else if (it.type === "upload") {
+                    var fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = "image/*";
                     fileInput.onchange = function(e) {
-                        var file = e.target.files[0];
-                        if (!file) return;
-                        if (file.size > 2 * 1024 * 1024) { window.showToast("Файл слишком большой (макс 2МБ)", "err"); return; }
+                        var file = e.target.files[0]; if (!file) return;
                         var reader = new FileReader();
-                        reader.onload = function(ev) {
-                            state.avatar = ev.target.result;
-                            saveStudentData(); renderUserChip(); renderShopPage();
-                            unlockAchievement('t_avatar');
-                            window.showToast("Аватар установлен!", "ok");
-                        };
+                        reader.onload = function(ev) { state.avatar = ev.target.result; saveStudentData(); renderUserChip(); renderShopPage(); unlockAchievement('t_avatar'); };
                         reader.readAsDataURL(file);
-                    };
-                    fileInput.click();
+                    }; fileInput.click();
                 }
-                
-                saveStudentData();
-                renderShopPage();
-                renderUserChip();
-                window.showToast("Покупка совершена!", "ok");
+                saveStudentData(); renderShopPage(); renderUserChip(); window.showToast("Покупка совершена!", "ok");
             };
         }
     } else {
-        /* Куплено студентом */
         if (it.type === "bg") {
             var isActiveOwned = state.customBg === it.bg;
             btnText = isActiveOwned ? "Снять фон" : "Применить";
-            btnHandler = function() {
-                state.customBg = isActiveOwned ? null : it.bg;
-                applyCustomBg();
-                saveStudentData();
-                renderShopPage();
-            };
-        } else if (it.type === "theme") {
-            btnText = "Применить тему";
-            btnHandler = function() { applyTheme(it.theme); window.showToast("Тема применена", "ok"); };
-        } else if (it.type === "effect") {
+            btnHandler = function() { state.customBg = isActiveOwned ? null : it.bg; applyCustomBg(); saveStudentData(); renderShopPage(); };
+        } else if (it.type === "theme") { btnText = "Применить тему"; btnHandler = function() { applyTheme(it.theme); }; }
+        else if (it.type === "effect") {
             var activeOwned = state.effects.indexOf(it.effect) !== -1;
             btnText = activeOwned ? "Отключить" : "Включить";
             btnHandler = function() {
                 if (activeOwned) state.effects = state.effects.filter(function(e){ return e !== it.effect; });
                 else state.effects.push(it.effect);
-                applyEffects();
-                saveStudentData();
-                renderShopPage();
+                applyEffects(); saveStudentData(); renderShopPage();
             };
-        } else {
-            btnText = "Куплено";
-            btnDisabled = true;
-        }
+        } else { btnText = "Куплено"; btnDisabled = true; }
     }
     
-    var descHtml = it.desc ? '<div style="font-size:12px; color:var(--muted); margin-top:4px;">' + it.desc + '</div>' : "";
-    
     var card = el('<div style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;display:flex;flex-direction:column;justify-content:space-between;">' +
-        '<div>' +
-            '<div style="font-size:40px;margin-bottom:10px;">' + it.icon + '</div>' +
-            '<div style="font-weight:bold;">' + it.title + '</div>' +
-            descHtml +
-        '</div>' +
+        '<div><div style="font-size:40px;margin-bottom:10px;">' + it.icon + '</div><div style="font-weight:bold;">' + it.title + '</div></div>' +
         '<div style="margin-top:10px;">' +
-            '<div style="color:var(--accent);font-weight:bold;margin-bottom:8px;">' + it.price + ' XP</div>' +
-        '</div>' +
-    '</div>');
+            '<div style="color:var(--accent);font-weight:bold;margin-bottom:8px;">' + 
+            (discount > 0 && !owned ? '<span style="text-decoration:line-through;color:var(--muted);font-size:12px;">' + it.price + '</span> ' : '') + 
+            finalPrice + ' XP</div>' +
+        '</div></div>');
     
     var btn = el('<button class="btn" style="width:100%;margin-top:10px;">' + btnText + '</button>');
     if (btnDisabled) { btn.disabled = true; btn.classList.add("ghost"); }
     if (btnHandler) btn.onclick = btnHandler;
+    if (state.staff && btnDisabled) { btn.style.background = "var(--accent-soft)"; btn.style.color = "var(--accent)"; }
     
-    if (state.staff && btnDisabled) {
-        btn.style.background = "var(--accent-soft)";
-        btn.style.color = "var(--accent)";
-        btn.style.border = "1px solid var(--accent)";
-    }
-    
-    card.appendChild(btn);
-    grid.appendChild(card);
+    card.appendChild(btn); grid.appendChild(card);
   });
-  
   app.appendChild(grid);
 }
 
-/* ---------------- РАСПИСАНИЕ (полный рендер) ---------------- */
+/* ---------------- РАСПИСАНИЕ ---------------- */
 
 function normalizeSchDate(v) {
     if (v == null || v === "") return "";
@@ -1051,6 +919,19 @@ function renderSchedulePage() {
             }
 
             var rows = schedule.map(function(r) {
+                var timeStr = String(r[1] || "");
+                var isShifted = /^\d{1,2}[:.-]\d{2}/.test(timeStr);
+                
+                if (isShifted) {
+                    return {
+                        date:    normalizeSchDate(r[0]),
+                        period:  "", 
+                        time:    String(r[1] || ""),
+                        group:   String(r[2] || ""),
+                        subject: String(r[3] || ""),
+                        teacher: String(r[4] || "")
+                    };
+                }
                 return {
                     date:    normalizeSchDate(r[0]),
                     period:  String(r[1] || ""),
@@ -1076,8 +957,13 @@ function renderSchedulePage() {
                     var delBtn = isTeacher
                         ? '<button class="btn ghost" data-del="1" style="padding:4px 10px; font-size:11px; border-color:var(--err); color:var(--err);">Удалить</button>'
                         : "";
+                    
+                    var periodTd = it.period 
+                        ? '<td style="border:1px solid var(--border); padding:8px; text-align:center;">' + escapeHtml(it.period) + '</td>' 
+                        : '';
+
                     return '<tr>' +
-                        '<td style="border:1px solid var(--border); padding:8px; text-align:center;">' + escapeHtml(it.period) + '</td>' +
+                        periodTd +
                         '<td style="border:1px solid var(--border); padding:8px; text-align:center;">' + escapeHtml(it.time) + '</td>' +
                         '<td style="border:1px solid var(--border); padding:8px;">' + escapeHtml(it.group) + '</td>' +
                         '<td style="border:1px solid var(--border); padding:8px;">' + escapeHtml(it.subject) + '</td>' +
@@ -1086,17 +972,20 @@ function renderSchedulePage() {
                     '</tr>';
                 }).join("");
 
-                wrap.appendChild(el(
-                    '<div style="margin-bottom:24px; text-align:left;">' +
-                    '<h3 style="color:var(--accent); border-bottom:2px solid var(--border); padding-bottom:8px;">' + escapeHtml(formatSchDate(dateKey)) + '</h3>' +
-                    '<table style="width:100%; border-collapse:collapse; font-size:14px;"><thead><tr>' +
-                    '<th style="border:1px solid var(--border); padding:8px; background:var(--card-soft);">Пара</th>' +
+                var hasPeriod = items.some(function(it) { return it.period !== ""; });
+                var headerHtml = '<tr>' +
+                    (hasPeriod ? '<th style="border:1px solid var(--border); padding:8px; background:var(--card-soft);">Пара</th>' : '') +
                     '<th style="border:1px solid var(--border); padding:8px; background:var(--card-soft);">Время</th>' +
                     '<th style="border:1px solid var(--border); padding:8px; background:var(--card-soft);">Группа</th>' +
                     '<th style="border:1px solid var(--border); padding:8px; background:var(--card-soft);">Предмет</th>' +
                     '<th style="border:1px solid var(--border); padding:8px; background:var(--card-soft);">Преподаватель</th>' +
                     '<th style="border:1px solid var(--border); padding:8px; background:var(--card-soft);"></th>' +
-                    '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>'
+                '</tr>';
+
+                wrap.appendChild(el(
+                    '<div style="margin-bottom:24px; text-align:left;">' +
+                    '<h3 style="color:var(--accent); border-bottom:2px solid var(--border); padding-bottom:8px;">' + escapeHtml(formatSchDate(dateKey)) + '</h3>' +
+                    '<table style="width:100%; border-collapse:collapse; font-size:14px;"><thead>' + headerHtml + '</thead><tbody>' + rowsHtml + '</tbody></table></div>'
                 ));
             });
 
@@ -1117,37 +1006,31 @@ function renderSchedulePage() {
 window.renderSchedulePage = renderSchedulePage;
 
 window.deleteSchedule = function(date, period, group) {
-    if (!confirm("Удалить занятие?\n" + date + " · " + period + " пара · " + group)) return;
+    if (!confirm("Удалить занятие?\n" + date + " · " + (period ? period + " пара · " : "") + group)) return;
     var p = new URLSearchParams();
-    p.append("action", "saveschedule");
-    p.append("mode", "delete");
-    p.append("date", date);
-    p.append("period", period);
-    p.append("group", group);
+    p.append("action", "saveschedule"); p.append("mode", "delete");
+    p.append("date", date); p.append("period", period); p.append("group", group);
     window.showToast("Удаление...", "info");
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
         .then(function(r){ return r.json(); })
         .then(function(d){
             if (d && d.ok) { window.showToast("Удалено", "ok"); window.renderSchedulePage(); }
             else window.showToast("Ошибка удаления: " + ((d && d.error) || "?"), "err");
-        })
-        .catch(function(){ window.showToast("Ошибка сети", "err"); });
+        }).catch(function(){ window.showToast("Ошибка сети", "err"); });
 };
 
 /* ---------------- ПОРТФОЛИО ---------------- */
 
 function renderPortfolioPage(){
-  var app = $("app"); app.innerHTML = ""; 
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   if (!state.student) { app.appendChild(el('<div class="module">Войдите как студент, чтобы увидеть портфолио.</div>')); return; }
-  app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + escapeHtml(state.student.name) + '</p><p><b>Группа:</b> ' + escapeHtml(state.student.group) + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
+  app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + escapeHtml(state.student.name) + '</p><p><b>Группа:</b> ' + escapeHtml(state.student.group) + '</p><p><b>XP:</b> ' + state.xp + ' (Уровень ' + getLevel(state.xp) + ')</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
 /* ---------------- РОУТИНГ ---------------- */
 
 function route(){
   closeDrawer();
-  
   if (state.student) loadStudentData();
 
   var hash = location.hash.replace(/^#/, "") || "/"; 
@@ -1169,7 +1052,7 @@ function route(){
       else if (parts[0] === "schedule") renderSchedulePage();
       else if (parts[0] === "rating") window.renderRatingPage && window.renderRatingPage();
       else if (parts[0] === "links") window.renderLinksPage && window.renderLinksPage();
-      else if (parts[0] === "gcode-reference") renderGCodeReferencePage();
+      else if (parts[0] === "gcode-reference") window.renderGCodeReferencePage && window.renderGCodeReferencePage();
       else if (parts[0] === "final-exam") window.renderFinalExamPage && window.renderFinalExamPage();
       else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
       else if (parts[0] === "event") window.renderDeadlyPartyPage && window.renderDeadlyPartyPage();
@@ -1189,18 +1072,11 @@ function route(){
   window.scrollTo(0, 0);
 }
 
-/* ---------------- INIT ---------------- */
-
 window.addEventListener("DOMContentLoaded", function() {
-  // Перекрываем любые внешние определения renderSchedulePage (например, из extra.js)
   window.renderSchedulePage = renderSchedulePage;
-
   try {
       if (!state.student && !state.staff) { $("loginOverlay").hidden = false; } else { $("loginOverlay").hidden = true; }
-      if (state.student) {
-          loadStudentData();
-          checkDailyLogin();
-      }
+      if (state.student) { loadStudentData(); checkDailyLogin(); }
   } catch(e) { console.error("Init error:", e); }
   
   if ($("themeToggle")) $("themeToggle").addEventListener("click", openThemeModal);
@@ -1208,19 +1084,11 @@ window.addEventListener("DOMContentLoaded", function() {
   if ($("drawerOverlay")) $("drawerOverlay").addEventListener("click", closeDrawer);
   if ($("drawerClose")) $("drawerClose").addEventListener("click", closeDrawer);
   document.querySelectorAll("[data-go]").forEach(function(item) { 
-      item.addEventListener("click", function(e) { 
-          e.preventDefault(); 
-          location.hash = item.getAttribute("data-go"); 
-          closeDrawer(); 
-      }); 
+      item.addEventListener("click", function(e) { e.preventDefault(); location.hash = item.getAttribute("data-go"); closeDrawer(); }); 
   });
   
   if (window.initAssistantButton) window.initAssistantButton();
-  
-  try {
-      renderUserChip(); 
-      route();
-  } catch(e) { console.error("Render error:", e); }
+  try { renderUserChip(); route(); } catch(e) { console.error("Render error:", e); }
 });
 
 window.addEventListener("hashchange", route);
