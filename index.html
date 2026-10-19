@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;900&family=Orbitron:wght@400;600;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="style.css?v=91">
+<link rel="stylesheet" href="style.css?v=93">
 <script>
   (function(){ try { var t = localStorage.getItem("mdk0701.theme"); if (!t || t === "auto"){ var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; t = d ? "dark" : "light"; } document.documentElement.setAttribute("data-theme", t); } catch(e){} })();
 </script>
@@ -46,6 +46,7 @@
   <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
   <div class="crumbs" id="crumbs"></div>
   
+  <!-- УВЕДОМЛЕНИЯ -->
   <a href="#/notifications" class="notif-bell" id="notifBell" style="position:relative; margin-right:15px; text-decoration:none; font-size:20px; cursor:pointer;" title="Уведомления">
       🔔 <span id="notifBadge" style="position:absolute; top:-5px; right:-8px; background:var(--err); color:#fff; font-size:10px; font-weight:bold; border-radius:50%; padding:2px 5px; display:none;">0</span>
   </a>
@@ -77,6 +78,7 @@
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
     
+    <!-- Вкладка Заявки (скрыта по умолчанию, показывается через renderUserChip для учителей) -->
     <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;">📥 <span>Заявки</span></a>
     
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
@@ -85,6 +87,7 @@
     <a class="drawer-item" data-go="#/final-exam">🎓 <span>Экзамен</span></a>
     <a class="drawer-item" data-go="#/final-training">🏋️ <span>Тренировка</span></a>
     
+    <!-- ИГРЫ -->
     <a class="drawer-item" data-go="#/event">💀 <span>Смертельная вечеринка</span></a>
     <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
     <a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
@@ -97,19 +100,19 @@
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v91.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v93.0</footer>
 
-<script src="data.js?v=91"></script>
-<script src="data-extra.js?v=91"></script>
-<script src="info.js?v=91"></script>
-<script src="script.js?v=91"></script>
-<script src="extra.js?v=91"></script>
-<script src="final.js?v=91"></script>
-<script src="links.js?v=91"></script>
-<script src="rating.js?v=91"></script>
-<script src="journal.js?v=91"></script>
-<script src="minigames.js?v=91"></script>
-<script src="assistant.js?v=91"></script>
-<script src="easter-eggs.js?v=91"></script>
+<script src="data.js?v=93"></script>
+<script src="data-extra.js?v=93"></script>
+<script src="info.js?v=93"></script>
+<script src="script.js?v=93"></script>
+<script src="extra.js?v=93"></script>
+<script src="final.js?v=93"></script>
+<script src="links.js?v=93"></script>
+<script src="rating.js?v=93"></script>
+<script src="journal.js?v=93"></script>
+<script src="minigames.js?v=93"></script>
+<script src="assistant.js?v=93"></script>
+<script src="easter-eggs.js?v=93"></script>
 </body>
 </html>

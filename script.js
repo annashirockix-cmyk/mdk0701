@@ -1,32 +1,25 @@
 /* ============================================================
-   МДК 07.01 — script.js (v92.0 — CABINET SWITCHER)
+   МДК 07.01 — script.js (v92.0 — AVATARS & EFFECTS)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
-
-var CABINETS = [
-  { id: "mdk0401", name: "МДК 04.01", url: "https://annashirockix-cmyk.github.io/mdk0401/" },
-  { id: "mdk0701", name: "МДК 07.01", url: "https://annashirockix-cmyk.github.io/mdk0701/" }
-];
-var CURRENT_CABINET = "mdk0701";
-
 var state = { 
   student: null, staff: null, progress: {}, results: {}, selfResults: {}, 
   practicalsDone: {}, practicalGrades: {}, requests: {}, allowedAttempts: {},
   favorites: [], xp: 0, shop: [], achievements: {},
   loginStreak: 0, lastLoginDate: null, nick: null, sign: null,
-  notifications: [], schedule: [] 
+  notifications: [], schedule: [], avatar: null, effects: []
 };
 
-// --- Восстановление сессии (общие ключи с миграцией) ---
-try {
-  var _s = JSON.parse(localStorage.getItem("mdk.student") || localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null");
-  if (_s && _s.name) { state.student = _s; try { localStorage.setItem("mdk.student", JSON.stringify(_s)); } catch(e){} }
+try { 
+  var _s = JSON.parse(localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null"); 
+  if (_s && _s.name) state.student = _s; 
 } catch (e){}
-try {
-  var _st = JSON.parse(localStorage.getItem("mdk.staff") || sessionStorage.getItem("mdk0701.staff") || "null");
-  if (_st && _st.role) { state.staff = _st; try { localStorage.setItem("mdk.staff", JSON.stringify(_st)); } catch(e){} }
+
+try { 
+  var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); 
+  if (_st && _st.role) state.staff = _st; 
 } catch (e){}
 
 function getCourse(){ try { return COURSE; } catch(e){} try { return window.COURSE; } catch(e){} return null; }
@@ -48,41 +41,6 @@ window.showToast = function(msg, type) {
   container.appendChild(toast);
   setTimeout(function() { toast.classList.add("out"); setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300); }, 3000);
 };
-
-// --- ПЕРЕКЛЮЧЕНИЕ КАБИНЕТА ---
-window.switchCabinet = function(id) {
-  if (id === CURRENT_CABINET) return;
-  var target = CABINETS.find(function(c){ return c.id === id; });
-  if (!target) return;
-
-  try {
-    if (state.student) saveStudentData();
-    if (state.student) localStorage.setItem("mdk.student", JSON.stringify(state.student));
-    if (state.staff) localStorage.setItem("mdk.staff", JSON.stringify(state.staff));
-  } catch(e){}
-
-  window.showToast("Переключение в " + target.name + "...", "info");
-  setTimeout(function(){ window.location.href = target.url; }, 500);
-};
-
-function updateCabinetSwitcher() {
-  var existing = document.getElementById("cabinetSwitcher");
-  if (existing) existing.remove();
-
-  if (!state.student && !state.staff) return;
-
-  var other = CABINETS.find(function(c){ return c.id !== CURRENT_CABINET; });
-  if (!other) return;
-
-  var btn = document.createElement("button");
-  btn.id = "cabinetSwitcher";
-  btn.className = "btn";
-  btn.style.cssText = "position:fixed;bottom:90px;right:20px;z-index:9000;box-shadow:0 4px 14px rgba(0,0,0,0.35);display:flex;align-items:center;gap:8px;padding:10px 16px;font-weight:bold;border-radius:999px;font-size:13px;";
-  btn.innerHTML = '<span style="font-size:16px;">🔄</span><span>' + other.name + ' →</span>';
-  btn.title = "Переключиться в " + other.name;
-  btn.onclick = function(){ window.switchCabinet(other.id); };
-  document.body.appendChild(btn);
-}
 
 window.addNotification = function(text, type = "info") {
     if (!state.notifications) state.notifications = [];
@@ -145,6 +103,8 @@ function loadStudentData(){
     state.shop = JSON.parse(localStorage.getItem("mdk0701.shop." + ek) || "[]");
     state.loginStreak = parseInt(localStorage.getItem("mdk0701.loginStreak." + ek) || "0");
     state.lastLoginDate = localStorage.getItem("mdk0701.lastLoginDate." + ek) || null;
+    state.avatar = localStorage.getItem("mdk0701.avatar." + ek) || null;
+    state.effects = JSON.parse(localStorage.getItem("mdk0701.effects." + ek) || "[]");
   } catch (e) { console.warn("LocalStorage error", e); }
   
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
@@ -204,6 +164,8 @@ function saveStudentData(){
     localStorage.setItem("mdk0701.lastLoginDate." + ek, state.lastLoginDate || "");
     if (state.nick) localStorage.setItem("mdk0701.nick." + ek, state.nick);
     if (state.sign) localStorage.setItem("mdk0701.sign." + ek, state.sign);
+    if (state.avatar) localStorage.setItem("mdk0701.avatar." + ek, state.avatar);
+    localStorage.setItem("mdk0701.effects." + ek, JSON.stringify(state.effects));
     localStorage.setItem("mdk0701.notifications." + ek, JSON.stringify(state.notifications));
     localStorage.setItem("mdk0701.schedule", JSON.stringify(state.schedule));
   } catch (e) { console.warn("LocalStorage save error", e); }
@@ -218,7 +180,8 @@ function saveStudentData(){
       progress: state.progress, results: state.results, selfResults: state.selfResults, 
       practicalsDone: state.practicalsDone, practicalGrades: state.practicalGrades,
       requests: state.requests, allowedAttempts: state.allowedAttempts, favorites: state.favorites,
-      xp: state.xp, nick: state.nick, sign: state.sign, notifications: state.notifications
+      xp: state.xp, nick: state.nick, sign: state.sign, notifications: state.notifications,
+      avatar: state.avatar, effects: state.effects
     }));
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(function(){});
   }
@@ -328,10 +291,7 @@ window.grantXP = function(studentKeyStr, studentName, presetAmount) {
       .catch(() => window.showToast("Ошибка сети.", "err"));
 };
 
-function applyTheme(theme){ 
-  document.documentElement.setAttribute("data-theme", theme); 
-  try { localStorage.setItem("mdk.theme", theme); localStorage.setItem("mdk0701.theme", theme); } catch(e){}
-}
+function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
   var themes = ["light", "dark", "sepia", "ocean", "forest", "matrix", "cosmos", "gold", "anime", "hacker", "cyber", "matrioska"]; 
@@ -356,35 +316,23 @@ window.doStudentLogin = function() {
   var n = $("loginName").value.trim(); 
   var g = $("loginGroup").value.trim();
   
-  if (!n || !g) { 
-      window.showToast("Пожалуйста, введите ФИО и Группу!", "err"); 
-      return; 
-  }
+  if (!n || !g) { window.showToast("Введите ФИО и Группу!", "err"); return; }
   
   state.student = { name: n, group: g.toUpperCase() };
-  
-  try {
-    localStorage.setItem("mdk.student", JSON.stringify(state.student));
-    localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); // обратная совместимость
-  } catch(e){}
+  try { localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); } catch(e){}
   
   $("loginOverlay").hidden = true; 
   renderUserChip(); 
   loadStudentData(); 
   checkDailyLogin(); 
   route();
-  updateCabinetSwitcher();
 };
-
 window.doTeacherLogin = function() {
   var user = $("loginStaffName").value.trim(); 
   var pass = $("loginStaffPass").value.trim(); 
   var btn = $("staffLoginBtn");
   
-  if (!user || !pass) { 
-      window.showToast("Введите логин и пароль!", "err"); 
-      return; 
-  }
+  if (!user || !pass) { window.showToast("Введите логин и пароль!", "err"); return; }
   
   btn.textContent = "Проверяем..."; 
   btn.disabled = true;
@@ -394,11 +342,10 @@ window.doTeacherLogin = function() {
     .then(function(d) {
       if (d && d.ok) { 
           state.staff = { role: d.role, name: d.name }; 
-          try { localStorage.setItem("mdk.staff", JSON.stringify(state.staff)); sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){}
+          try { sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){}
           $("loginOverlay").hidden = true; 
           renderUserChip(); 
-          route();
-          updateCabinetSwitcher();
+          route(); 
       } 
       else { 
           window.showToast("Неверный логин или пароль.", "err"); 
@@ -411,18 +358,11 @@ window.doTeacherLogin = function() {
         btn.disabled = false; 
     });
 };
-
 window.handleLogout = function() {
   if (confirm("Выйти из аккаунта?")) {
     state.student = null; state.staff = null; 
-    try {
-      localStorage.removeItem("mdk.student");
-      localStorage.removeItem("mdk.staff");
-      localStorage.removeItem("mdk0701.student");
-      sessionStorage.removeItem("mdk0701.staff");
-    } catch(e){}
-    $("loginOverlay").hidden = false; $("userChipName").textContent = "Гость"; $("userChipGroup").textContent = "Роль: Гость"; $("userChipAvatar").textContent = "👨‍🎓"; if ($("xpCount")) $("xpCount").textContent = "🌟 0 XP"; closeDrawer(); route();
-    updateCabinetSwitcher();
+    try { localStorage.removeItem("mdk0701.student"); sessionStorage.removeItem("mdk0701.staff"); } catch(e){}
+    $("loginOverlay").hidden = false; $("userChipName").textContent = "Гость"; $("userChipGroup").textContent = "Роль: Гость"; $("userChipAvatar").innerHTML = "👨‍🎓"; if ($("xpCount")) $("xpCount").textContent = "🌟 0 XP"; closeDrawer(); route();
   }
 };
 
@@ -430,19 +370,33 @@ function renderUserChip(){
   if (state.staff) { 
       $("userChipName").textContent = state.staff.name; 
       $("userChipGroup").textContent = "Учитель"; 
-      $("userChipAvatar").textContent = "👨‍🏫"; 
+      $("userChipAvatar").innerHTML = "👨‍🏫"; 
       var reqEl = document.getElementById("navRequests");
       if (reqEl) reqEl.style.display = "flex";
   } 
   else if (state.student) { 
       $("userChipName").textContent = state.nick || state.student.name; 
       $("userChipGroup").textContent = "Гр. " + state.student.group; 
-      if (state.shop.includes("golden") || state.staff) { $("userChipAvatar").textContent = "👑"; } 
-      else { $("userChipAvatar").textContent = "👨‍🎓"; }
+      
+      if (state.avatar) {
+          $("userChipAvatar").innerHTML = `<img src="${state.avatar}" style="width:100%; height:100%; object-fit:cover; border-radius:20px;">`;
+      } else if (state.shop.includes("golden") || state.staff) { 
+          $("userChipAvatar").innerHTML = "👑"; 
+      } else { 
+          $("userChipAvatar").innerHTML = "👨‍🎓"; 
+      }
   }
   updateNotifBadge();
-  updateCabinetSwitcher();
+  applyEffects();
 }
+
+function applyEffects() {
+    document.body.classList.remove('effect-waves', 'effect-pulse', 'effect-matrix');
+    if (state.effects && state.effects.length > 0) {
+        state.effects.forEach(eff => document.body.classList.add('effect-' + eff));
+    }
+}
+
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); }
 
@@ -643,90 +597,54 @@ function renderTopic(id, tab){
     } else if (tab === "self" && t.topic.selfChecks) {
       var selfWrap = el('<div></div>'); panel.appendChild(selfWrap);
       t.topic.selfChecks.forEach(function(q, i){ selfWrap.appendChild(el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><input type="text" class="self-input" data-idx="' + i + '" placeholder="Ваш ответ"><div class="self-feedback" id="fb_' + i + '" style="font-size:13px; margin-top:4px;"></div></div>')); });
-      
-      var reviewBox = el('<div id="selfReview" style="margin-top:20px;"></div>'); panel.appendChild(reviewBox);
-      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить и проверить</button>');
+      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить</button>');
       panel.appendChild(checkBtn);
-      
       checkBtn.onclick = function() {
         var correctCount = 0;
-        var reviewHtml = '<div style="background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0;">📝 Разбор ответов</h3>';
-        
         selfWrap.querySelectorAll(".self-input").forEach(function(inp) { 
           var idx = Number(inp.getAttribute("data-idx")); 
           var q = t.topic.selfChecks[idx]; 
-          var userAns = inp.value.trim().toLowerCase();
-          var isCorrect = (userAns === q.a.trim().toLowerCase());
-          
-          if (isCorrect) correctCount++;
-          
-          reviewHtml += `<div style="margin-bottom:12px; padding:12px; border-radius:8px; background:${isCorrect ? 'rgba(45,122,79,0.1)' : 'rgba(192,57,43,0.1)'}; border:1px solid ${isCorrect ? 'var(--ok)' : 'var(--err)'};">
-              <div style="font-weight:bold; margin-bottom:4px;">${idx+1}. ${q.q}</div>
-              <div style="font-size:14px; color:${isCorrect ? 'var(--ok)' : 'var(--err)'};">Ваш ответ: ${inp.value || '<i>Пусто</i>'}</div>
-              <div style="font-size:14px; color:var(--text); margin-top:4px;">Правильный ответ: <b>${q.a}</b></div>
-          </div>`;
+          var fb = selfWrap.querySelector("#fb_" + idx); 
+          if (inp.value.trim().toLowerCase() === q.a.trim().toLowerCase()) { 
+            fb.textContent = "✔ Верно"; fb.style.color = "var(--ok)"; correctCount++; 
+          } else { 
+            fb.textContent = "✘ Неверно. Ответ: " + q.a; fb.style.color = "var(--err)"; 
+          } 
         });
-        
-        reviewHtml += '</div>';
-        reviewBox.innerHTML = reviewHtml;
-        checkBtn.disabled = true;
-        checkBtn.textContent = "Результаты сохранены";
-        
         var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); 
         state.selfResults[id] = { grade: grade }; 
         saveStudentData();
-        window.showToast("Работа сдана! Оценка: " + grade, "ok");
+        window.showToast("Работа сдана!", "ok");
+        renderTopic(id, "self");
       };
     } else if (tab === "test" && t.topic.test) {
       var timerBox = el('<div style="font-size:20px;font-weight:bold;color:var(--err);margin-bottom:16px;">⏱ 15:00</div>'); panel.appendChild(timerBox);
       var testWrap = el('<div></div>'); panel.appendChild(testWrap);
-      
       t.topic.test.forEach(function(q, qi){
         var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + q.q + '</div></div>');
         q.options.forEach(function(opt, oi){ qb.appendChild(el('<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + opt + '</span></label>')); });
         testWrap.appendChild(qb);
       });
-      
-      var reviewBox = el('<div id="testReview" style="margin-top:20px;"></div>'); panel.appendChild(reviewBox);
       var finishBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить тест</button>'); panel.appendChild(finishBtn);
-      
       var timeLeft = 15 * 60; var timerId = setInterval(function() {
         if (!document.body.contains(timerBox)) { clearInterval(timerId); return; }
         timeLeft--; timerBox.textContent = "⏱ " + String(Math.floor(timeLeft/60)).padStart(2,'0') + ":" + String(timeLeft%60).padStart(2,'0');
         if (timeLeft <= 0) { clearInterval(timerId); finishBtn.click(); }
       }, 1000);
-      
       finishBtn.onclick = function() {
-        clearInterval(timerId); 
-        var correct = 0;
-        var reviewHtml = '<div style="background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0;">📝 Разбор ответов</h3>';
-        
+        clearInterval(timerId); var correct = 0;
         t.topic.test.forEach(function(q, qi) {
           var ch = testWrap.querySelector('input[name="q' + qi + '"]:checked');
-          var userAns = ch ? Number(ch.value) : -1;
-          var isCorrect = (userAns === q.correct);
-          
-          if (isCorrect) correct++;
-          
-          reviewHtml += `<div style="margin-bottom:12px; padding:12px; border-radius:8px; background:${isCorrect ? 'rgba(45,122,79,0.1)' : 'rgba(192,57,43,0.1)'}; border:1px solid ${isCorrect ? 'var(--ok)' : 'var(--err)'};">
-              <div style="font-weight:bold; margin-bottom:4px;">${qi+1}. ${q.q}</div>
-              <div style="font-size:14px; color:${isCorrect ? 'var(--ok)' : 'var(--err)'};">Ваш ответ: ${userAns !== -1 ? q.options[userAns] : '<i>Нет ответа</i>'}</div>
-              <div style="font-size:14px; color:var(--text); margin-top:4px;">Правильный ответ: <b>${q.options[q.correct]}</b></div>
-          </div>`;
+          if (ch && Number(ch.value) === q.correct) correct++;
         });
-        
-        reviewHtml += '</div>';
-        reviewBox.innerHTML = reviewHtml;
-        finishBtn.disabled = true;
-        finishBtn.textContent = "Тест завершен";
-        
         var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); 
         state.results[id] = { grade: grade }; 
         if (state.allowedAttempts && state.allowedAttempts[reqKey]) {
             state.allowedAttempts[reqKey] = 1; 
         }
         saveStudentData();
-        window.showToast("Тест сдан! Оценка: " + grade, "ok"); 
+        window.showToast("Тест сдан!", "ok"); 
+        renderTopic(id, "test");
       };
     }
   }
@@ -745,9 +663,13 @@ function renderShopPage(){
   app.appendChild(el('<section class="hero"><h1>Магазин XP</h1><p>У вас: 🌟 <b>' + state.xp + ' XP</b></p></section>'));
   
   var items = [
-    { id: "golden", icon: "👑", title: "Золотой аватар", price: 100, type: "avatar" },
+    { id: "avatar_custom", icon: "🖼️", title: "Загрузить аватар", price: 100000, type: "upload", desc: "Своя картинка вместо смайлика" },
+    { id: "avatar_animated", icon: "🎞️", title: "Анимированный аватар", price: 500000, type: "upload_animated", desc: "GIF-аватар" },
     { id: "nick", icon: "🏷️", title: "Кастомный Ник", price: 200, type: "input", field: "nick", placeholder: "Введите ваш ник..." },
     { id: "sign", icon: "✍️", title: "Подпись в профиле", price: 300, type: "input", field: "sign", placeholder: "Введите вашу подпись..." },
+    { id: "effect_waves", icon: "🌊", title: "Эффект 'Волны'", price: 50000, type: "effect", effect: "waves" },
+    { id: "effect_pulse", icon: "💓", title: "Эффект 'Пульс'", price: 75000, type: "effect", effect: "pulse" },
+    { id: "effect_matrix", icon: "🟩", title: "Эффект 'Матрица'", price: 100000, type: "effect", effect: "matrix" },
     { id: "theme_matrix", icon: "🟩", title: "Тема 'Матрица'", price: 500, type: "theme", theme: "matrix" },
     { id: "theme_cosmos", icon: "🌌", title: "Тема 'Космос'", price: 800, type: "theme", theme: "cosmos" },
     { id: "theme_gold", icon: "🪙", title: "Тема 'Золото'", price: 1000, type: "theme", theme: "gold" },
@@ -757,7 +679,7 @@ function renderShopPage(){
     { id: "theme_matrioska", icon: "🪆", title: "Тема 'Матрешка'", price: 3000, type: "theme", theme: "matrioska" }
   ];
   
-  var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');
+  var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:16px;"></div>');
   
   items.forEach(function(it){
     var has = state.shop.includes(it.id) || state.staff;
@@ -774,18 +696,48 @@ function renderShopPage(){
                 var val = prompt(it.placeholder, state[it.field] || "");
                 if (val === null) return;
                 state[it.field] = val.trim();
+            } else if (it.type === "theme") {
+                applyTheme(it.theme);
+            } else if (it.type === "effect") {
+                state.effects.push(it.effect);
+                applyEffects();
+            } else if (it.type === "upload" || it.type === "upload_animated") {
+                var fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = it.type === "upload" ? "image/*" : "image/gif";
+                
+                fileInput.onchange = function(e) {
+                    var file = e.target.files[0];
+                    if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) { window.showToast("Файл слишком большой (макс 2МБ)", "err"); return; }
+                    
+                    var reader = new FileReader();
+                    reader.onload = function(ev) {
+                        state.avatar = ev.target.result;
+                        saveStudentData();
+                        renderUserChip();
+                        renderShopPage();
+                        window.showToast("Аватар установлен!", "ok");
+                    };
+                    reader.readAsDataURL(file);
+                };
+                fileInput.click();
             }
-            if (it.type === "theme") { applyTheme(it.theme); }
-            state.xp -= it.price; 
-            state.shop.push(it.id); 
-            saveStudentData(); 
-            renderShopPage(); 
-            renderUserChip();
-            window.showToast("Покупка совершена!", "ok"); 
+            
+            if (it.type !== "upload" && it.type !== "upload_animated") {
+                state.xp -= it.price; 
+                state.shop.push(it.id); 
+                saveStudentData(); 
+                renderShopPage(); 
+                renderUserChip();
+                window.showToast("Покупка совершена!", "ok"); 
+            }
         }; 
     }
     
-    var card = el(`<div style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;display:flex;flex-direction:column;justify-content:space-between;"><div><div style="font-size:40px;margin-bottom:10px;">${it.icon}</div><div style="font-weight:bold;">${it.title}</div></div><div style="margin-top:10px;"><div style="color:var(--accent);font-weight:bold;margin-bottom:8px;">${it.price} XP</div></div></div>`);
+    var descHtml = it.desc ? `<div style="font-size:12px; color:var(--muted); margin-top:4px;">${it.desc}</div>` : "";
+    
+    var card = el(`<div style="background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;text-align:center;display:flex;flex-direction:column;justify-content:space-between;"><div><div style="font-size:40px;margin-bottom:10px;">${it.icon}</div><div style="font-weight:bold;">${it.title}</div>${descHtml}</div><div style="margin-top:10px;"><div style="color:var(--accent);font-weight:bold;margin-bottom:8px;">${it.price} XP</div></div></div>`);
     card.appendChild(btn); 
     grid.appendChild(card);
   });
@@ -835,12 +787,6 @@ function route(){
 }
 
 window.addEventListener("DOMContentLoaded", function() {
-  // Загружаем общую тему
-  try {
-    var sharedTheme = localStorage.getItem("mdk.theme") || localStorage.getItem("mdk0701.theme");
-    if (sharedTheme) document.documentElement.setAttribute("data-theme", sharedTheme);
-  } catch(e){}
-
   try {
       if (!state.student && !state.staff) { $("loginOverlay").hidden = false; } else { $("loginOverlay").hidden = true; }
       if (state.student) {
@@ -860,7 +806,6 @@ window.addEventListener("DOMContentLoaded", function() {
   try {
       renderUserChip(); 
       route();
-      updateCabinetSwitcher();
   } catch(e) { console.error("Render error:", e); }
 });
 window.addEventListener("hashchange", route);
