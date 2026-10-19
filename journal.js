@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v83.0 — REPORT FIX)
+   МДК 07.01 — journal.js (v88.0 — NO CACHE)
    ============================================================ */
 "use strict";
 
@@ -11,7 +11,6 @@ window.renderJournalPage = function() {
   
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
   
-  // ПАНЕЛЬ БЫСТРОЙ ВЫДАЧИ XP
   if (isTeacher) {
       var quickPanel = el(`<section class="module" style="background:var(--accent-soft); border-color:var(--accent); margin-bottom:24px;">
           <h3 style="margin-top:0; color:var(--accent);">🎁 Быстрая выдача XP</h3>
@@ -24,7 +23,6 @@ window.renderJournalPage = function() {
       app.appendChild(quickPanel);
   }
 
-  // КНОПКА ОТПРАВКИ ОТЧЕТА
   if (isTeacher) {
     var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
     app.appendChild(topPanel);
@@ -47,11 +45,8 @@ window.renderJournalPage = function() {
       fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
         .then(r => r.json())
         .then(res => {
-            if(res.ok) {
-                window.showToast("Отчет успешно отправлен!", "ok");
-            } else {
-                window.showToast("Ошибка сервера: " + (res.error || "Неизвестно"), "err");
-            }
+            if(res.ok) window.showToast("Отчет успешно отправлен!", "ok");
+            else window.showToast("Ошибка сервера: " + (res.error || "Неизвестно"), "err");
         })
         .catch(err => {
             console.error(err);
@@ -66,7 +61,8 @@ window.renderJournalPage = function() {
 
   var tableWrap = el('<section class="module"><div class="skeleton" style="height:200px;"></div></section>'); app.appendChild(tableWrap);
 
-  fetch(APPS_SCRIPT_URL + "?action=getstudents").then(r => r.json()).then(d => {
+  // ДОБАВЛЕН &t= ДЛЯ ОБХОДА КЭША
+  fetch(APPS_SCRIPT_URL + "?action=getstudents&t=" + Date.now()).then(r => r.json()).then(d => {
     tableWrap.innerHTML = "";
     if (!d.ok || !d.students.length) { tableWrap.innerHTML = "Студентов пока нет."; return; }
     
