@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v89.0 — NO RECURSION & CRASH FIX)
+   МДК 07.01 — script.js (v91.0 — ANSWER REVEAL)
    ============================================================ */
 "use strict";
 
@@ -12,9 +12,8 @@ var state = {
   notifications: [], schedule: [] 
 };
 
-// Безопасная загрузка из localStorage
 try { 
-  var _s = JSON.parse(localStorage.getItem("mdk0701.student") || "null"); 
+  var _s = JSON.parse(localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null"); 
   if (_s && _s.name) state.student = _s; 
 } catch (e){}
 
@@ -23,7 +22,6 @@ try {
   if (_st && _st.role) state.staff = _st; 
 } catch (e){}
 
-// --- УТИЛИТЫ ---
 function getCourse(){ try { return COURSE; } catch(e){} try { return window.COURSE; } catch(e){} return null; }
 function $(id){ return document.getElementById(id); }
 function el(html){ var t = document.createElement("template"); t.innerHTML = String(html).trim(); return t.content.firstChild; }
@@ -44,13 +42,11 @@ window.showToast = function(msg, type) {
   setTimeout(function() { toast.classList.add("out"); setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300); }, 3000);
 };
 
-// --- УВЕДОМЛЕНИЯ (БЕЗ РЕКУРСИИ) ---
 window.addNotification = function(text, type = "info") {
     if (!state.notifications) state.notifications = [];
     state.notifications.unshift({ id: Date.now(), text: text, type: type, date: new Date().toISOString(), read: false });
     if (state.notifications.length > 50) state.notifications.pop();
     updateNotifBadge();
-    // Сохранение происходит ВЫЗЫВАЮЩЕЙ функцией
 };
 
 function updateNotifBadge() {
@@ -65,7 +61,6 @@ function updateNotifBadge() {
     }
 }
 
-// --- ДОСТИЖЕНИЯ (БЕЗ РЕКУРСИИ) ---
 function checkAchievements() {
     var achList = [
         { id: "t1", xp: 10, title: "Новичок" },
@@ -88,7 +83,6 @@ function checkAchievements() {
     if (hasNew) updateNotifBadge();
 }
 
-// --- ЗАГРУЗКА И СОХРАНЕНИЕ ДАННЫХ ---
 function loadStudentData(){
   var k = studentKey(); if (!k) return; var ek = encodeURIComponent(k);
   
@@ -146,7 +140,7 @@ function loadStudentData(){
                     }
                 }
             }
-        }).catch(e => console.warn("Синхронизация с сервером не удалась", e));
+        }).catch(e => console.warn("Sync error", e));
   }
 }
 
@@ -188,7 +182,6 @@ function saveStudentData(){
   }
 }
 
-// --- ЕЖЕДНЕВНЫЙ ВХОД ---
 function checkDailyLogin() {
     if (!state.student) return;
     var today = new Date().toDateString();
@@ -218,7 +211,6 @@ function checkDailyLogin() {
     }
 }
 
-// --- ДЕЙСТВИЯ (Студент) ---
 window.markPracticalDone = function(topicId, code) {
     if (!state.practicalsDone[topicId]) state.practicalsDone[topicId] = {};
     state.practicalsDone[topicId][code] = "pending";
@@ -238,7 +230,6 @@ window.requestAttempt = function(topicId, type) {
     window.showToast("Запрос на доп. попытку отправлен!", "ok");
 };
 
-// --- ДЕЙСТВИЯ (Преподаватель) ---
 window.approvePractical = function(studentKeyStr, topicId, code, grade) {
     var p = new URLSearchParams();
     p.append("action", "approvework"); 
@@ -295,7 +286,6 @@ window.grantXP = function(studentKeyStr, studentName, presetAmount) {
       .catch(() => window.showToast("Ошибка сети.", "err"));
 };
 
-// --- ТЕМЫ ---
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
@@ -317,27 +307,58 @@ function openThemeModal(){
   document.body.appendChild(modal);
 }
 
-// --- ВХОД/ВЫХОД ---
 window.doStudentLogin = function() {
-  var n = $("loginName").value.trim(); var g = $("loginGroup").value.trim();
-  if (!n || !g) { alert("Введите ФИО и Группу!"); return; }
+  var n = $("loginName").value.trim(); 
+  var g = $("loginGroup").value.trim();
+  
+  if (!n || !g) { 
+      window.showToast("Пожалуйста, введите ФИО и Группу!", "err"); 
+      return; 
+  }
+  
   state.student = { name: n, group: g.toUpperCase() };
+  
   try { localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); } catch(e){}
-  $("loginOverlay").hidden = true; renderUserChip(); loadStudentData(); checkDailyLogin(); route();
+  
+  $("loginOverlay").hidden = true; 
+  renderUserChip(); 
+  loadStudentData(); 
+  checkDailyLogin(); 
+  route();
 };
 window.doTeacherLogin = function() {
-  var user = $("loginStaffName").value.trim(); var pass = $("loginStaffPass").value.trim(); var btn = $("staffLoginBtn");
-  if (!user || !pass) { alert("Введите логин и пароль!"); return; }
-  btn.textContent = "Проверяем..."; btn.disabled = true;
+  var user = $("loginStaffName").value.trim(); 
+  var pass = $("loginStaffPass").value.trim(); 
+  var btn = $("staffLoginBtn");
+  
+  if (!user || !pass) { 
+      window.showToast("Введите логин и пароль!", "err"); 
+      return; 
+  }
+  
+  btn.textContent = "Проверяем..."; 
+  btn.disabled = true;
+  
   fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass) + "&t=" + new Date().getTime())
-    .then(function(r){ return r.json(); }).then(function(d) {
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
       if (d && d.ok) { 
           state.staff = { role: d.role, name: d.name }; 
           try { sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){}
-          $("loginOverlay").hidden = true; renderUserChip(); route(); 
+          $("loginOverlay").hidden = true; 
+          renderUserChip(); 
+          route(); 
       } 
-      else { alert("Неверный логин или пароль."); btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
-    }).catch(function() { alert("Ошибка сети."); btn.textContent = "Войти как сотрудник"; btn.disabled = false; });
+      else { 
+          window.showToast("Неверный логин или пароль.", "err"); 
+          btn.textContent = "Войти как сотрудник"; 
+          btn.disabled = false; 
+      }
+    }).catch(function() { 
+        window.showToast("Ошибка сети.", "err"); 
+        btn.textContent = "Войти как сотрудник"; 
+        btn.disabled = false; 
+    });
 };
 window.handleLogout = function() {
   if (confirm("Выйти из аккаунта?")) {
@@ -366,7 +387,6 @@ function renderUserChip(){
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); }
 
-// --- РЕНДЕР ГЛАВНОЙ ---
 function renderHome(){
   var app = $("app"); app.innerHTML = ""; var c = getCourse();
   if(!c) { app.innerHTML = "<p>Ошибка загрузки курса.</p>"; return; }
@@ -449,7 +469,6 @@ function renderHome(){
   }
 }
 
-// --- РЕНДЕР СПРАВОЧНИКА ---
 window.renderGCodeReferencePage = function() {
   var app = $("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Справочник G/M";
@@ -483,7 +502,6 @@ window.renderGCodeReferencePage = function() {
   }
 };
 
-// --- РЕНДЕР ТЕМЫ ---
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = "";
@@ -566,60 +584,95 @@ function renderTopic(id, tab){
     } else if (tab === "self" && t.topic.selfChecks) {
       var selfWrap = el('<div></div>'); panel.appendChild(selfWrap);
       t.topic.selfChecks.forEach(function(q, i){ selfWrap.appendChild(el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><input type="text" class="self-input" data-idx="' + i + '" placeholder="Ваш ответ"><div class="self-feedback" id="fb_' + i + '" style="font-size:13px; margin-top:4px;"></div></div>')); });
-      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить</button>');
+      
+      var reviewBox = el('<div id="selfReview" style="margin-top:20px;"></div>'); panel.appendChild(reviewBox);
+      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить и проверить</button>');
       panel.appendChild(checkBtn);
+      
       checkBtn.onclick = function() {
         var correctCount = 0;
+        var reviewHtml = '<div style="background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0;">📝 Разбор ответов</h3>';
+        
         selfWrap.querySelectorAll(".self-input").forEach(function(inp) { 
           var idx = Number(inp.getAttribute("data-idx")); 
           var q = t.topic.selfChecks[idx]; 
-          var fb = selfWrap.querySelector("#fb_" + idx); 
-          if (inp.value.trim().toLowerCase() === q.a.trim().toLowerCase()) { 
-            fb.textContent = "✔ Верно"; fb.style.color = "var(--ok)"; correctCount++; 
-          } else { 
-            fb.textContent = "✘ Неверно. Ответ: " + q.a; fb.style.color = "var(--err)"; 
-          } 
+          var userAns = inp.value.trim().toLowerCase();
+          var isCorrect = (userAns === q.a.trim().toLowerCase());
+          
+          if (isCorrect) correctCount++;
+          
+          reviewHtml += `<div style="margin-bottom:12px; padding:12px; border-radius:8px; background:${isCorrect ? 'rgba(45,122,79,0.1)' : 'rgba(192,57,43,0.1)'}; border:1px solid ${isCorrect ? 'var(--ok)' : 'var(--err)'};">
+              <div style="font-weight:bold; margin-bottom:4px;">${idx+1}. ${q.q}</div>
+              <div style="font-size:14px; color:${isCorrect ? 'var(--ok)' : 'var(--err)'};">Ваш ответ: ${inp.value || '<i>Пусто</i>'}</div>
+              <div style="font-size:14px; color:var(--text); margin-top:4px;">Правильный ответ: <b>${q.a}</b></div>
+          </div>`;
         });
+        
+        reviewHtml += '</div>';
+        reviewBox.innerHTML = reviewHtml;
+        checkBtn.disabled = true;
+        checkBtn.textContent = "Результаты сохранены";
+        
         var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); 
         state.selfResults[id] = { grade: grade }; 
         saveStudentData();
-        window.showToast("Работа сдана!", "ok");
-        renderTopic(id, "self");
+        window.showToast("Работа сдана! Оценка: " + grade, "ok");
       };
     } else if (tab === "test" && t.topic.test) {
       var timerBox = el('<div style="font-size:20px;font-weight:bold;color:var(--err);margin-bottom:16px;">⏱ 15:00</div>'); panel.appendChild(timerBox);
       var testWrap = el('<div></div>'); panel.appendChild(testWrap);
+      
       t.topic.test.forEach(function(q, qi){
         var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + q.q + '</div></div>');
         q.options.forEach(function(opt, oi){ qb.appendChild(el('<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + opt + '</span></label>')); });
         testWrap.appendChild(qb);
       });
+      
+      var reviewBox = el('<div id="testReview" style="margin-top:20px;"></div>'); panel.appendChild(reviewBox);
       var finishBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить тест</button>'); panel.appendChild(finishBtn);
+      
       var timeLeft = 15 * 60; var timerId = setInterval(function() {
         if (!document.body.contains(timerBox)) { clearInterval(timerId); return; }
         timeLeft--; timerBox.textContent = "⏱ " + String(Math.floor(timeLeft/60)).padStart(2,'0') + ":" + String(timeLeft%60).padStart(2,'0');
         if (timeLeft <= 0) { clearInterval(timerId); finishBtn.click(); }
       }, 1000);
+      
       finishBtn.onclick = function() {
-        clearInterval(timerId); var correct = 0;
+        clearInterval(timerId); 
+        var correct = 0;
+        var reviewHtml = '<div style="background:var(--card-soft); padding:20px; border-radius:12px; border:1px solid var(--border);"><h3 style="margin-top:0;">📝 Разбор ответов</h3>';
+        
         t.topic.test.forEach(function(q, qi) {
           var ch = testWrap.querySelector('input[name="q' + qi + '"]:checked');
-          if (ch && Number(ch.value) === q.correct) correct++;
+          var userAns = ch ? Number(ch.value) : -1;
+          var isCorrect = (userAns === q.correct);
+          
+          if (isCorrect) correct++;
+          
+          reviewHtml += `<div style="margin-bottom:12px; padding:12px; border-radius:8px; background:${isCorrect ? 'rgba(45,122,79,0.1)' : 'rgba(192,57,43,0.1)'}; border:1px solid ${isCorrect ? 'var(--ok)' : 'var(--err)'};">
+              <div style="font-weight:bold; margin-bottom:4px;">${qi+1}. ${q.q}</div>
+              <div style="font-size:14px; color:${isCorrect ? 'var(--ok)' : 'var(--err)'};">Ваш ответ: ${userAns !== -1 ? q.options[userAns] : '<i>Нет ответа</i>'}</div>
+              <div style="font-size:14px; color:var(--text); margin-top:4px;">Правильный ответ: <b>${q.options[q.correct]}</b></div>
+          </div>`;
         });
+        
+        reviewHtml += '</div>';
+        reviewBox.innerHTML = reviewHtml;
+        finishBtn.disabled = true;
+        finishBtn.textContent = "Тест завершен";
+        
         var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); 
         state.results[id] = { grade: grade }; 
         if (state.allowedAttempts && state.allowedAttempts[reqKey]) {
             state.allowedAttempts[reqKey] = 1; 
         }
         saveStudentData();
-        window.showToast("Тест сдан!", "ok"); 
-        renderTopic(id, "test");
+        window.showToast("Тест сдан! Оценка: " + grade, "ok"); 
       };
     }
   }
 }
 
-// --- ОСТАЛЬНЫЕ СТРАНИЦЫ ---
 function renderSimulatorPage(){
   var app = $("app"); app.innerHTML = ""; app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
   var block = el('<section class="module"><h2>🖥️ Симулятор</h2><textarea id="gcodeInput" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card-soft);margin-bottom:10px;font-family:monospace;">G00 X0 Y0\nG01 X50 Y50\nG01 X100 Y50\nG01 X100 Y0\nG01 X0 Y0</textarea><button class="btn" id="runCodeBtn" style="width:100%;margin-bottom:10px;">▶ Выполнить</button><div style="background:var(--card-soft);border:1px solid var(--border);border-radius:8px;overflow:hidden;"><canvas id="simCanvas" width="600" height="400" style="width:100%;height:auto;background:#fff;"></canvas></div></section>');
@@ -685,7 +738,6 @@ function renderPortfolioPage(){
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
-// --- РОУТИНГ ---
 function route(){
   closeDrawer();
   
