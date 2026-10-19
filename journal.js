@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v122.0 — CASINO & PROFILE UPDATE)
+   МДК 07.01 — journal.js (v124.0 — LEVEL DOWN & CASINO)
    ============================================================ */
 "use strict";
 
@@ -12,19 +12,22 @@ window.renderJournalPage = function() {
   
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
   
-  /* ------- Быстрая панель XP и КАЗИНО для учителя ------- */
+  /* ------- Быстрая панель XP, Казино и Понижение уровня ------- */
   if (isTeacher) {
       var quickPanel = el(
           '<section class="module" style="background:var(--accent-soft); border-color:var(--accent); margin-bottom:24px;">' +
-              '<h3 style="margin-top:0; color:var(--accent);">🎁 Быстрая выдача / списание XP</h3>' +
-              '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">' +
+              '<h3 style="margin-top:0; color:var(--accent);">🎁 Управление опытом студента</h3>' +
+              '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">' +
                   '<select id="quickStudentSelect" class="self-input" style="flex:1; min-width:200px; margin:0;">' +
                       '<option value="">— Выберите студента —</option>' +
                   '</select>' +
                   '<input id="quickXPAmount" type="number" class="self-input" style="width:110px; margin:0;" placeholder="XP" value="50" min="1">' +
                   '<button class="btn" id="quickAddBtn" style="background:var(--gold); color:#000;">+ Начислить</button>' +
                   '<button class="btn ghost" id="quickSubBtn" style="border-color:var(--err); color:var(--err);">− Списать</button>' +
-                  '<button class="btn" id="quickCasinoBtn" style="background:linear-gradient(45deg, #ff00cc, #333399); color:#fff; box-shadow:0 0 10px rgba(255,0,204,0.5);">🎰 Казино</button>' +
+              '</div>' +
+              '<div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; border-top:1px dashed var(--border); padding-top:12px;">' +
+                  '<button class="btn" id="quickCasinoBtn" style="flex:1; background:linear-gradient(45deg, #ff00cc, #333399); color:#fff; box-shadow:0 0 10px rgba(255,0,204,0.5);">🎰 Казино</button>' +
+                  '<button class="btn ghost" id="quickLevelDownBtn" style="flex:1; border-color:var(--err); color:var(--err); font-weight:bold;">📉 Понизить уровень</button>' +
               '</div>' +
           '</section>');
       app.appendChild(quickPanel);
@@ -61,47 +64,71 @@ window.renderJournalPage = function() {
                   name: sel.options[sel.selectedIndex].text.replace(/\s*\([^)]*\)\s*$/, "").trim()
               };
           };
+          
+          var getStudentData = function() {
+              var info = getSelectedInfo();
+              if (!info) return null;
+              var s = studentsList.find(function(x){ return (x.name.toLowerCase() + "|" + x.group.toLowerCase()) === info.key; });
+              if (!s) return null;
+              var p = {};
+              try { p = JSON.parse(s.payload || "{}"); } catch(e){}
+              return { info: info, xp: p.xp || 0 };
+          };
+
           var getAmount = function() {
               var v = parseInt(document.getElementById("quickXPAmount").value, 10);
               return isNaN(v) || v <= 0 ? 50 : v;
           };
           
           document.getElementById("quickAddBtn").onclick = function() {
-              var info = getSelectedInfo();
-              if (!info) { window.showToast("Выберите студента", "err"); return; }
-              var amount = getAmount();
-              if (confirm("Начислить +" + amount + " XP студенту " + info.name + "?")) {
-                  window.grantXP(info.key, info.name, amount);
+              var data = getStudentData();
+              if (!data) { window.showToast("Выберите студента", "err"); return; }
+              if (confirm("Начислить +" + getAmount() + " XP студенту " + data.info.name + "?")) {
+                  window.grantXP(data.info.key, data.info.name, getAmount());
               }
           };
+          
           document.getElementById("quickSubBtn").onclick = function() {
-              var info = getSelectedInfo();
-              if (!info) { window.showToast("Выберите студента", "err"); return; }
+              var data = getStudentData();
+              if (!data) { window.showToast("Выберите студента", "err"); return; }
               var amount = -getAmount();
-              if (confirm("Списать " + Math.abs(amount) + " XP у студента " + info.name + "?")) {
-                  window.grantXP(info.key, info.name, amount);
+              if (confirm("Списать " + Math.abs(amount) + " XP у студента " + data.info.name + "?")) {
+                  window.grantXP(data.info.key, data.info.name, amount);
+              }
+          };
+
+          document.getElementById("quickLevelDownBtn").onclick = function() {
+              var data = getStudentData();
+              if (!data) { window.showToast("Выберите студента", "err"); return; }
+              
+              var currentLevel = getLevel(data.xp);
+              if (currentLevel <= 1) {
+                  window.showToast("Студент уже на минимальном 1 уровне!", "err");
+                  return;
+              }
+
+              var xpForCurrent = Math.pow(currentLevel - 1, 2) * 100;
+              var amountToDrop = data.xp - xpForCurrent + 1;
+
+              if (confirm("Понизить уровень студента " + data.info.name + " с " + currentLevel + " до " + (currentLevel - 1) + "?\n\n(Будет списано " + amountToDrop + " XP)")) {
+                  window.grantXP(data.info.key, data.info.name, -amountToDrop);
               }
           };
           
           // ЛОГИКА КАЗИНО
           document.getElementById("quickCasinoBtn").onclick = function() {
-              var info = getSelectedInfo();
-              if (!info) { window.showToast("Выберите студента для игры в казино", "err"); return; }
+              var data = getStudentData();
+              if (!data) { window.showToast("Выберите студента для игры в казино", "err"); return; }
               
-              // Рулетка: от -100 до +500
               var winAmount = Math.floor(Math.random() * 601) - 100;
-              
               var resultText = "";
-              if (winAmount > 0) {
-                  resultText = "🎉 ДЖЕКПОТ! ВЫИГРЫШ: +" + winAmount + " XP";
-              } else if (winAmount === 0) {
-                  resultText = "😐 ЗЕРОВАЯ СТАВКА (0 XP)";
-              } else {
-                  resultText = "💸 ПРОИГРЫШ! СПИСАНО: " + Math.abs(winAmount) + " XP";
-              }
               
-              if (confirm("🎰 КРУТИМ РУЛЕТКУ ДЛЯ: " + info.name + "?\n\nРезультат: " + resultText + "\n\nПодтвердить транзакцию?")) {
-                  window.grantXP(info.key, info.name, winAmount);
+              if (winAmount > 0) resultText = "🎉 ДЖЕКПОТ! ВЫИГРЫШ: +" + winAmount + " XP";
+              else if (winAmount === 0) resultText = "😐 ЗЕРОВАЯ СТАВКА (0 XP)";
+              else resultText = "💸 ПРОИГРЫШ! СПИСАНО: " + Math.abs(winAmount) + " XP";
+              
+              if (confirm("🎰 КРУТИМ РУЛЕТКУ ДЛЯ: " + data.info.name + "?\n\nРезультат: " + resultText + "\n\nПодтвердить транзакцию?")) {
+                  window.grantXP(data.info.key, data.info.name, winAmount);
               }
           };
       }
@@ -135,7 +162,6 @@ window.renderJournalPage = function() {
           var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
           var currentStudentKey = String(s.name || "").trim().toLowerCase() + "|" + String(s.group || "").trim().toLowerCase();
           
-          // Добавлена кнопка Профиля
           var nameCellHtml = '<div style="font-weight:bold; font-size:16px;">' + escapeHtml(s.name) + '</div>' +
                              '<div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ' + escapeHtml(s.group) + '</div>';
           

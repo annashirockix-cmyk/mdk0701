@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v116.0 — BUG FIX)
+   МДК 07.01 — extra.js (v125.0 — FULL REWRITE)
    ============================================================ */
 "use strict";
 
@@ -101,98 +101,153 @@ window.renderCommentsPage = function(){
 };
 
 /* ---------------- ЛИЧНЫЙ КАБИНЕТ ---------------- */
-window.renderProfilePage = function(){
+window.renderProfilePage = function(targetKey){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Профиль";
   app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
 
-  if (!state.student && !state.staff) {
+  var isViewingOther = targetKey && state.staff;
+  if (!state.student && !state.staff && !isViewingOther) {
     app.appendChild(el('<div class="module">Войдите, чтобы увидеть профиль.</div>'));
     return;
   }
 
-  var level = getLevel(state.xp);
-  var currentXp = state.xp;
-  var nextLevelXp = getXpForNextLevel(level);
-  var prevLevelXp = getXpForNextLevel(level - 1);
-  var progress = Math.min(100, Math.max(0, ((currentXp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100));
-  
-  var avatar = state.avatar 
-    ? '<img src="' + state.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' 
-    : (state.staff ? "👨‍🏫" : (state.shop.includes("golden") ? "👑" : "👨‍🎓"));
-  
-  var name = state.staff ? state.staff.name : (state.nick || (state.student && state.student.name) || "Гость");
-  var role = state.staff ? "Роль: " + state.staff.role : ("Студент · Гр. " + (state.student ? state.student.group : "—"));
+  function renderProfile(data) {
+    var level = getLevel(data.xp);
+    var currentXp = data.xp;
+    var nextLevelXp = getXpForNextLevel(level);
+    var prevLevelXp = getXpForNextLevel(level - 1);
+    var progress = Math.min(100, Math.max(0, ((currentXp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100));
+    var title = getLevelTitle(level);
+    
+    var avatar = data.avatar 
+      ? '<img src="' + data.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' 
+      : (data.role === "staff" ? "👨‍🏫" : (data.shop && data.shop.includes("golden") ? "👑" : "👨‍🎓"));
+    
+    var name = data.nick || data.name || "Гость";
+    var role = data.role === "staff" ? "Роль: " + data.staffRole : ("Студент · Гр. " + (data.group || "—"));
 
-  app.appendChild(el('<section class="hero" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
-    '<div style="width:90px;height:90px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">' + avatar + '</div>' +
-    '<div style="flex:1;min-width:200px;">' +
-      '<h1 style="margin:0 0 6px 0;font-size:24px;">' + escapeHtml(name) + ' <span style="font-size:16px;background:var(--gold);color:#000;padding:2px 8px;border-radius:8px;">Lv. ' + level + '</span></h1>' +
-      '<div style="color:var(--muted);">' + escapeHtml(role) + '</div>' +
-      (state.sign ? '<div style="margin-top:8px;font-style:italic;color:var(--text-soft);">' + escapeHtml(state.sign) + '</div>' : '') +
-    '</div>' +
-  '</section>'));
-
-  if (state.student) {
-    var lvlBlock = el('<section class="module"><h2>📈 Уровень ' + level + '</h2>' +
-      '<div style="margin:16px 0;">' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">' +
-          '<span>' + currentXp + ' XP</span><span>' + (level >= 100 ? 'Максимум' : nextLevelXp + ' XP') + '</span>' +
-        '</div>' +
-        '<div style="height:16px;background:var(--card-soft);border-radius:8px;overflow:hidden;border:1px solid var(--border);">' +
-          '<div style="height:100%;background:linear-gradient(90deg, var(--accent), var(--gold));width:' + progress + '%;transition:width 0.5s;"></div>' +
-        '</div>' +
+    app.appendChild(el('<section class="hero" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
+      '<div style="width:90px;height:90px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">' + avatar + '</div>' +
+      '<div style="flex:1;min-width:200px;">' +
+        '<h1 style="margin:0 0 6px 0;font-size:24px;">' + escapeHtml(name) + ' <span style="font-size:16px;background:var(--gold);color:#000;padding:2px 8px;border-radius:8px;">Lv. ' + level + ' (' + title + ')</span></h1>' +
+        '<div style="color:var(--muted);">' + escapeHtml(role) + '</div>' +
+        (data.sign ? '<div style="margin-top:8px;font-style:italic;color:var(--text-soft);">' + escapeHtml(data.sign) + '</div>' : '') +
       '</div>' +
-      '<p class="sub" style="font-size:13px;">До следующего уровня осталось: <b>' + (nextLevelXp - currentXp) + ' XP</b></p>' +
-    '</section>');
-    app.appendChild(lvlBlock);
+    '</section>'));
 
-    var bonuses = getLevelBonuses(level);
-    var bonusBlock = el('<section class="module"><h2>🎁 Ваши бонусы</h2><div style="display:grid;grid-template-columns:1fr;gap:10px;" id="bonusList"></div></section>');
-    var bWrap = bonusBlock.querySelector("#bonusList");
-    if (bonuses.length === 0) {
-        bWrap.appendChild(el('<div style="color:var(--muted);">Пока нет бонусов. Достигните 5 уровня!</div>'));
-    } else {
-        bonuses.forEach(function(b) {
-            bWrap.appendChild(el('<div style="background:var(--card-soft); padding:12px; border-radius:8px; border:1px solid var(--border);"><b>Ур. ' + b.lvl + ':</b> ' + b.name + '</div>'));
-        });
+    if (data.role !== "staff") {
+      var lvlBlock = el('<section class="module"><h2>📈 Уровень ' + level + '</h2>' +
+        '<div style="margin:16px 0;">' +
+          '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">' +
+            '<span>' + currentXp + ' XP</span><span>' + (level >= 9999 ? 'Максимум' : nextLevelXp + ' XP') + '</span>' +
+          '</div>' +
+          '<div style="height:16px;background:var(--card-soft);border-radius:8px;overflow:hidden;border:1px solid var(--border);">' +
+            '<div style="height:100%;background:linear-gradient(90deg, var(--accent), var(--gold));width:' + progress + '%;transition:width 0.5s;"></div>' +
+          '</div>' +
+        '</div>' +
+        '<p class="sub" style="font-size:13px;">До следующего уровня осталось: <b>' + (nextLevelXp - currentXp) + ' XP</b></p>' +
+      '</section>');
+      app.appendChild(lvlBlock);
+
+      var bonuses = getLevelBonuses(level);
+      var bonusBlock = el('<section class="module"><h2>🎁 Бонусы</h2><div style="display:grid;grid-template-columns:1fr;gap:10px;" id="bonusList"></div></section>');
+      var bWrap = bonusBlock.querySelector("#bonusList");
+      if (bonuses.length === 0) {
+          bWrap.appendChild(el('<div style="color:var(--muted);">Пока нет бонусов. Достигните 5 уровня!</div>'));
+      } else {
+          bonuses.forEach(function(b) {
+              bWrap.appendChild(el('<div style="background:var(--card-soft); padding:12px; border-radius:8px; border:1px solid var(--border);"><b>Ур. ' + b.lvl + ':</b> ' + b.name + '</div>'));
+          });
+      }
+      app.appendChild(bonusBlock);
     }
-    app.appendChild(bonusBlock);
 
+    // Достижения (включая кастомные)
     var achList = getAchievementsList();
-    var unlocked = achList.filter(function(a){ return state.achievements[a.id]; });
-    var locked = achList.filter(function(a){ return !state.achievements[a.id]; });
-    locked.sort(function(a, b){ return (a.xp || 0) - (b.xp || 0); });
-
-    var achBlock = el('<section class="module"><h2>🏅 Достижения (' + unlocked.length + ' / ' + achList.length + ')</h2>' +
-      '<div id="achList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px; max-height:400px; overflow-y:auto; padding-right:10px;"></div>' +
-    '</section>');
+    var unlocked = achList.filter(function(a){ return data.achievements && data.achievements[a.id]; });
+    var customUnlocked = Object.keys(data.achievements || {}).filter(function(id){ return id.indexOf("custom_") === 0; });
+    
+    var achBlock = el('<section class="module"><h2>🏅 Достижения (' + (unlocked.length + customUnlocked.length) + ')</h2><div id="achList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px; max-height:400px; overflow-y:auto; padding-right:10px;"></div></section>');
     var achWrap = achBlock.querySelector("#achList");
     
     unlocked.forEach(function(a) {
-        achWrap.appendChild(el('<div style="background:var(--accent-soft); padding:10px; border-radius:8px; text-align:center; border:1px solid var(--accent);">' +
-            '<div style="font-size:24px;">' + a.icon + '</div>' +
-            '<div style="font-weight:bold; font-size:12px; margin-top:4px; color:var(--accent);">' + escapeHtml(a.title) + '</div>' +
-            '<div style="font-size:10px; color:var(--text-soft); margin-top:2px;">' + escapeHtml(a.desc) + '</div>' +
-        '</div>'));
+        achWrap.appendChild(el('<div style="background:var(--accent-soft); padding:10px; border-radius:8px; text-align:center; border:1px solid var(--accent);"><div style="font-size:24px;">' + a.icon + '</div><div style="font-weight:bold; font-size:12px; margin-top:4px; color:var(--accent);">' + escapeHtml(a.title) + '</div></div>'));
     });
-    locked.slice(0, 20).forEach(function(a) {
-        achWrap.appendChild(el('<div style="background:var(--card-soft); padding:10px; border-radius:8px; text-align:center; border:1px solid var(--border); opacity:0.6;">' +
-            '<div style="font-size:24px; filter:grayscale(100%);">' + a.icon + '</div>' +
-            '<div style="font-weight:bold; font-size:12px; margin-top:4px;">' + escapeHtml(a.title) + '</div>' +
-            '<div style="font-size:10px; color:var(--text-soft); margin-top:2px;">' + escapeHtml(a.desc) + '</div>' +
-        '</div>'));
+    
+    customUnlocked.forEach(function(id) {
+        var a = data.achievements[id];
+        achWrap.appendChild(el('<div style="background:var(--card); padding:10px; border-radius:8px; text-align:center; border:2px solid var(--gold); box-shadow:0 0 10px var(--gold);"><div style="font-size:24px;">' + a.icon + '</div><div style="font-weight:bold; font-size:12px; margin-top:4px; color:var(--gold);">' + escapeHtml(a.title) + '</div><div style="font-size:9px;color:var(--muted);">Лимитированная</div></div>'));
     });
+    
     app.appendChild(achBlock);
   }
 
-  app.appendChild(el('<section class="module"><div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-    (state.student ? (
-      '<button class="btn" onclick="location.hash=\'#/portfolio\'">🎓 Портфолио</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/certificate\'">📜 Сертификат</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/shop\'">🛒 Магазин</button>'
-    ) : '') +
-  '</div></section>'));
+  if (isViewingOther) {
+      // Загрузка данных другого студента
+      app.appendChild(el('<div style="text-align:center;padding:20px;color:var(--muted);">Загрузка профиля...</div>'));
+      fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(targetKey) + "&t=" + Date.now())
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            app.innerHTML = ""; 
+            app.appendChild(el('<a class="backlink" href="#/journal">← Назад в журнал</a>'));
+            if (d && d.ok && d.payload) {
+                var p = JSON.parse(d.payload);
+                p.name = targetKey.split("|")[0]; 
+                p.group = targetKey.split("|")[1].toUpperCase();
+                p.role = "student";
+                p.shop = p.shop || [];
+                renderProfile(p);
+                
+                // Кнопки управления для преподавателя
+                app.appendChild(el('<section class="module" style="text-align:center; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">' +
+                    '<button class="btn" style="background:var(--gold);color:#000;" onclick="window.giveCustomAchievement(\''+targetKey+'\', \''+p.name+'\')">🏆 Выдать ачивку</button>' +
+                    '<button class="btn ghost" onclick="window.grantXP(\''+targetKey+'\', \''+p.name+'\')">🎁 Изменить XP</button>' +
+                    '<button class="btn ghost" style="border-color:var(--err); color:var(--err);" onclick="window.decreaseStudentLevel(\''+targetKey+'\', \''+p.name+'\', '+(p.xp||0)+')">📉 Понизить уровень</button>' +
+                '</section>'));
+            } else {
+                app.appendChild(el('<div class="module">Студент не найден.</div>'));
+            }
+        });
+  } else {
+      // Свой профиль
+      var p = { 
+          xp: state.xp, 
+          avatar: state.avatar, 
+          nick: state.nick, 
+          name: state.student ? state.student.name : state.staff.name, 
+          group: state.student ? state.student.group : "—", 
+          achievements: state.achievements,
+          role: state.staff ? "staff" : "student",
+          staffRole: state.staff ? state.staff.role : null,
+          shop: state.shop,
+          sign: state.sign
+      };
+      renderProfile(p);
+
+      if (state.student) {
+          app.appendChild(el('<section class="module"><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' +
+            '<button class="btn" onclick="location.hash=\'#/portfolio\'">🎓 Портфолио</button>' +
+            '<button class="btn ghost" onclick="location.hash=\'#/certificate\'">📜 Сертификат</button>' +
+            '<button class="btn ghost" onclick="location.hash=\'#/shop\'">🛒 Магазин</button>' +
+          '</div></section>'));
+      }
+  }
+};
+
+window.decreaseStudentLevel = function(key, name, currentXp) {
+    var level = getLevel(currentXp);
+    if (level <= 1) {
+        window.showToast("Студент уже на 1 уровне!", "err");
+        return;
+    }
+    var xpForCurrent = Math.pow(level - 1, 2) * 100;
+    var amountToDrop = currentXp - xpForCurrent + 1;
+    
+    if (confirm("Понизить уровень " + name + " с " + level + " до " + (level - 1) + "?\n(Спишется " + amountToDrop + " XP)")) {
+        window.grantXP(key, name, -amountToDrop);
+        setTimeout(function(){ location.reload(); }, 1000);
+    }
 };
 
 /* ---------------- ДАШБОРД ---------------- */
@@ -208,7 +263,7 @@ window.renderDashboard = function(){
   }
 
   var c = getCourse();
-  var totalTopics = 0, doneTopics = 0, gradesList = [];
+  var totalTopics = 0, doneTopics = 0;
   if (c) {
     c.sections.forEach(function(sec){
       (sec.topics || []).forEach(function(t){
