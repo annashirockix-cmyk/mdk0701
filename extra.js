@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v79.0 — SCHEDULE & NOTIFICATIONS)
+   МДК 07.01 — extra.js (v86.0 — CUSTOM TIME & PERIODS)
    ============================================================ */
 "use strict";
 
@@ -253,35 +253,75 @@ window.renderSchedulePage = function() {
 
     var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin");
     
+    // СТАНДАРТНЫЕ ПАРЫ И НУЛЕВОЙ УРОК
+    var pairs = [
+        { num: "0", time: "08:00 - 08:30" },
+        { num: "1", time: "08:40 - 10:15" },
+        { num: "2", time: "10:25 - 12:00" },
+        { num: "3", time: "12:30 - 14:05" },
+        { num: "4", time: "14:15 - 15:50" },
+        { num: "5", time: "16:00 - 17:35" },
+        { num: "6", time: "17:45 - 19:20" }
+    ];
+
+    // ПАНЕЛЬ УЧИТЕЛЯ (ДОБАВЛЕНИЕ)
     if (isTeacher) {
         var formBlock = el(`<section class="module" style="background:var(--accent-soft); border-color:var(--accent);">
             <h3 style="margin-top:0; color:var(--accent);">Добавить занятие</h3>
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
-                <select id="schDay" class="self-input" style="margin:0;"><option>Понедельник</option><option>Вторник</option><option>Среда</option><option>Четверг</option><option>Пятница</option><option>Суббота</option></select>
-                <input id="schTime" type="text" class="self-input" style="margin:0;" placeholder="Время (8:00-9:35)">
-                <input id="schGroup" type="text" class="self-input" style="margin:0;" placeholder="Группа (например, ТМ-21)">
+                <div>
+                    <label style="font-size:12px;color:var(--muted);">Дата</label>
+                    <input id="schDate" type="date" class="self-input" style="margin:0; width:100%;">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);">Пара</label>
+                    <select id="schPeriod" class="self-input" style="margin:0; width:100%;">
+                        ${pairs.map(p => `<option value="${p.num}" data-time="${p.time}">${p.num} пара</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);">Время (редактируемое)</label>
+                    <input id="schTime" type="text" class="self-input" style="margin:0; width:100%;" value="08:00 - 08:30">
+                </div>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-                <input id="schSubject" type="text" class="self-input" style="margin:0;" placeholder="Предмет">
-                <input id="schTeacher" type="text" class="self-input" style="margin:0;" placeholder="Преподаватель">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+                <div>
+                    <label style="font-size:12px;color:var(--muted);">Группа</label>
+                    <input id="schGroup" type="text" class="self-input" style="margin:0; width:100%;" placeholder="ТМП 4-3">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);">Предмет</label>
+                    <input id="schSubject" type="text" class="self-input" style="margin:0; width:100%;" placeholder="Разработка ТП">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--muted);">Преподаватель</label>
+                    <input id="schTeacher" type="text" class="self-input" style="margin:0; width:100%;" placeholder="Никитин">
+                </div>
             </div>
-            <button class="btn" id="addSchBtn" style="width:100%;">Добавить в расписание</button>
+            <button class="btn" id="addSchBtn" style="width:100%; margin-top:10px;">Добавить в расписание</button>
         </section>`);
         app.appendChild(formBlock);
 
+        // Обработчик смены пары (подставляет время)
+        formBlock.querySelector("#schPeriod").onchange = function() {
+            var opt = this.options[this.selectedIndex];
+            document.getElementById("schTime").value = opt.getAttribute("data-time");
+        };
+
         formBlock.querySelector("#addSchBtn").onclick = function() {
-            var day = document.getElementById("schDay").value;
-            var time = document.getElementById("schTime").value;
-            var group = document.getElementById("schGroup").value;
-            var subject = document.getElementById("schSubject").value;
-            var teacher = document.getElementById("schTeacher").value;
+            var date = document.getElementById("schDate").value;
+            var period = document.getElementById("schPeriod").value;
+            var time = document.getElementById("schTime").value.trim();
+            var group = document.getElementById("schGroup").value.trim();
+            var subject = document.getElementById("schSubject").value.trim();
+            var teacher = document.getElementById("schTeacher").value.trim();
             
-            if (!time || !subject || !group) { alert("Заполните время, группу и предмет!"); return; }
+            if (!date || !group || !subject || !time) { alert("Заполните дату, группу, предмет и время!"); return; }
             
             var p = new URLSearchParams();
             p.append("action", "saveschedule"); p.append("mode", "add");
-            p.append("day", day); p.append("time", time); p.append("group", group);
-            p.append("subject", subject); p.append("teacher", teacher);
+            p.append("date", date); p.append("period", period); p.append("time", time);
+            p.append("group", group); p.append("subject", subject); p.append("teacher", teacher);
             
             window.showToast("Сохранение...", "info");
             fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r => r.json()).then(res => {
@@ -291,49 +331,124 @@ window.renderSchedulePage = function() {
         };
     }
 
+    // ПАНЕЛЬ ФИЛЬТРОВ
+    var filterBlock = el(`<section class="module" style="margin-bottom:16px;">
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <div style="flex:1;">
+                <label style="font-size:12px;color:var(--muted);">Фильтр по группе</label>
+                <input id="filterGroup" type="text" class="self-input" style="margin:0; width:100%;" placeholder="Все группы">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:12px;color:var(--muted);">Фильтр по дате</label>
+                <input id="filterDate" type="date" class="self-input" style="margin:0; width:100%;">
+            </div>
+            <div>
+                <button class="btn ghost" id="resetFilterBtn" style="margin-top:18px;">Сбросить</button>
+            </div>
+        </div>
+    </section>`);
+    app.appendChild(filterBlock);
+
     var schedBlock = el('<section class="module"><div id="scheduleWrap" style="text-align:center; padding:20px;"><div class="skeleton" style="height:100px;"></div></div></section>');
     app.appendChild(schedBlock);
     var wrap = schedBlock.querySelector("#scheduleWrap");
 
     fetch(APPS_SCRIPT_URL + "?action=getschedules").then(r => r.json()).then(d => {
-        wrap.innerHTML = "";
-        if (!d.ok || !d.schedule || d.schedule.length === 0) {
-            wrap.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">Расписание пока пусто.</div>';
-            return;
+        
+        function renderFiltered(filterG, filterD) {
+            wrap.innerHTML = "";
+            var schedule = d.schedule || [];
+            
+            if (schedule.length === 0) {
+                wrap.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">Расписание пока пусто.</div>';
+                return;
+            }
+
+            var filtered = schedule.filter(x => {
+                var rowDate = x[0] || "";
+                var rowGroup = (x[3] || "").toLowerCase();
+                var matchGroup = filterG ? rowGroup.includes(filterG.toLowerCase()) : true;
+                var matchDate = filterD ? rowDate === filterD : true;
+                return matchGroup && matchDate;
+            });
+
+            if (filtered.length === 0) {
+                wrap.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">По вашему запросу занятий нет.</div>';
+                return;
+            }
+
+            filtered.sort((a, b) => {
+                if (a[0] !== b[0]) return a[0].localeCompare(b[0]);
+                return parseInt(a[1]) - parseInt(b[1]);
+            });
+
+            var html = '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:14px;">';
+            html += '<thead><tr>';
+            html += '<th style="border:1px solid var(--border); padding:10px; text-align:left; background:var(--card-soft);">Дата / День</th>';
+            html += '<th style="border:1px solid var(--border); padding:10px; text-align:left; background:var(--card-soft);">Пара / Время</th>';
+            html += '<th style="border:1px solid var(--border); padding:10px; text-align:left; background:var(--card-soft);">Группа</th>';
+            html += '<th style="border:1px solid var(--border); padding:10px; text-align:left; background:var(--card-soft);">Предмет</th>';
+            html += '<th style="border:1px solid var(--border); padding:10px; text-align:left; background:var(--card-soft);">Преподаватель</th>';
+            if (isTeacher) html += '<th style="border:1px solid var(--border); padding:10px; text-align:center; background:var(--card-soft);"></th>';
+            html += '</tr></thead><tbody>';
+
+            var daysOfWeek = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
+            filtered.forEach(item => {
+                var dateStr = item[0]; 
+                var period = item[1];
+                var time = item[2];
+                var group = item[3];
+                var subject = item[4];
+                var teacher = item[5];
+
+                var dateObj = new Date(dateStr);
+                var dayName = daysOfWeek[dateObj.getDay()];
+                var displayDate = dateStr.split('-').reverse().join('.');
+
+                html += `<tr>
+                    <td style="border:1px solid var(--border); padding:10px;"><b>${displayDate}</b><br><span style="font-size:12px;color:var(--muted);">${dayName}</span></td>
+                    <td style="border:1px solid var(--border); padding:10px;"><b>${period}</b> пара<br><span style="font-size:12px;color:var(--muted);">${time}</span></td>
+                    <td style="border:1px solid var(--border); padding:10px; font-weight:bold; color:var(--accent);">${group}</td>
+                    <td style="border:1px solid var(--border); padding:10px;">${subject}</td>
+                    <td style="border:1px solid var(--border); padding:10px;">${teacher}</td>`;
+                
+                if (isTeacher) {
+                    html += `<td style="border:1px solid var(--border); padding:10px; text-align:center;">
+                        <button class="btn ghost" style="padding:4px 8px; border-color:var(--err); color:var(--err); font-size:12px;" onclick="window.deleteScheduleItem('${dateStr}', '${period}', '${group}')">✕</button>
+                    </td>`;
+                }
+                html += `</tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            wrap.innerHTML = html;
         }
 
-        var days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-        
-        days.forEach(day => {
-            var dayItems = d.schedule.filter(x => x[0] === day);
-            if (dayItems.length === 0) return;
+        renderFiltered("", "");
 
-            var dayBlock = el(`<div style="margin-bottom:24px; text-align:left;"><h3 style="color:var(--accent); border-bottom:2px solid var(--border); padding-bottom:8px;">${day}</h3><div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:14px;"><thead><tr><th style="border:1px solid var(--border); padding:8px; text-align:left;">Время</th><th style="border:1px solid var(--border); padding:8px; text-align:left;">Группа</th><th style="border:1px solid var(--border); padding:8px; text-align:left;">Предмет</th><th style="border:1px solid var(--border); padding:8px; text-align:left;">Преподаватель</th>${isTeacher ? '<th style="border:1px solid var(--border); padding:8px;"></th>' : ''}</tr></thead><tbody></tbody></table></div></div>`);
-            
-            var tbody = dayBlock.querySelector("tbody");
-            dayItems.forEach(item => {
-                var tr = el(`<tr>
-                    <td style="border:1px solid var(--border); padding:8px; font-weight:bold;">${item[1]}</td>
-                    <td style="border:1px solid var(--border); padding:8px;">${item[2]}</td>
-                    <td style="border:1px solid var(--border); padding:8px;">${item[3]}</td>
-                    <td style="border:1px solid var(--border); padding:8px;">${item[4]}</td>
-                    ${isTeacher ? `<td style="border:1px solid var(--border); padding:8px; text-align:center;"><button class="btn ghost" style="padding:4px 8px; font-size:12px; border-color:var(--err); color:var(--err);" onclick="window.deleteScheduleItem('${item[0]}', '${item[1]}', '${item[2]}')">✕</button></td>` : ''}
-                </tr>`);
-                tbody.appendChild(tr);
-            });
-            wrap.appendChild(dayBlock);
-        });
+        var fG = document.getElementById("filterGroup");
+        var fD = document.getElementById("filterDate");
+        var rB = document.getElementById("resetFilterBtn");
+
+        if (fG) fG.oninput = () => renderFiltered(fG.value, fD.value);
+        if (fD) fD.onchange = () => renderFiltered(fG.value, fD.value);
+        if (rB) rB.onclick = () => { fG.value = ""; fD.value = ""; renderFiltered("", ""); };
+
     }).catch(() => { wrap.innerHTML = "Ошибка загрузки расписания."; });
 };
 
-window.deleteScheduleItem = function(day, time, group) {
+window.deleteScheduleItem = function(date, period, group) {
     if(!confirm("Удалить эту пару?")) return;
     var p = new URLSearchParams();
     p.append("action", "saveschedule"); p.append("mode", "delete");
-    p.append("day", day); p.append("time", time); p.append("group", group);
+    p.append("date", date); p.append("period", period); p.append("group", group);
     
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r => r.json()).then(res => {
-        if(res.ok) { window.showToast("Пара удалена", "info"); window.renderSchedulePage(); }
+        if(res.ok) { 
+            window.showToast("Пара удалена", "info"); 
+            window.renderSchedulePage(); 
+        }
     });
 };
 
