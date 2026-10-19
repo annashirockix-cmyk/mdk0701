@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v97.0 — BALANCED XP & ACHIEVEMENTS)
+   МДК 07.01 — script.js (v98.0 — FULL ROUTING & SHOP)
    ============================================================ */
 "use strict";
 
@@ -12,6 +12,7 @@ var state = {
   notifications: [], schedule: [], avatar: null, effects: []
 };
 
+// Безопасная загрузка сессии
 try { 
   var _s = JSON.parse(localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null"); 
   if (_s && _s.name) state.student = _s; 
@@ -63,7 +64,7 @@ function updateNotifBadge() {
     }
 }
 
-// --- НАЧИСЛЕНИЕ XP (ГЛОБАЛЬНАЯ ФУНКЦИЯ) ---
+// --- НАЧИСЛЕНИЕ XP ---
 window.addXP = function(amount) {
     state.xp += amount;
     checkAchievements();
@@ -80,18 +81,11 @@ function checkAchievements() {
         { id: "t3", xp: 500, title: "Книжный червь" },
         { id: "t4", xp: 1000, title: "Умник" },
         { id: "t5", xp: 2500, title: "Знаток" },
-        { id: "t6", xp: 5000, title: "Мастер" },
-        { id: "t_ttt", title: "Крестики-нолики", desc: "Победить станок в крестики-нолики" },
-        { id: "t_sudoku", title: "Судоку-мастер", desc: "Решить судоку" },
-        { id: "t_sapper", title: "Сапер", desc: "Разминировать поле" },
-        { id: "t_spider", title: "Пасьянс", desc: "Собрать пасьянс Паук" },
-        { id: "t_deadly", title: "Выживший", desc: "Победить в Смертельной вечеринке" },
-        { id: "t_theme", title: "Стиляга", desc: "Купить любую тему" },
-        { id: "t_avatar", title: "Аватар", desc: "Установить кастомный аватар" }
+        { id: "t6", xp: 5000, title: "Мастер" }
     ];
     var hasNew = false;
     achList.forEach(a => {
-        if (a.xp && state.xp >= a.xp && !state.achievements[a.id]) {
+        if (state.xp >= a.xp && !state.achievements[a.id]) {
             state.achievements[a.id] = true;
             if (!state.notifications) state.notifications = [];
             state.notifications.unshift({ id: Date.now(), text: "Получено достижение: " + a.title, type: "ok", date: new Date().toISOString(), read: false });
@@ -139,6 +133,7 @@ function loadStudentData(){
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
   updateNotifBadge();
 
+  // Синхронизация с сервером (оценки, попытки, заявки)
   if (APPS_SCRIPT_URL && state.student) {
       fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now())
         .then(r => r.json())
@@ -827,6 +822,7 @@ function renderPortfolioPage(){
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
+// --- РОУТИНГ ---
 function route(){
   closeDrawer();
   
