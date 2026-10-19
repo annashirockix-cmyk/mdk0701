@@ -666,3 +666,7 @@ body.effect-matrix::after {
   animation: effectMatrixScroll 20s linear infinite;
 }
 @keyframes effectMatrixScroll { from { transform: translateY(0); } to { transform: translateY(-200px); } }
+/* Новые темы */
+html[data-theme="neon"] { --bg: #090909; --card: rgba(15,15,15,0.9); --card-soft: #1a1a1a; --border: #ff00ff; --text: #00ffff; --text-soft: #00cccc; --muted: #008888; --accent: #ff00ff; --accent-soft: #330033; --ok: #00ff00; --err: #ff0000; --shadow: 0 0 15px rgba(255,0,255,0.4); --gold: #ffff00; --pattern-color: rgba(0,255,255,0.2); color-scheme: dark; }
+html[data-theme="pastel"] { --bg: #fdf6f0; --card: #ffffff; --card-soft: #fcf3f3; --border: #f0d5d5; --text: #5a4a4a; --text-soft: #7a6a6a; --muted: #a09090; --accent: #ff9a9e; --accent-soft: #ffe3e3; --ok: #a8e6cf; --err: #ffaaa5; --gold: #fbc687; --pattern-color: rgba(255,154,158,0.15); color-scheme: light; }
+html[data-theme="retro"] { --bg: #2b2b2b; --card: #3c3c3c; --card-soft: #4a4a4a; --border: #5a5a5a; --text: #ffb000; --text-soft: #e09000; --muted: #a07000; --accent: #ff0000; --accent-soft: #550000; --ok: #00ff00; --err: #ff0000; --gold: #ffff00; --pattern-color: rgba(255,176,0,0.1); color-scheme: dark; --font-main: 'Courier New', Courier, monospace; }

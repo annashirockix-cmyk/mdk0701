@@ -1,6 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v110.0 — FULL REWRITE)
-   Добавлено: кнопки +/− для быстрой выдачи/списания XP
+   МДК 07.01 — journal.js (v122.0 — CASINO & PROFILE UPDATE)
    ============================================================ */
 "use strict";
 
@@ -13,7 +12,7 @@ window.renderJournalPage = function() {
   
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
   
-  /* ------- Быстрая панель XP для учителя ------- */
+  /* ------- Быстрая панель XP и КАЗИНО для учителя ------- */
   if (isTeacher) {
       var quickPanel = el(
           '<section class="module" style="background:var(--accent-soft); border-color:var(--accent); margin-bottom:24px;">' +
@@ -25,6 +24,7 @@ window.renderJournalPage = function() {
                   '<input id="quickXPAmount" type="number" class="self-input" style="width:110px; margin:0;" placeholder="XP" value="50" min="1">' +
                   '<button class="btn" id="quickAddBtn" style="background:var(--gold); color:#000;">+ Начислить</button>' +
                   '<button class="btn ghost" id="quickSubBtn" style="border-color:var(--err); color:var(--err);">− Списать</button>' +
+                  '<button class="btn" id="quickCasinoBtn" style="background:linear-gradient(45deg, #ff00cc, #333399); color:#fff; box-shadow:0 0 10px rgba(255,0,204,0.5);">🎰 Казино</button>' +
               '</div>' +
           '</section>');
       app.appendChild(quickPanel);
@@ -82,6 +82,28 @@ window.renderJournalPage = function() {
                   window.grantXP(info.key, info.name, amount);
               }
           };
+          
+          // ЛОГИКА КАЗИНО
+          document.getElementById("quickCasinoBtn").onclick = function() {
+              var info = getSelectedInfo();
+              if (!info) { window.showToast("Выберите студента для игры в казино", "err"); return; }
+              
+              // Рулетка: от -100 до +500
+              var winAmount = Math.floor(Math.random() * 601) - 100;
+              
+              var resultText = "";
+              if (winAmount > 0) {
+                  resultText = "🎉 ДЖЕКПОТ! ВЫИГРЫШ: +" + winAmount + " XP";
+              } else if (winAmount === 0) {
+                  resultText = "😐 ЗЕРОВАЯ СТАВКА (0 XP)";
+              } else {
+                  resultText = "💸 ПРОИГРЫШ! СПИСАНО: " + Math.abs(winAmount) + " XP";
+              }
+              
+              if (confirm("🎰 КРУТИМ РУЛЕТКУ ДЛЯ: " + info.name + "?\n\nРезультат: " + resultText + "\n\nПодтвердить транзакцию?")) {
+                  window.grantXP(info.key, info.name, winAmount);
+              }
+          };
       }
 
       /* ------- Фильтр для студента ------- */
@@ -113,11 +135,14 @@ window.renderJournalPage = function() {
           var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
           var currentStudentKey = String(s.name || "").trim().toLowerCase() + "|" + String(s.group || "").trim().toLowerCase();
           
+          // Добавлена кнопка Профиля
           var nameCellHtml = '<div style="font-weight:bold; font-size:16px;">' + escapeHtml(s.name) + '</div>' +
                              '<div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ' + escapeHtml(s.group) + '</div>';
           
           if (isTeacher) {
-              nameCellHtml += '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
+              var profileLink = '#/profile/' + encodeURIComponent(currentStudentKey);
+              nameCellHtml += '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">' +
+                  '<a href="' + profileLink + '" class="btn" style="padding:6px 12px; font-size:12px; background:var(--accent); color:#fff; font-weight:bold; text-decoration:none; text-transform:none;">👤 Профиль</a>' +
                   '<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" data-action="grant" data-key="' + escapeHtml(currentStudentKey) + '" data-name="' + escapeHtml(s.name) + '">🎁 XP</button>' +
                   '<button class="btn ghost" style="padding:6px 12px; font-size:12px; border-color:var(--err); color:var(--err);" data-action="delete" data-name="' + escapeHtml(s.name) + '" data-group="' + escapeHtml(s.group) + '">🗑️ Удалить</button>' +
               '</div>';
