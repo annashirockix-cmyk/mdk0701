@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — minigames.js (v116.0 — STABLE)
+   МДК 07.01 — minigames.js (v117.0 — FIXED EVAL BUG)
    ============================================================ */
 "use strict";
 
@@ -86,10 +86,11 @@ window.renderTicTacToePage = function() {
       for (var i = 0; i < board.length; i++) {
         if (board[i] === null) {
           board[i] = "⭕";
-          var eval = minimax(board, depth - 1, false, alpha, beta);
+          // ИСПРАВЛЕНО: eval -> evalScore
+          var evalScore = minimax(board, depth - 1, false, alpha, beta);
           board[i] = null;
-          maxEval = Math.max(maxEval, eval);
-          alpha = Math.max(alpha, eval);
+          maxEval = Math.max(maxEval, evalScore);
+          alpha = Math.max(alpha, evalScore);
           if (beta <= alpha) break;
         }
       }
@@ -99,10 +100,11 @@ window.renderTicTacToePage = function() {
       for (var j = 0; j < board.length; j++) {
         if (board[j] === null) {
           board[j] = "❌";
-          var eval2 = minimax(board, depth - 1, true, alpha, beta);
+          // ИСПРАВЛЕНО: eval2 -> evalScore2
+          var evalScore2 = minimax(board, depth - 1, true, alpha, beta);
           board[j] = null;
-          minEval = Math.min(minEval, eval2);
-          beta = Math.min(beta, eval2);
+          minEval = Math.min(minEval, evalScore2);
+          beta = Math.min(beta, evalScore2);
           if (beta <= alpha) break;
         }
       }
