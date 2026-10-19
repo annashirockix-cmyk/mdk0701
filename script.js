@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v99.0 — BUG FIX & SHOP FIX)
+   МДК 07.01 — script.js (v100.0 — FULL & STABLE)
    ============================================================ */
 "use strict";
 
@@ -12,6 +12,7 @@ var state = {
   notifications: [], schedule: [], avatar: null, effects: []
 };
 
+// Безопасная загрузка сессии (Mobile Fix)
 try { 
   var _s = JSON.parse(localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null"); 
   if (_s && _s.name) state.student = _s; 
@@ -132,7 +133,7 @@ function loadStudentData(){
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
   updateNotifBadge();
 
-  // Синхронизация с сервером
+  // Синхронизация с сервером (оценки, попытки, заявки)
   if (APPS_SCRIPT_URL && state.student) {
       fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now())
         .then(r => r.json())
@@ -609,7 +610,7 @@ function renderTopic(id, tab){
     }
   }
 
-  // ИСПРАВЛЕНИЕ: Четкое разделение теста и самостоятельной
+  // ЖЕСТКОЕ РАЗДЕЛЕНИЕ САМОСТОЯТЕЛЬНОЙ И ТЕСТА
   if (tab === "self" || tab === "test") {
     var result = (tab === "self") ? state.selfResults[id] : state.results[id];
     var reqKey = id + "_" + tab;
@@ -819,6 +820,7 @@ function renderPortfolioPage(){
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
+// --- РОУТИНГ ---
 function route(){
   closeDrawer();
   
