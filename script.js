@@ -1,9 +1,16 @@
 /* ============================================================
-   МДК 07.01 — script.js (v91.0 — ANSWER REVEAL)
+   МДК 07.01 — script.js (v92.0 — CABINET SWITCHER)
    ============================================================ */
 "use strict";
 
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzB0v37m5pC0jSnEmCEllIlN3IlRmgOhaPEW9giHbS6wNIYFHClxJv8Z5HyG4-AJBpdaQ/exec";
+
+var CABINETS = [
+  { id: "mdk0401", name: "МДК 04.01", url: "https://annashirockix-cmyk.github.io/mdk0401/" },
+  { id: "mdk0701", name: "МДК 07.01", url: "https://annashirockix-cmyk.github.io/mdk0701/" }
+];
+var CURRENT_CABINET = "mdk0701";
+
 var state = { 
   student: null, staff: null, progress: {}, results: {}, selfResults: {}, 
   practicalsDone: {}, practicalGrades: {}, requests: {}, allowedAttempts: {},
@@ -12,14 +19,14 @@ var state = {
   notifications: [], schedule: [] 
 };
 
-try { 
-  var _s = JSON.parse(localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null"); 
-  if (_s && _s.name) state.student = _s; 
+// --- Восстановление сессии (общие ключи с миграцией) ---
+try {
+  var _s = JSON.parse(localStorage.getItem("mdk.student") || localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null");
+  if (_s && _s.name) { state.student = _s; try { localStorage.setItem("mdk.student", JSON.stringify(_s)); } catch(e){} }
 } catch (e){}
-
-try { 
-  var _st = JSON.parse(sessionStorage.getItem("mdk0701.staff") || "null"); 
-  if (_st && _st.role) state.staff = _st; 
+try {
+  var _st = JSON.parse(localStorage.getItem("mdk.staff") || sessionStorage.getItem("mdk0701.staff") || "null");
+  if (_st && _st.role) { state.staff = _st; try { localStorage.setItem("mdk.staff", JSON.stringify(_st)); } catch(e){} }
 } catch (e){}
 
 function getCourse(){ try { return COURSE; } catch(e){} try { return window.COURSE; } catch(e){} return null; }
@@ -41,6 +48,41 @@ window.showToast = function(msg, type) {
   container.appendChild(toast);
   setTimeout(function() { toast.classList.add("out"); setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300); }, 3000);
 };
+
+// --- ПЕРЕКЛЮЧЕНИЕ КАБИНЕТА ---
+window.switchCabinet = function(id) {
+  if (id === CURRENT_CABINET) return;
+  var target = CABINETS.find(function(c){ return c.id === id; });
+  if (!target) return;
+
+  try {
+    if (state.student) saveStudentData();
+    if (state.student) localStorage.setItem("mdk.student", JSON.stringify(state.student));
+    if (state.staff) localStorage.setItem("mdk.staff", JSON.stringify(state.staff));
+  } catch(e){}
+
+  window.showToast("Переключение в " + target.name + "...", "info");
+  setTimeout(function(){ window.location.href = target.url; }, 500);
+};
+
+function updateCabinetSwitcher() {
+  var existing = document.getElementById("cabinetSwitcher");
+  if (existing) existing.remove();
+
+  if (!state.student && !state.staff) return;
+
+  var other = CABINETS.find(function(c){ return c.id !== CURRENT_CABINET; });
+  if (!other) return;
+
+  var btn = document.createElement("button");
+  btn.id = "cabinetSwitcher";
+  btn.className = "btn";
+  btn.style.cssText = "position:fixed;bottom:90px;right:20px;z-index:9000;box-shadow:0 4px 14px rgba(0,0,0,0.35);display:flex;align-items:center;gap:8px;padding:10px 16px;font-weight:bold;border-radius:999px;font-size:13px;";
+  btn.innerHTML = '<span style="font-size:16px;">🔄</span><span>' + other.name + ' →</span>';
+  btn.title = "Переключиться в " + other.name;
+  btn.onclick = function(){ window.switchCabinet(other.id); };
+  document.body.appendChild(btn);
+}
 
 window.addNotification = function(text, type = "info") {
     if (!state.notifications) state.notifications = [];
@@ -286,7 +328,10 @@ window.grantXP = function(studentKeyStr, studentName, presetAmount) {
       .catch(() => window.showToast("Ошибка сети.", "err"));
 };
 
-function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
+function applyTheme(theme){ 
+  document.documentElement.setAttribute("data-theme", theme); 
+  try { localStorage.setItem("mdk.theme", theme); localStorage.setItem("mdk0701.theme", theme); } catch(e){}
+}
 function openThemeModal(){
   var current = document.documentElement.getAttribute("data-theme") || "light";
   var themes = ["light", "dark", "sepia", "ocean", "forest", "matrix", "cosmos", "gold", "anime", "hacker", "cyber", "matrioska"]; 
@@ -318,14 +363,19 @@ window.doStudentLogin = function() {
   
   state.student = { name: n, group: g.toUpperCase() };
   
-  try { localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); } catch(e){}
+  try {
+    localStorage.setItem("mdk.student", JSON.stringify(state.student));
+    localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); // обратная совместимость
+  } catch(e){}
   
   $("loginOverlay").hidden = true; 
   renderUserChip(); 
   loadStudentData(); 
   checkDailyLogin(); 
   route();
+  updateCabinetSwitcher();
 };
+
 window.doTeacherLogin = function() {
   var user = $("loginStaffName").value.trim(); 
   var pass = $("loginStaffPass").value.trim(); 
@@ -344,10 +394,11 @@ window.doTeacherLogin = function() {
     .then(function(d) {
       if (d && d.ok) { 
           state.staff = { role: d.role, name: d.name }; 
-          try { sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){}
+          try { localStorage.setItem("mdk.staff", JSON.stringify(state.staff)); sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){}
           $("loginOverlay").hidden = true; 
           renderUserChip(); 
-          route(); 
+          route();
+          updateCabinetSwitcher();
       } 
       else { 
           window.showToast("Неверный логин или пароль.", "err"); 
@@ -360,11 +411,18 @@ window.doTeacherLogin = function() {
         btn.disabled = false; 
     });
 };
+
 window.handleLogout = function() {
   if (confirm("Выйти из аккаунта?")) {
     state.student = null; state.staff = null; 
-    try { localStorage.removeItem("mdk0701.student"); sessionStorage.removeItem("mdk0701.staff"); } catch(e){}
+    try {
+      localStorage.removeItem("mdk.student");
+      localStorage.removeItem("mdk.staff");
+      localStorage.removeItem("mdk0701.student");
+      sessionStorage.removeItem("mdk0701.staff");
+    } catch(e){}
     $("loginOverlay").hidden = false; $("userChipName").textContent = "Гость"; $("userChipGroup").textContent = "Роль: Гость"; $("userChipAvatar").textContent = "👨‍🎓"; if ($("xpCount")) $("xpCount").textContent = "🌟 0 XP"; closeDrawer(); route();
+    updateCabinetSwitcher();
   }
 };
 
@@ -383,6 +441,7 @@ function renderUserChip(){
       else { $("userChipAvatar").textContent = "👨‍🎓"; }
   }
   updateNotifBadge();
+  updateCabinetSwitcher();
 }
 function closeDrawer(){ $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); }
 function toggleDrawer(){ $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); }
@@ -776,6 +835,12 @@ function route(){
 }
 
 window.addEventListener("DOMContentLoaded", function() {
+  // Загружаем общую тему
+  try {
+    var sharedTheme = localStorage.getItem("mdk.theme") || localStorage.getItem("mdk0701.theme");
+    if (sharedTheme) document.documentElement.setAttribute("data-theme", sharedTheme);
+  } catch(e){}
+
   try {
       if (!state.student && !state.staff) { $("loginOverlay").hidden = false; } else { $("loginOverlay").hidden = true; }
       if (state.student) {
@@ -795,6 +860,7 @@ window.addEventListener("DOMContentLoaded", function() {
   try {
       renderUserChip(); 
       route();
+      updateCabinetSwitcher();
   } catch(e) { console.error("Render error:", e); }
 });
 window.addEventListener("hashchange", route);
