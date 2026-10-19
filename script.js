@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v98.0 — FULL ROUTING & SHOP)
+   МДК 07.01 — script.js (v99.0 — BUG FIX & SHOP FIX)
    ============================================================ */
 "use strict";
 
@@ -12,7 +12,6 @@ var state = {
   notifications: [], schedule: [], avatar: null, effects: []
 };
 
-// Безопасная загрузка сессии
 try { 
   var _s = JSON.parse(localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null"); 
   if (_s && _s.name) state.student = _s; 
@@ -133,7 +132,7 @@ function loadStudentData(){
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
   updateNotifBadge();
 
-  // Синхронизация с сервером (оценки, попытки, заявки)
+  // Синхронизация с сервером
   if (APPS_SCRIPT_URL && state.student) {
       fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now())
         .then(r => r.json())
@@ -513,7 +512,6 @@ function renderHome(){
   }
 }
 
-// --- РЕНДЕР СПРАВОЧНИКА ---
 window.renderGCodeReferencePage = function() {
   var app = $("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Справочник G/M";
@@ -547,7 +545,6 @@ window.renderGCodeReferencePage = function() {
   }
 };
 
-// --- РЕНДЕР ТЕМЫ ---
 function renderTopic(id, tab){
   tab = tab || "lecture"; var t = findTopic(id); if(!t) return renderHome();
   var app = $("app"); app.innerHTML = "";
@@ -612,8 +609,9 @@ function renderTopic(id, tab){
     }
   }
 
+  // ИСПРАВЛЕНИЕ: Четкое разделение теста и самостоятельной
   if (tab === "self" || tab === "test") {
-    var result = state.results[id] || state.selfResults[id];
+    var result = (tab === "self") ? state.selfResults[id] : state.results[id];
     var reqKey = id + "_" + tab;
     var reqStatus = state.requests && state.requests[reqKey];
     var attempts = state.allowedAttempts && state.allowedAttempts[reqKey] ? state.allowedAttempts[reqKey] : 1;
@@ -763,10 +761,13 @@ function renderShopPage(){
         btn.style.border = "1px solid var(--accent)";
     } else if (!has && state.xp >= it.price) { 
         btn.onclick = function() { 
+            // ЖЕСТКОЕ СПИСАНИЕ XP
+            state.xp -= it.price;
+            state.shop.push(it.id);
+            
             if (it.type === "input") {
                 var val = prompt(it.placeholder, state[it.field] || "");
-                if (val === null) return;
-                state[it.field] = val.trim();
+                if (val !== null) state[it.field] = val.trim();
             } else if (it.type === "theme") {
                 applyTheme(it.theme);
                 unlockAchievement('t_theme');
@@ -797,14 +798,10 @@ function renderShopPage(){
                 fileInput.click();
             }
             
-            if (it.type !== "upload" && it.type !== "upload_animated") {
-                state.xp -= it.price; 
-                state.shop.push(it.id); 
-                saveStudentData(); 
-                renderShopPage(); 
-                renderUserChip();
-                window.showToast("Покупка совершена!", "ok"); 
-            }
+            saveStudentData(); 
+            renderShopPage(); 
+            renderUserChip();
+            window.showToast("Покупка совершена!", "ok"); 
         }; 
     }
     
@@ -822,7 +819,6 @@ function renderPortfolioPage(){
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
-// --- РОУТИНГ ---
 function route(){
   closeDrawer();
   
