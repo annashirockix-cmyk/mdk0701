@@ -731,3 +731,104 @@ window.renderRoulettePage = function() {
     }, 4100);
   };
 };
+/* ============================================================
+   МДК 07.01 — minigames.js (v170.0 — Добавлен Тест G-кода)
+   ============================================================ */
+"use strict";
+
+window.renderGCodeTestPage = function() {
+    var app = document.getElementById("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Тест G-кода";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    
+    app.appendChild(el('<section class="hero"><h1>🛠️ Интерактивный тест</h1><p>Напишите программу, чтобы фреза нарисовала <b>квадрат со стороной 100</b> (от 0,0 до 100,100).</p></section>'));
+
+    var block = el(`<div class="module">
+        <div style="display:flex; gap:10px; flex-direction:column;">
+            <textarea id="gcodeTestInput" style="width:100%; height:150px; font-family:monospace; padding:10px; border-radius:8px; border:1px solid var(--border); background:#1e1e1e; color:#d4d4d4;">G00 X0 Y0
+G01 X100 Y0
+G01 X100 Y100
+G01 X0 Y100
+G01 X0 Y0</textarea>
+            <button class="btn" id="runGcodeBtn">▶ Выполнить</button>
+        </div>
+        <div style="margin-top:20px; border:1px solid var(--border); background:#fff; border-radius:8px; overflow:hidden;">
+            <canvas id="gcodeCanvas" width="400" height="400" style="width:100%; height:auto;"></canvas>
+        </div>
+        <div id="gcodeResult" style="margin-top:10px; font-weight:bold;"></div>
+    </div>`);
+    app.appendChild(block);
+
+    var canvas = document.getElementById("gcodeCanvas"), ctx = canvas.getContext("2d");
+    var input = document.getElementById("gcodeTestInput"), runBtn = document.getElementById("runGcodeBtn"), resDiv = document.getElementById("gcodeResult");
+    
+    // Отрисовка сетки
+    function drawGrid() {
+        ctx.clearRect(0, 0, 400, 400);
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 1;
+        for (var i = 0; i <= 400; i += 20) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 400); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(400, i); ctx.stroke();
+        }
+        // Центр координат (смещаем в левый нижний угол)
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, 400); ctx.lineTo(400, 400); ctx.stroke(); // Ось X
+        ctx.beginPath(); ctx.moveTo(0, 400); ctx.lineTo(0, 0); ctx.stroke(); // Ось Y
+    }
+    drawGrid();
+
+    runBtn.onclick = function() {
+        drawGrid();
+        var lines = input.value.split("\n");
+        var curX = 0, curY = 0;
+        var isDrawing = false;
+        var pathPoints = [];
+
+        ctx.beginPath();
+        ctx.strokeStyle = "#c14a2a"; // Красная линия фрезы
+        ctx.lineWidth = 3;
+
+        lines.forEach(function(line) {
+            line = line.trim().toUpperCase();
+            if (!line) return;
+            var gMatch = line.match(/G0[0-3]/);
+            if (!gMatch) return;
+            
+            var xMatch = line.match(/X(-?\d+(\.\d+)?)/);
+            var yMatch = line.match(/Y(-?\d+(\.\d+)?)/);
+            
+            if (xMatch) curX = parseFloat(xMatch[1]);
+            if (yMatch) curY = parseFloat(yMatch[1]);
+
+            // Масштабируем (1 мм = 2 пикселя, переворачиваем Y)
+            var drawX = curX * 2;
+            var drawY = 400 - (curY * 2); 
+
+            if (gMatch[0] === "G00") {
+                ctx.moveTo(drawX, drawY); // Быстрый подвод (без рисования)
+            } else if (gMatch[0] === "G01" || gMatch[0] === "G02" || gMatch[0] === "G03") {
+                ctx.lineTo(drawX, drawY); // Линейное движение
+                isDrawing = true;
+                pathPoints.push({x: curX, y: curY});
+            }
+        });
+
+        if (isDrawing) ctx.stroke();
+
+        // Проверка на квадрат
+        // Проверяем, что в точках (0,0), (100,0), (100,100), (0,100) есть точки
+        var isSquare = [ {x:0,y:0}, {x:100,y:0}, {x:100,y:100}, {x:0,y:100} ].every(target => {
+            return pathPoints.some(p => Math.abs(p.x - target.x) < 2 && Math.abs(p.y - target.y) < 2);
+        });
+
+        if (isSquare) {
+            resDiv.innerHTML = "🎉 <span style='color:var(--ok)'>Отлично! Квадрат нарисован верно. +50 XP</span>";
+            window.addXP(50);
+            window.completeQuest('game'); // Считаем квест выполненным
+        } else {
+            resDiv.innerHTML = "❌ <span style='color:var(--err)'>Траектория не совпадает с квадратом 100x100. Проверьте код.</span>";
+        }
+    };
+};
+
+// ... (Остальные игры: Судоку, Сапёр, Пасьянс, Казино, Рулетка остаются без изменений) ...
