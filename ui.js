@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — ui.js (v180.0 — RESTORED PAGES)
+   МДК 07.01 — ui.js (v181.0 — FULL FIXES & ROUTES)
    ============================================================ */
 "use strict";
 
@@ -39,8 +39,17 @@ window.renderUserChip = function() {
 
 window.closeDrawer = () => { $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); };
 
-window.applyTheme = (theme) => { document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); };
+// --- ИСПРАВЛЕННЫЕ ТЕМЫ ---
+window.applyTheme = (theme) => { 
+    document.documentElement.setAttribute("data-theme", theme); 
+    localStorage.setItem("mdk0701.theme", theme); 
+    // Сбрасываем кастомные фоны при смене обычной темы
+    document.body.classList.remove("bg-space", "bg-hyper", "bg-matrix-code", "bg-brutal");
+    state.customBg = null;
+};
+
 window.applyFont = (font) => { document.documentElement.style.setProperty('--font-main', font); localStorage.setItem("mdk0701.font", font); };
+
 window.applyCustomBg = () => {
     document.body.className = document.body.className.replace(/bg-\S+/g, '');
     if (state.customBg) document.body.classList.add("bg-" + state.customBg);
@@ -56,9 +65,10 @@ window.openThemeModal = function() {
       var btn = el('<button class="btn ' + (t===current ? '' : 'ghost') + '" style="padding:12px;">' + names[i] + '</button>'); 
       btn.onclick = function() { 
           if (!state.staff && ["matrix", "cyber", "neon", "retro", "space", "hyper", "matrix-code", "brutal"].includes(t) && !state.shop.includes("theme_" + t)) {
-              window.showToast("Тема не куплена!", "err"); return;
+              window.showToast("Тема не куплена в магазине!", "err"); return;
           }
           if (["space", "hyper", "matrix-code", "brutal"].includes(t)) {
+              window.applyTheme("light"); // Сначала сбрасываем
               state.customBg = t; window.applyCustomBg();
           } else {
               window.applyTheme(t); 
@@ -86,9 +96,9 @@ window.renderQuestsWidget = function() {
 /* ---------------- ГЛАВНАЯ ---------------- */
 function renderHome() {
     var app = $("app"); app.innerHTML = "";
-    var c = window.COURSE;
+    var c = window.COURSE || (typeof COURSE !== 'undefined' ? COURSE : null);
     if (!c) {
-        app.innerHTML = '<div class="module" style="text-align:center; padding:40px; margin-top:40px;"><h2>Ошибка загрузки данных</h2><p>Файл data.js не загружен. Проверьте интернет и обновите страницу.</p><button class="btn" onclick="location.reload()">Обновить</button></div>';
+        app.innerHTML = '<div class="module" style="text-align:center; padding:40px; margin-top:40px;"><h2>Ошибка загрузки данных</h2><p>Файл data.js не загружен или в нем нет <code>window.COURSE</code>.</p><button class="btn" onclick="location.reload()">Обновить</button></div>';
         return;
     }
     app.appendChild(el('<section class="hero"><h1>' + c.title + '</h1><p>' + c.module + '</p></section>'));
@@ -105,7 +115,7 @@ function renderHome() {
     });
 }
 
-/* ---------------- ВОССТАНОВЛЕННЫЕ СТРАНИЦЫ ---------------- */
+/* ---------------- СТРАНИЦЫ ---------------- */
 
 window.renderArcadePage = function() {
     var app = $("app"); app.innerHTML = "";
@@ -127,22 +137,19 @@ window.render3DMachinePage = function() {
     var app = $("app"); app.innerHTML = "";
     document.getElementById("crumbs").textContent = "3D Станок";
     app.appendChild(el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🖥️ 3D Модель станка</h1><p>Вращайте мышкой для просмотра</p></section>'));
-
     var container = el('<div id="3dContainer" style="width:100%; height:500px; background:var(--card-soft); border-radius:16px; overflow:hidden; position:relative;"></div>');
     app.appendChild(container);
 
     setTimeout(() => {
+        if(typeof THREE === 'undefined') return;
         var scene = new THREE.Scene();
         var camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
         var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
         container.appendChild(renderer.domElement);
 
-        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
-        var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(10, 20, 10);
-        scene.add(dirLight);
+        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+        var dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight);
 
         var machineGroup = new THREE.Group();
         var bedGeo = new THREE.BoxGeometry(10, 1, 3);
@@ -191,17 +198,15 @@ window.renderPortfolioPage = function() {
             <p><b>Уровень:</b> ${getLevel(state.xp)} (${getLevelTitle(getLevel(state.xp))})</p>
             <p><b>Всего опыта (XP):</b> ${state.xp}</p>
             <h3 style="margin-top:30px; color:#c14a2a;">Достижения:</h3>
-            <ul>
-                ${Object.keys(state.achievements || {}).slice(0, 20).map(id => `<li>${id}</li>`).join('')}
-            </ul>
+            <ul>${Object.keys(state.achievements || {}).slice(0, 20).map(id => `<li>${id}</li>`).join('')}</ul>
         </div>
         <div style="text-align:center; margin-top:20px;">
             <button class="btn" id="pdfBtn">📥 Скачать PDF</button>
-        </div>
-    `;
+        </div>`;
     app.appendChild(el(portfolioHtml));
 
     document.getElementById("pdfBtn").onclick = function() {
+        if(typeof html2pdf === 'undefined') return window.showToast("Библиотека PDF не загружена", "err");
         var element = document.getElementById('portfolioPrint');
         var opt = { margin: 10, filename: 'portfolio_' + state.student.name + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
         window.showToast("Генерация PDF...", "info");
@@ -209,10 +214,9 @@ window.renderPortfolioPage = function() {
     };
 };
 
-/* ---------------- ОСТАЛЬНЫЕ СТРАНИЦЫ ---------------- */
 window.renderTopic = function(id, tab){
   tab = tab || "lecture"; 
-  var c = window.COURSE; if (!c) return renderHome();
+  var c = window.COURSE || (typeof COURSE !== 'undefined' ? COURSE : null); if (!c) return renderHome();
   var t = null;
   for (var i = 0; i < c.sections.length; i++) { for (var j = 0; j < c.sections[i].topics.length; j++) { if (c.sections[i].topics[j].id === id) { t = { section: c.sections[i], topic: c.sections[i].topics[j] }; break; } } if (t) break; }
   if(!t) return renderHome();
@@ -286,17 +290,19 @@ window.renderShopPage = function() {
     var items = [
         { id: "fx_gold", icon: "👑", title: "Маска: Золото", price: 2000, type: "avatar_effect", effect: "gold" },
         { id: "theme_space", icon: "🌍", title: "Фон: Космос", price: 1000, type: "bg", bg: "space" },
-        { id: "theme_hyper", icon: "🧮", title: "Фон: Формулы", price: 1500, type: "bg", bg: "hyper" }
+        { id: "theme_hyper", icon: "🧮", title: "Фон: Формулы", price: 1500, type: "bg", bg: "hyper" },
+        { id: "theme_matrix", icon: "🟢", title: "Тема: Матрица", price: 800, type: "theme", theme: "matrix" }
     ];
     var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');
     items.forEach(it => {
-        var owned = state.shop.includes(it.id);
+        var owned = state.shop.includes(it.id) || (it.type === "theme" && state.shop.includes("theme_" + it.theme));
         var btn = el('<button class="btn" style="width:100%;margin-top:10px;">' + (owned ? 'Применить' : 'Купить') + '</button>');
         if (!owned && state.xp < it.price) { btn.disabled = true; btn.textContent = "Мало XP"; }
         btn.onclick = () => {
             if (!owned) { state.xp -= it.price; state.shop.push(it.id); }
             if (it.type === "avatar_effect") { state.avatarEffect = it.effect; window.renderUserChip(); }
             if (it.type === "bg") { state.customBg = it.bg; window.applyCustomBg(); }
+            if (it.type === "theme") { window.applyTheme(it.theme); }
             window.saveStudentData(); window.renderShopPage();
             window.showToast(owned ? "Применено!" : "Куплено!", "ok");
         };
@@ -334,6 +340,7 @@ window.renderProfilePage = function(targetKey){
   app.appendChild(el(card));
 };
 
+// --- ИСПРАВЛЕННЫЙ РОУТЕР (Добавлены все игры) ---
 window.route = function() {
     closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = $("app");
@@ -346,14 +353,21 @@ window.route = function() {
         else if (parts[0] === "journal") window.renderJournalPage();
         else if (parts[0] === "requests") window.renderRequestsPage();
         else if (parts[0] === "event") window.renderDeadlyPartyPage();
-        else if (parts[0] === "casino") window.renderCasinoPage();
-        else if (parts[0] === "roulette") window.renderRoulettePage();
-        else if (parts[0] === "gcode-test") window.renderGCodeTestPage();
         else if (parts[0] === "rating") window.renderRatingPage();
         else if (parts[0] === "chat") window.renderChatPage();
         else if (parts[0] === "arcade") renderArcadePage();
         else if (parts[0] === "3d-machine") render3DMachinePage();
         else if (parts[0] === "portfolio") renderPortfolioPage();
+        else if (parts[0] === "gcode-test") window.renderGCodeTestPage();
+        
+        // --- РОУТЫ ДЛЯ МИНИ-ИГР ---
+        else if (parts[0] === "casino") window.renderCasinoPage();
+        else if (parts[0] === "roulette") window.renderRoulettePage();
+        else if (parts[0] === "sudoku") window.renderSudokuPage();
+        else if (parts[0] === "minesweeper") window.renderMinesweeperPage();
+        else if (parts[0] === "spider") window.renderSpiderPage();
+        else if (parts[0] === "tictactoe") window.renderTicTacToePage();
+
         else renderHome();
     } catch (err) { app.innerHTML = '<div class="module">Ошибка: ' + escapeHtml(err.message) + '</div>'; }
     window.scrollTo(0, 0);
@@ -363,8 +377,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!state.student && !state.staff) $("loginOverlay").hidden = false; else $("loginOverlay").hidden = true;
     if (state.student) window.loadStudentData();
     
-    $("themeToggle").onclick = () => { $("themeModal") ? $("themeModal").remove() : openThemeModal(); };
-    $("fontSizeToggle").onclick = function() {
+    if ($("themeToggle")) $("themeToggle").onclick = () => { $("themeModal") ? $("themeModal").remove() : openThemeModal(); };
+    if ($("fontSizeToggle")) $("fontSizeToggle").onclick = function() {
         document.body.classList.toggle("reading-mode");
         this.textContent = document.body.classList.contains("reading-mode") ? "A-" : "A+";
     };
@@ -374,7 +388,7 @@ window.addEventListener("DOMContentLoaded", () => {
             var query = this.value.trim().toLowerCase(), resultsBox = $("searchResults");
             resultsBox.innerHTML = ""; if (query.length < 2) { resultsBox.style.display = "none"; return; }
             var results = [];
-            var c = window.COURSE;
+            var c = window.COURSE || (typeof COURSE !== 'undefined' ? COURSE : null);
             if (c) {
                 c.sections.forEach(sec => sec.topics.forEach(t => {
                     if (t.title.toLowerCase().includes(query) || t.code.toLowerCase().includes(query)) results.push({ type: "Тема", title: t.code + " - " + t.title, link: "#/topic/" + t.id + "/lecture" });
@@ -384,11 +398,13 @@ window.addEventListener("DOMContentLoaded", () => {
             else results.slice(0, 8).forEach(r => resultsBox.appendChild(el('<a class="search-res-item" href="' + r.link + '" onclick="document.getElementById(\'searchResults\').style.display=\'none\'"><div>' + r.title + '</div><div class="search-res-type">' + r.type + '</div></a>')));
             resultsBox.style.display = "block";
         });
-        document.addEventListener("click", e => { if (!e.target.closest(".search-container")) $("searchResults").style.display = "none"; });
+        document.addEventListener("click", e => { if (!e.target.closest(".search-container") && $("searchResults")) $("searchResults").style.display = "none"; });
     }
     
-    $("burgerBtn").onclick = () => { $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); };
-    $("drawerClose").onclick = window.closeDrawer; $("drawerOverlay").onclick = window.closeDrawer;
+    if ($("burgerBtn")) $("burgerBtn").onclick = () => { $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); };
+    if ($("drawerClose")) $("drawerClose").onclick = window.closeDrawer; 
+    if ($("drawerOverlay")) $("drawerOverlay").onclick = window.closeDrawer;
+    
     document.querySelectorAll("[data-go]").forEach(item => {
         item.onclick = (e) => { e.preventDefault(); location.hash = item.getAttribute("data-go"); window.closeDrawer(); };
     });

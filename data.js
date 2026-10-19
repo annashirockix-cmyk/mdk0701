@@ -2397,3 +2397,4 @@ N9 M30</pre>
     deadline: "45–60 минут"
   }
 };
+window.COURSE = COURSE;
