@@ -7,68 +7,102 @@
 <title>МДК 07.01</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
-<!-- Скрипты -->
+
+<!-- Внешние библиотеки -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
 <!-- Шрифты -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;900&family=Orbitron:wght@400;600;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
 <!-- Стили -->
-<link rel="stylesheet" href="style.css?v=103">
+<link rel="stylesheet" href="style.css?v=111">
+
+<!-- Тема (до рендера) -->
 <script>
-  (function(){ try { var t = localStorage.getItem("mdk0701.theme"); if (!t || t === "auto"){ var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; t = d ? "dark" : "light"; } document.documentElement.setAttribute("data-theme", t); } catch(e){} })();
+  (function(){
+    try {
+      var t = localStorage.getItem("mdk0701.theme");
+      if (!t || t === "auto") {
+        var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        t = d ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", t);
+    } catch(e) {}
+  })();
 </script>
 </head>
 <body>
 
+<!-- ============================================================
+     ЛОГИН
+     ============================================================ -->
 <div class="login-overlay" id="loginOverlay" hidden>
   <div class="login-card">
-    <div class="login-brand" style="text-align: center; margin-bottom: 25px;"><span class="brand-badge" style="font-size: 14px; padding: 6px 12px;">МДК 07.01</span></div>
-    
+    <div class="login-brand" style="text-align: center; margin-bottom: 25px;">
+      <span class="brand-badge" style="font-size: 14px; padding: 6px 12px;">МДК 07.01</span>
+    </div>
+
     <form onsubmit="event.preventDefault(); window.doStudentLogin();">
-        <h3>🎓 Вход студента</h3>
-        <input id="loginName" type="text" placeholder="ФИО (Иванов Иван)" required>
-        <input id="loginGroup" type="text" placeholder="Группа (ТМ-21)" required>
-        <button type="submit" class="btn" style="width:100%; padding:12px;">Войти как студент</button>
+      <h3>🎓 Вход студента</h3>
+      <input id="loginName" type="text" placeholder="ФИО (Иванов Иван)" required>
+      <input id="loginGroup" type="text" placeholder="Группа (ТМ-21)" required>
+      <button type="submit" class="btn" style="width:100%; padding:12px;">Войти как студент</button>
     </form>
-    
+
     <div style="text-align:center; margin:20px 0; color:var(--muted); font-size:13px; font-weight:bold;">─── или ───</div>
-    
+
     <form onsubmit="event.preventDefault(); window.doTeacherLogin();">
-        <h3>👨‍🏫 Вход сотрудника</h3>
-        <input id="loginStaffName" type="text" placeholder="Логин (admin / teacher)" required>
-        <input id="loginStaffPass" type="password" placeholder="Пароль" required>
-        <button id="staffLoginBtn" type="submit" class="btn ghost" style="width:100%; padding:12px;">Войти как сотрудник</button>
+      <h3>👨‍🏫 Вход сотрудника</h3>
+      <input id="loginStaffName" type="text" placeholder="Логин (admin / teacher)" required>
+      <input id="loginStaffPass" type="password" placeholder="Пароль" required>
+      <button id="staffLoginBtn" type="submit" class="btn ghost" style="width:100%; padding:12px;">Войти как сотрудник</button>
     </form>
   </div>
 </div>
 
+<!-- ============================================================
+     ТОПБАР
+     ============================================================ -->
 <header class="topbar">
-  <button class="burger-btn" id="burgerBtn"><span></span><span></span><span></span></button>
+  <button class="burger-btn" id="burgerBtn" aria-label="Меню">
+    <span></span><span></span><span></span>
+  </button>
   <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
   <div class="crumbs" id="crumbs"></div>
-  
-  <a href="#/notifications" class="notif-bell" id="notifBell" style="position:relative; margin-right:15px; text-decoration:none; font-size:20px; cursor:pointer;" title="Уведомления">
-      🔔 <span id="notifBadge" style="position:absolute; top:-5px; right:-8px; background:var(--err); color:#fff; font-size:10px; font-weight:bold; border-radius:50%; padding:2px 5px; display:none;">0</span>
+
+  <a href="#/notifications" class="notif-bell" id="notifBell"
+     style="position:relative; margin-right:15px; text-decoration:none; font-size:20px; cursor:pointer;"
+     title="Уведомления">
+    🔔
+    <span id="notifBadge" style="position:absolute; top:-5px; right:-8px; background:var(--err); color:#fff; font-size:10px; font-weight:bold; border-radius:50%; padding:2px 5px; display:none;">0</span>
   </a>
 
-  <div class="topbar-status"><span class="status-pill" id="xpCount">🌟 0 XP</span></div>
+  <div class="topbar-status">
+    <span class="status-pill" id="xpCount">🌟 0 XP</span>
+  </div>
+
   <button id="themeToggle" class="btn ghost" style="padding: 8px 12px; margin-left: 10px; border-radius: 8px;">🎨 Тема</button>
 </header>
 
+<!-- ============================================================
+     DRAWER
+     ============================================================ -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <aside class="drawer" id="drawer" style="display:flex; flex-direction:column;">
   <div class="drawer-head">
     <div class="drawer-user">
-        <span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span>
-        <div>
-            <div id="userChipName">Гость</div>
-            <div id="userChipGroup" style="font-size:12px;color:var(--muted)">Роль: Гость</div>
-        </div>
+      <span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span>
+      <div>
+        <div id="userChipName">Гость</div>
+        <div id="userChipGroup" style="font-size:12px;color:var(--muted)">Роль: Гость</div>
+      </div>
     </div>
     <button class="drawer-close" id="drawerClose">✕</button>
   </div>
+
   <nav class="drawer-nav" style="flex:1; overflow-y:auto;">
     <a class="drawer-item" data-go="#/">🏠 <span>Главная</span></a>
     <a class="drawer-item" data-go="#/profile">👤 <span>Личный кабинет</span></a>
@@ -80,46 +114,70 @@
     <a class="drawer-item" data-go="#/certificate">📜 <span>Сертификат</span></a>
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
-    
-    <!-- Вкладка Заявки (скрыта по умолчанию, показывается через renderUserChip для учителей) -->
-    <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;">📥 <span>Заявки</span></a>
-    
+
+    <a class="drawer-item" data-go="#/requests" id="navRequests"
+       style="display:none; color:var(--accent); font-weight:bold;">
+      📥 <span>Заявки</span>
+    </a>
+
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
     <a class="drawer-item" data-go="#/gcode-reference">📖 <span>Справочник G/M</span></a>
     <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
     <a class="drawer-item" data-go="#/final-exam">🎓 <span>Экзамен</span></a>
     <a class="drawer-item" data-go="#/final-training">🏋️ <span>Тренировка</span></a>
-    
-    <!-- ИГРЫ -->
+
+    <!-- Игры -->
     <a class="drawer-item" data-go="#/event">💀 <span>Смертельная вечеринка</span></a>
     <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
     <a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
-    <a class="drawer-item" data-go="#/minesweeper">💣 <span>Сапер</span></a>
+    <a class="drawer-item" data-go="#/minesweeper">💣 <span>Сапёр</span></a>
     <a class="drawer-item" data-go="#/spider">🕷️ <span>Пасьянс Паук</span></a>
     <a class="drawer-item" data-go="#/checkers">⚪ <span>Шашки</span></a>
     <a class="drawer-item" data-go="#/chess">♟️ <span>Шахматы</span></a>
-    
+
     <a class="drawer-item" data-go="#/chat">💭 <span>Чат группы</span></a>
     <a class="drawer-item" data-go="#/comments">💬 <span>Отзывы о курсе</span></a>
-    
-    <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px;" onclick="window.handleLogout()">🚪 <span>Выйти из аккаунта</span></a>
+
+    <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px;"
+       onclick="window.handleLogout()">🚪 <span>Выйти из аккаунта</span></a>
   </nav>
 </aside>
 
+<!-- ============================================================
+     ПРИЛОЖЕНИЕ
+     ============================================================ -->
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v103.0</footer>
 
-<script src="data.js?v=103"></script>
-<script src="data-extra.js?v=103"></script>
-<script src="info.js?v=103"></script>
-<script src="script.js?v=103"></script>
-<script src="extra.js?v=103"></script>
-<script src="final.js?v=103"></script>
-<script src="links.js?v=103"></script>
-<script src="rating.js?v=103"></script>
-<script src="journal.js?v=103"></script>
-<script src="minigames.js?v=103"></script>
-<script src="assistant.js?v=103"></script>
-<script src="easter-eggs.js?v=103"></script>
+<footer class="footer">
+  ГБПОУ МО «Луховицкий авиационный технический техникум» · v111
+</footer>
+
+<!-- ============================================================
+     СКРИПТЫ (порядок важен!)
+     ============================================================ -->
+<script src="data.js?v=111"></script>
+<script src="data-extra.js?v=111"></script>
+<script src="info.js?v=111"></script>
+<script src="script.js?v=111"></script>
+<script src="extra.js?v=111"></script>
+<script src="final.js?v=111"></script>
+<script src="links.js?v=111"></script>
+<script src="rating.js?v=111"></script>
+<script src="journal.js?v=111"></script>
+<script src="minigames.js?v=111"></script>
+<script src="assistant.js?v=111"></script>
+<script src="easter-eggs.js?v=111"></script>
+
+<!-- Service Worker -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function() {
+      navigator.serviceWorker.register("sw.js").catch(function(e) {
+        console.warn("SW registration failed:", e);
+      });
+    });
+  }
+</script>
+
 </body>
 </html>
