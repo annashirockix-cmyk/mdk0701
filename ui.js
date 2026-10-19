@@ -1,9 +1,8 @@
 /* ============================================================
-   МДК 07.01 — ui.js (v177.0 — FIXED UNDEFINED CRASH)
+   МДК 07.01 — ui.js (v180.0 — RESTORED PAGES)
    ============================================================ */
 "use strict";
 
-/* ---------------- УТИЛИТЫ ---------------- */
 window.$ = (id) => document.getElementById(id);
 window.el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
 window.escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -71,7 +70,6 @@ window.openThemeModal = function() {
   document.body.appendChild(modal);
 };
 
-/* ---------------- РЕНДЕР КВЕСТОВ ---------------- */
 window.renderQuestsWidget = function() {
     if (!state.student) return "";
     var q = state.dailyQuests || { read: false, game: false, chat: false };
@@ -89,19 +87,12 @@ window.renderQuestsWidget = function() {
 function renderHome() {
     var app = $("app"); app.innerHTML = "";
     var c = window.COURSE;
-    
-    // ЗАЩИТА ОТ ОШИБКИ, ЕСЛИ DATA.JS НЕ ЗАГРУЗИЛСЯ
     if (!c) {
         app.innerHTML = '<div class="module" style="text-align:center; padding:40px; margin-top:40px;"><h2>Ошибка загрузки данных</h2><p>Файл data.js не загружен. Проверьте интернет и обновите страницу.</p><button class="btn" onclick="location.reload()">Обновить</button></div>';
         return;
     }
-
     app.appendChild(el('<section class="hero"><h1>' + c.title + '</h1><p>' + c.module + '</p></section>'));
-    
-    // Квесты
     app.appendChild(el(window.renderQuestsWidget()));
-    
-    // Учебный план
     app.appendChild(el('<div class="steps-title">Учебный план</div>'));
     c.sections.forEach(sec => {
         app.appendChild(el('<div style="font-weight:bold; margin:20px 0 10px; color:var(--accent); text-transform:uppercase; font-size:12px; letter-spacing:1px;">' + sec.title + '</div>'));
@@ -114,7 +105,111 @@ function renderHome() {
     });
 }
 
-/* ---------------- ТЕМЫ (ЛЕКЦИИ) ---------------- */
+/* ---------------- ВОССТАНОВЛЕННЫЕ СТРАНИЦЫ ---------------- */
+
+window.renderArcadePage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Игровая комната";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🕹️ Игровая комната</h1></section>'));
+    var games = [
+        { title: "Казино", icon: "🎰", route: "#/casino" }, { title: "Рулетка", icon: "🎡", route: "#/roulette" },
+        { title: "Судоку", icon: "🔢", route: "#/sudoku" }, { title: "Сапёр", icon: "💣", route: "#/minesweeper" },
+        { title: "Пасьянс Паук", icon: "🕷️", route: "#/spider" }, { title: "Крестики-нолики", icon: "❌", route: "#/tictactoe" }
+    ];
+    var grid = el('<div class="arcade-grid"></div>');
+    games.forEach(g => {
+        grid.appendChild(el('<div class="arcade-card" onclick="location.hash=\'' + g.route + '\'"><div style="font-size:50px;">' + g.icon + '</div><div style="font-weight:bold; margin-top:10px;">' + g.title + '</div></div>'));
+    });
+    app.appendChild(grid);
+};
+
+window.render3DMachinePage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "3D Станок";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🖥️ 3D Модель станка</h1><p>Вращайте мышкой для просмотра</p></section>'));
+
+    var container = el('<div id="3dContainer" style="width:100%; height:500px; background:var(--card-soft); border-radius:16px; overflow:hidden; position:relative;"></div>');
+    app.appendChild(container);
+
+    setTimeout(() => {
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(renderer.domElement);
+
+        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        var machineGroup = new THREE.Group();
+        var bedGeo = new THREE.BoxGeometry(10, 1, 3);
+        var bedMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        var bed = new THREE.Mesh(bedGeo, bedMat); bed.position.set(0, -1, 0); machineGroup.add(bed);
+
+        var headGeo = new THREE.BoxGeometry(2, 3, 3);
+        var head = new THREE.Mesh(headGeo, bedMat); head.position.set(-4, 0.5, 0); machineGroup.add(head);
+
+        var chuckGeo = new THREE.CylinderGeometry(1, 1, 1, 16);
+        var chuckMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        var chuck = new THREE.Mesh(chuckGeo, chuckMat); chuck.rotation.z = Math.PI / 2; chuck.position.set(-2.5, 0.5, 0); machineGroup.add(chuck);
+
+        var tailGeo = new THREE.BoxGeometry(1.5, 2, 2);
+        var tail = new THREE.Mesh(tailGeo, bedMat); tail.position.set(4, 0, 0); machineGroup.add(tail);
+
+        var toolGeo = new THREE.BoxGeometry(1, 1.5, 1);
+        var toolMat = new THREE.MeshStandardMaterial({ color: 0xc14a2a });
+        var tool = new THREE.Mesh(toolGeo, toolMat); tool.position.set(0, 0.5, 1); machineGroup.add(tool);
+
+        scene.add(machineGroup);
+        camera.position.set(8, 8, 12);
+        camera.lookAt(0, 0, 0);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            machineGroup.rotation.y += 0.005;
+            renderer.render(scene, camera);
+        }
+        animate();
+    }, 100);
+};
+
+window.renderPortfolioPage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Портфолио";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    if (!state.student) { app.appendChild(el('<div class="module">Войдите.</div>')); return; }
+
+    var portfolioHtml = `
+        <div id="portfolioPrint" class="module" style="padding:40px; background:#fff; color:#000;">
+            <h1 style="text-align:center; color:#c14a2a;">ПОРТФОЛИО СТУДЕНТА</h1>
+            <hr style="margin:20px 0; border:1px solid #ccc;">
+            <p><b>ФИО:</b> ${escapeHtml(state.student.name)}</p>
+            <p><b>Группа:</b> ${escapeHtml(state.student.group)}</p>
+            <p><b>Уровень:</b> ${getLevel(state.xp)} (${getLevelTitle(getLevel(state.xp))})</p>
+            <p><b>Всего опыта (XP):</b> ${state.xp}</p>
+            <h3 style="margin-top:30px; color:#c14a2a;">Достижения:</h3>
+            <ul>
+                ${Object.keys(state.achievements || {}).slice(0, 20).map(id => `<li>${id}</li>`).join('')}
+            </ul>
+        </div>
+        <div style="text-align:center; margin-top:20px;">
+            <button class="btn" id="pdfBtn">📥 Скачать PDF</button>
+        </div>
+    `;
+    app.appendChild(el(portfolioHtml));
+
+    document.getElementById("pdfBtn").onclick = function() {
+        var element = document.getElementById('portfolioPrint');
+        var opt = { margin: 10, filename: 'portfolio_' + state.student.name + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+        window.showToast("Генерация PDF...", "info");
+        html2pdf().set(opt).from(element).save().then(() => window.showToast("PDF готов!", "ok"));
+    };
+};
+
+/* ---------------- ОСТАЛЬНЫЕ СТРАНИЦЫ ---------------- */
 window.renderTopic = function(id, tab){
   tab = tab || "lecture"; 
   var c = window.COURSE; if (!c) return renderHome();
@@ -136,7 +231,7 @@ window.renderTopic = function(id, tab){
         if (!state.progress[id]) state.progress[id] = {}; 
         state.progress[id].done = 5; 
         window.addXP(50); 
-        window.completeQuest('read'); // Выполнение квеста
+        window.completeQuest('read'); 
         markBtn.textContent = "✅ Тема изучена"; 
         markBtn.disabled = true; 
     }; 
@@ -184,7 +279,6 @@ window.markPracticalDone = function(topicId, code) {
     window.showToast("Отправлено на проверку!", "ok");
 };
 
-/* ---------------- МАГАЗИН ---------------- */
 window.renderShopPage = function() {
     var app = $("app"); app.innerHTML = "";
     document.getElementById("crumbs").textContent = "Магазин XP";
@@ -211,7 +305,6 @@ window.renderShopPage = function() {
     app.appendChild(grid);
 };
 
-/* ---------------- ПРОФИЛЬ ---------------- */
 window.renderProfilePage = function(targetKey){
   var app = $("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Личный кабинет";
@@ -241,7 +334,6 @@ window.renderProfilePage = function(targetKey){
   app.appendChild(el(card));
 };
 
-/* ---------------- РОУТИНГ ---------------- */
 window.route = function() {
     closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = $("app");
@@ -259,9 +351,9 @@ window.route = function() {
         else if (parts[0] === "gcode-test") window.renderGCodeTestPage();
         else if (parts[0] === "rating") window.renderRatingPage();
         else if (parts[0] === "chat") window.renderChatPage();
-        else if (parts[0] === "arcade") window.renderArcadePage();
-        else if (parts[0] === "3d-machine") window.render3DMachinePage();
-        else if (parts[0] === "portfolio") window.renderPortfolioPage();
+        else if (parts[0] === "arcade") renderArcadePage();
+        else if (parts[0] === "3d-machine") render3DMachinePage();
+        else if (parts[0] === "portfolio") renderPortfolioPage();
         else renderHome();
     } catch (err) { app.innerHTML = '<div class="module">Ошибка: ' + escapeHtml(err.message) + '</div>'; }
     window.scrollTo(0, 0);
@@ -271,14 +363,12 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!state.student && !state.staff) $("loginOverlay").hidden = false; else $("loginOverlay").hidden = true;
     if (state.student) window.loadStudentData();
     
-    // Тема и Шрифт
     $("themeToggle").onclick = () => { $("themeModal") ? $("themeModal").remove() : openThemeModal(); };
     $("fontSizeToggle").onclick = function() {
         document.body.classList.toggle("reading-mode");
         this.textContent = document.body.classList.contains("reading-mode") ? "A-" : "A+";
     };
 
-    // Поиск
     if ($("globalSearch")) {
         $("globalSearch").addEventListener("input", function() {
             var query = this.value.trim().toLowerCase(), resultsBox = $("searchResults");
