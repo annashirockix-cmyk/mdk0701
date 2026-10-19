@@ -1,6 +1,5 @@
 /* ============================================================
-   МДК 07.01 — style.css (v111.0 — STABLE)
-   Исправлено: контраст фонов на тёмных темах (--pattern-color)
+   МДК 07.01 — style.css (v112.0 — STABLE)
    ============================================================ */
 
 [hidden] { display: none !important; }
@@ -65,7 +64,7 @@ html[data-theme="matrix"] {
   --accent: #00cc00; --accent-soft: #002200; --ok: #00ff00; --err: #ff0000;
   --shadow: 0 0 10px rgba(0,255,0,0.2); --code-bg: #001100; --code-text: #00ff00;
   --gold: #adff2f; --font-main: 'Share Tech Mono', monospace;
-  --bg-image: url('img/bg-matrix.jpg'); --pattern-color: rgba(0,255,0,0.20);
+  --bg-image: none; --pattern-color: rgba(0,255,0,0.20);
   color-scheme: dark;
 }
 
@@ -85,7 +84,7 @@ html[data-theme="anime"] {
   --accent: #9d4edd; --accent-soft: #2a1b38; --ok: #00f5d4; --err: #ff006e;
   --shadow: 0 0 20px rgba(157, 78, 221, 0.15); --code-bg: #1a1d2e; --code-text: #00f5d4;
   --gold: #ffb703; --font-main: 'Rajdhani', sans-serif;
-  --bg-image: url('img/bg-anime.jpg'); --pattern-color: rgba(157,78,221,0.22);
+  --bg-image: none; --pattern-color: rgba(157,78,221,0.22);
   color-scheme: dark;
 }
 
@@ -105,7 +104,7 @@ html[data-theme="cyber"] {
   --accent: #00ffcc; --accent-soft: #00332a; --ok: #00ffcc; --err: #ff0055;
   --shadow: 0 0 15px rgba(0,255,204,0.15); --code-bg: #0f0f0f; --code-text: #00ffcc;
   --gold: #ffcc00; --font-main: 'Orbitron', sans-serif;
-  --bg-image: url('img/bg-cyber.jpg'); --pattern-color: rgba(0,255,204,0.18);
+  --bg-image: none; --pattern-color: rgba(0,255,204,0.18);
   color-scheme: dark;
 }
 
@@ -610,16 +609,13 @@ html[data-theme="gold"] .journal-table tr:hover {
 
 /* ============================================================
    ФОНЫ ИЗ МАГАЗИНА — работают на ВСЕХ темах
-   Цвет узора = --pattern-color (задан в каждой теме)
    ============================================================ */
 
 body.bg-dots {
-  background-image:
-    radial-gradient(circle at center, var(--pattern-color) 1.5px, transparent 1.5px) !important;
+  background-image: radial-gradient(circle at center, var(--pattern-color) 1.5px, transparent 1.5px) !important;
   background-size: 24px 24px !important;
   background-attachment: fixed;
 }
-
 body.bg-grid {
   background-image:
     linear-gradient(var(--pattern-color) 1px, transparent 1px),
@@ -627,22 +623,15 @@ body.bg-grid {
   background-size: 40px 40px !important;
   background-attachment: fixed;
 }
-
 body.bg-diagonal {
-  background-image:
-    repeating-linear-gradient(45deg, transparent, transparent 15px,
-      var(--pattern-color) 15px, var(--pattern-color) 16px) !important;
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 15px, var(--pattern-color) 15px, var(--pattern-color) 16px) !important;
   background-attachment: fixed;
 }
-
 body.bg-waves {
-  background-image:
-    repeating-radial-gradient(circle at 0 0, transparent 0, transparent 18px,
-      var(--pattern-color) 19px, transparent 20px) !important;
+  background-image: repeating-radial-gradient(circle at 0 0, transparent 0, transparent 18px, var(--pattern-color) 19px, transparent 20px) !important;
   background-size: 40px 40px !important;
   background-attachment: fixed;
 }
-
 body.bg-stars {
   background-image:
     radial-gradient(2px 2px at 20px 30px, var(--accent), transparent),
@@ -660,20 +649,13 @@ body.bg-stars {
 /* Эффекты (магазин) */
 body.effect-waves::before {
   content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background: repeating-linear-gradient(90deg, transparent 0 40px,
-    var(--pattern-color) 40px 41px); opacity: 0.5;
-  animation: effectWavesSlide 12s linear infinite;
+  background: repeating-linear-gradient(90deg, transparent 0 40px, var(--pattern-color) 40px 41px);
+  opacity: 0.5; animation: effectWavesSlide 12s linear infinite;
 }
-@keyframes effectWavesSlide {
-  from { transform: translateX(0); }
-  to   { transform: translateX(40px); }
-}
+@keyframes effectWavesSlide { from { transform: translateX(0); } to { transform: translateX(40px); } }
 
 body.effect-pulse { animation: effectPulseBody 2.5s ease-in-out infinite; }
-@keyframes effectPulseBody {
-  0%, 100% { filter: brightness(1); }
-  50%      { filter: brightness(1.06); }
-}
+@keyframes effectPulseBody { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.06); } }
 
 body.effect-matrix::after {
   content: "01001010 11010010 00110101 11101000 01011010 10100110";
@@ -683,7 +665,4 @@ body.effect-matrix::after {
   line-height: 18px; word-break: break-all; overflow: hidden;
   animation: effectMatrixScroll 20s linear infinite;
 }
-@keyframes effectMatrixScroll {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-200px); }
-}
+@keyframes effectMatrixScroll { from { transform: translateY(0); } to { transform: translateY(-200px); } }

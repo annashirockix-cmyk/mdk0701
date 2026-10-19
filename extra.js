@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v115.0 — LEVELS & PROFILE UI)
+   МДК 07.01 — extra.js (v116.0 — BUG FIX)
    ============================================================ */
 "use strict";
 
@@ -100,7 +100,7 @@ window.renderCommentsPage = function(){
   };
 };
 
-/* ---------------- ЛИЧНЫЙ КАБИНЕТ (С УРОВНЯМИ) ---------------- */
+/* ---------------- ЛИЧНЫЙ КАБИНЕТ ---------------- */
 window.renderProfilePage = function(){
   var app = document.getElementById("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Профиль";
@@ -124,7 +124,6 @@ window.renderProfilePage = function(){
   var name = state.staff ? state.staff.name : (state.nick || (state.student && state.student.name) || "Гость");
   var role = state.staff ? "Роль: " + state.staff.role : ("Студент · Гр. " + (state.student ? state.student.group : "—"));
 
-  // Шапка профиля
   app.appendChild(el('<section class="hero" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
     '<div style="width:90px;height:90px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">' + avatar + '</div>' +
     '<div style="flex:1;min-width:200px;">' +
@@ -135,7 +134,6 @@ window.renderProfilePage = function(){
   '</section>'));
 
   if (state.student) {
-    // Прогресс-бар уровня
     var lvlBlock = el('<section class="module"><h2>📈 Уровень ' + level + '</h2>' +
       '<div style="margin:16px 0;">' +
         '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">' +
@@ -149,7 +147,6 @@ window.renderProfilePage = function(){
     '</section>');
     app.appendChild(lvlBlock);
 
-    // Бонусы уровня
     var bonuses = getLevelBonuses(level);
     var bonusBlock = el('<section class="module"><h2>🎁 Ваши бонусы</h2><div style="display:grid;grid-template-columns:1fr;gap:10px;" id="bonusList"></div></section>');
     var bWrap = bonusBlock.querySelector("#bonusList");
@@ -162,7 +159,6 @@ window.renderProfilePage = function(){
     }
     app.appendChild(bonusBlock);
 
-    // Достижения
     var achList = getAchievementsList();
     var unlocked = achList.filter(function(a){ return state.achievements[a.id]; });
     var locked = achList.filter(function(a){ return !state.achievements[a.id]; });
@@ -345,7 +341,7 @@ window.renderRequestsPage = function(){
           } else if (it.kind === "attempt") {
             var b = el('<button class="btn" style="padding:6px 12px;font-size:13px;">✅ Одобрить</button>');
             b.onclick = function(){ window.approveAttempt(sKey, it.reqKey); };
-            actionsWrapper.appendChild(b);
+            actionsWrap.appendChild(b);
           }
           block.appendChild(row);
         });

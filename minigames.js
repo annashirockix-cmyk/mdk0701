@@ -1,497 +1,592 @@
 /* ============================================================
-   МДК 07.01 — extra.js (v115.0 — LEVELS & PROFILE UI)
+   МДК 07.01 — minigames.js (v116.0 — STABLE)
    ============================================================ */
 "use strict";
 
-/* ---------------- ЧАТ ---------------- */
-window.renderChatPage = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Чат группы";
+/* ---------- КРЕСТИКИ-НОЛИКИ 4×4 ---------- */
+window.renderTicTacToePage = function() {
+  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Крестики-нолики 4×4";
   app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
 
-  if (!state.student) {
-    app.appendChild(el('<div class="module">Войдите как студент, чтобы писать в чат.</div>'));
-    return;
-  }
-
-  app.appendChild(el('<section class="module"><h2>Чат группы ' + escapeHtml(state.student.group) + '</h2>' +
-    '<div id="chatLog" style="height:400px;overflow-y:auto;background:var(--card-soft);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;"><div style="color:var(--muted);">Загрузка сообщений...</div></div>' +
-    '<form id="chatForm" style="display:flex;gap:10px;">' +
-      '<input type="text" id="chatInput" placeholder="Сообщение..." style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">' +
-      '<button type="submit" class="btn">Отправить</button>' +
-    '</form></section>'));
-
-  var log = document.getElementById("chatLog");
-
-  function loadChat() {
-    fetch(APPS_SCRIPT_URL + "?action=chatload&group=" + encodeURIComponent(state.student.group) + "&t=" + Date.now(), { cache: "no-store" })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        log.innerHTML = "";
-        if (d && d.ok && d.messages && d.messages.length) {
-          d.messages.forEach(function(m){
-            log.innerHTML += '<div style="margin-bottom:12px;background:var(--card);padding:8px 12px;border-radius:8px;border:1px solid var(--border);">' +
-              '<b style="color:var(--accent)">' + escapeHtml(m.name) + '</b> ' +
-              '<span style="font-size:10px;color:var(--muted)">' + new Date(m.date).toLocaleTimeString() + '</span><br>' +
-              escapeHtml(m.text) + '</div>';
-          });
-          log.scrollTop = log.scrollHeight;
-        } else {
-          log.innerHTML = '<div style="color:var(--muted);">Пока нет сообщений.</div>';
-        }
-      }).catch(function(e){ log.innerHTML = "Ошибка загрузки: " + e.message; });
-  }
-  loadChat();
-
-  document.getElementById("chatForm").onsubmit = function(e){
-    e.preventDefault();
-    var t = document.getElementById("chatInput").value.trim(); if (!t) return;
-    document.getElementById("chatInput").value = "";
-    var p = new URLSearchParams();
-    p.append("action", "chatsave"); p.append("group", state.student.group); p.append("key", studentKey());
-    p.append("name", state.student.name); p.append("avatar", "👨‍🎓"); p.append("text", t);
-    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(loadChat).catch(function(){ alert("Ошибка сети"); });
-  };
-};
-
-/* ---------------- ОТЗЫВЫ ---------------- */
-window.renderCommentsPage = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Отзывы";
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  app.appendChild(el('<section class="module"><h2>Отзывы о курсе</h2>' +
-    '<div id="commentsList" style="margin-bottom:20px;"><div style="color:var(--muted);">Загрузка...</div></div>' +
-    '<form id="commentForm">' +
-      '<textarea id="commentText" placeholder="Напишите ваш отзыв..." style="width:100%;height:80px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:10px;"></textarea>' +
-      '<button type="submit" class="btn">Отправить</button>' +
-    '</form></section>'));
-
-  var list = document.getElementById("commentsList");
-
-  function loadComments() {
-    fetch(APPS_SCRIPT_URL + "?action=loadcomments&t=" + Date.now(), { cache: "no-store" })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        list.innerHTML = "";
-        if (d && d.ok && d.comments && d.comments.length) {
-          d.comments.slice().reverse().forEach(function(c){
-            list.innerHTML += '<div style="margin-bottom:12px;padding:16px;background:var(--card-soft);border-radius:12px;border:1px solid var(--border);">' +
-              '<b>' + escapeHtml(c.name) + '</b> <span style="font-size:12px;color:var(--muted)">' + escapeHtml(c.group) + '</span>' +
-              '<p style="margin:8px 0 0;">' + escapeHtml(c.text) + '</p></div>';
-          });
-        } else {
-          list.innerHTML = '<div style="color:var(--muted);">Пока нет отзывов.</div>';
-        }
-      }).catch(function(){ list.innerHTML = "Ошибка загрузки."; });
-  }
-  loadComments();
-
-  document.getElementById("commentForm").onsubmit = function(e){
-    e.preventDefault();
-    var t = document.getElementById("commentText").value.trim();
-    if (t.length < 5) { alert("Слишком короткий отзыв"); return; }
-    document.getElementById("commentText").value = "";
-    var p = new URLSearchParams();
-    p.append("action", "savecomment");
-    p.append("name", state.student ? state.student.name : "Гость");
-    p.append("group", state.student ? state.student.group : "—");
-    p.append("text", t);
-    fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(loadComments).catch(function(){ alert("Ошибка сети"); });
-  };
-};
-
-/* ---------------- ЛИЧНЫЙ КАБИНЕТ (С УРОВНЯМИ) ---------------- */
-window.renderProfilePage = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Профиль";
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-
-  if (!state.student && !state.staff) {
-    app.appendChild(el('<div class="module">Войдите, чтобы увидеть профиль.</div>'));
-    return;
-  }
-
-  var level = getLevel(state.xp);
-  var currentXp = state.xp;
-  var nextLevelXp = getXpForNextLevel(level);
-  var prevLevelXp = getXpForNextLevel(level - 1);
-  var progress = Math.min(100, Math.max(0, ((currentXp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100));
-  
-  var avatar = state.avatar 
-    ? '<img src="' + state.avatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' 
-    : (state.staff ? "👨‍🏫" : (state.shop.includes("golden") ? "👑" : "👨‍🎓"));
-  
-  var name = state.staff ? state.staff.name : (state.nick || (state.student && state.student.name) || "Гость");
-  var role = state.staff ? "Роль: " + state.staff.role : ("Студент · Гр. " + (state.student ? state.student.group : "—"));
-
-  // Шапка профиля
-  app.appendChild(el('<section class="hero" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
-    '<div style="width:90px;height:90px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);">' + avatar + '</div>' +
-    '<div style="flex:1;min-width:200px;">' +
-      '<h1 style="margin:0 0 6px 0;font-size:24px;">' + escapeHtml(name) + ' <span style="font-size:16px;background:var(--gold);color:#000;padding:2px 8px;border-radius:8px;">Lv. ' + level + '</span></h1>' +
-      '<div style="color:var(--muted);">' + escapeHtml(role) + '</div>' +
-      (state.sign ? '<div style="margin-top:8px;font-style:italic;color:var(--text-soft);">' + escapeHtml(state.sign) + '</div>' : '') +
-    '</div>' +
-  '</section>'));
-
-  if (state.student) {
-    // Прогресс-бар уровня
-    var lvlBlock = el('<section class="module"><h2>📈 Уровень ' + level + '</h2>' +
-      '<div style="margin:16px 0;">' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">' +
-          '<span>' + currentXp + ' XP</span><span>' + (level >= 100 ? 'Максимум' : nextLevelXp + ' XP') + '</span>' +
-        '</div>' +
-        '<div style="height:16px;background:var(--card-soft);border-radius:8px;overflow:hidden;border:1px solid var(--border);">' +
-          '<div style="height:100%;background:linear-gradient(90deg, var(--accent), var(--gold));width:' + progress + '%;transition:width 0.5s;"></div>' +
-        '</div>' +
-      '</div>' +
-      '<p class="sub" style="font-size:13px;">До следующего уровня осталось: <b>' + (nextLevelXp - currentXp) + ' XP</b></p>' +
-    '</section>');
-    app.appendChild(lvlBlock);
-
-    // Бонусы уровня
-    var bonuses = getLevelBonuses(level);
-    var bonusBlock = el('<section class="module"><h2>🎁 Ваши бонусы</h2><div style="display:grid;grid-template-columns:1fr;gap:10px;" id="bonusList"></div></section>');
-    var bWrap = bonusBlock.querySelector("#bonusList");
-    if (bonuses.length === 0) {
-        bWrap.appendChild(el('<div style="color:var(--muted);">Пока нет бонусов. Достигните 5 уровня!</div>'));
-    } else {
-        bonuses.forEach(function(b) {
-            bWrap.appendChild(el('<div style="background:var(--card-soft); padding:12px; border-radius:8px; border:1px solid var(--border);"><b>Ур. ' + b.lvl + ':</b> ' + b.name + '</div>'));
-        });
-    }
-    app.appendChild(bonusBlock);
-
-    // Достижения
-    var achList = getAchievementsList();
-    var unlocked = achList.filter(function(a){ return state.achievements[a.id]; });
-    var locked = achList.filter(function(a){ return !state.achievements[a.id]; });
-    locked.sort(function(a, b){ return (a.xp || 0) - (b.xp || 0); });
-
-    var achBlock = el('<section class="module"><h2>🏅 Достижения (' + unlocked.length + ' / ' + achList.length + ')</h2>' +
-      '<div id="achList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px; max-height:400px; overflow-y:auto; padding-right:10px;"></div>' +
-    '</section>');
-    var achWrap = achBlock.querySelector("#achList");
-    
-    unlocked.forEach(function(a) {
-        achWrap.appendChild(el('<div style="background:var(--accent-soft); padding:10px; border-radius:8px; text-align:center; border:1px solid var(--accent);">' +
-            '<div style="font-size:24px;">' + a.icon + '</div>' +
-            '<div style="font-weight:bold; font-size:12px; margin-top:4px; color:var(--accent);">' + escapeHtml(a.title) + '</div>' +
-            '<div style="font-size:10px; color:var(--text-soft); margin-top:2px;">' + escapeHtml(a.desc) + '</div>' +
-        '</div>'));
-    });
-    locked.slice(0, 20).forEach(function(a) {
-        achWrap.appendChild(el('<div style="background:var(--card-soft); padding:10px; border-radius:8px; text-align:center; border:1px solid var(--border); opacity:0.6;">' +
-            '<div style="font-size:24px; filter:grayscale(100%);">' + a.icon + '</div>' +
-            '<div style="font-weight:bold; font-size:12px; margin-top:4px;">' + escapeHtml(a.title) + '</div>' +
-            '<div style="font-size:10px; color:var(--text-soft); margin-top:2px;">' + escapeHtml(a.desc) + '</div>' +
-        '</div>'));
-    });
-    app.appendChild(achBlock);
-  }
-
-  app.appendChild(el('<section class="module"><div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-    (state.student ? (
-      '<button class="btn" onclick="location.hash=\'#/portfolio\'">🎓 Портфолио</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/certificate\'">📜 Сертификат</button>' +
-      '<button class="btn ghost" onclick="location.hash=\'#/shop\'">🛒 Магазин</button>'
-    ) : '') +
-  '</div></section>'));
-};
-
-/* ---------------- ДАШБОРД ---------------- */
-window.renderDashboard = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Статистика";
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  app.appendChild(el('<section class="hero"><h1>Статистика</h1></section>'));
-
-  if (!state.student) {
-    app.appendChild(el('<div class="module">Доступно только для студента.</div>'));
-    return;
-  }
-
-  var c = getCourse();
-  var totalTopics = 0, doneTopics = 0, gradesList = [];
-  if (c) {
-    c.sections.forEach(function(sec){
-      (sec.topics || []).forEach(function(t){
-        totalTopics++;
-        if (state.results[t.id] || state.selfResults[t.id]) doneTopics++;
-      });
-    });
-  }
-  var doneResults = Object.keys(state.results || {}).map(function(k){ return state.results[k].grade; });
-  var doneSelf = Object.keys(state.selfResults || {}).map(function(k){ return state.selfResults[k].grade; });
-  var allGrades = doneResults.concat(doneSelf);
-  var avg = allGrades.length ? (allGrades.reduce(function(a,b){ return a+b; }, 0) / allGrades.length).toFixed(2) : "—";
-  var pct = totalTopics > 0 ? Math.round(doneTopics / totalTopics * 100) : 0;
-
-  app.appendChild(el('<section class="module"><h2>📈 Прогресс</h2>' +
-    '<div style="margin:16px 0;">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">' +
-        '<span>Пройдено тем</span><b>' + doneTopics + ' / ' + totalTopics + '</b>' +
-      '</div>' +
-      '<div style="height:14px;background:var(--card-soft);border-radius:7px;overflow:hidden;">' +
-        '<div style="height:100%;background:var(--accent);width:' + pct + '%;transition:width 0.5s;"></div>' +
-      '</div>' +
-    '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">' +
-      '<div style="background:var(--card-soft);padding:16px;border-radius:12px;text-align:center;">' +
-        '<div style="font-size:26px;font-weight:bold;color:var(--accent);">' + avg + '</div>' +
-        '<div style="font-size:12px;color:var(--muted);">Средний балл</div>' +
-      '</div>' +
-      '<div style="background:var(--card-soft);padding:16px;border-radius:12px;text-align:center;">' +
-        '<div style="font-size:26px;font-weight:bold;color:var(--gold);">' + state.xp + '</div>' +
-        '<div style="font-size:12px;color:var(--muted);">XP</div>' +
-      '</div>' +
-    '</div>' +
-  '</section>'));
-
-  if (typeof Chart !== "undefined" && allGrades.length) {
-    var canvasBlock = el('<section class="module"><h2>📊 Оценки</h2><div style="position:relative;height:240px;"><canvas id="gradesChart"></canvas></div></section>');
-    app.appendChild(canvasBlock);
-    setTimeout(function(){
-      var ctx = document.getElementById("gradesChart");
-      if (!ctx) return;
-      try {
-        new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: ["2", "3", "4", "5"],
-            datasets: [{
-              label: "Количество",
-              data: [
-                allGrades.filter(function(g){ return g === 2; }).length,
-                allGrades.filter(function(g){ return g === 3; }).length,
-                allGrades.filter(function(g){ return g === 4; }).length,
-                allGrades.filter(function(g){ return g === 5; }).length
-              ],
-              backgroundColor: ["#c0392b", "#e67e22", "#3498db", "#2d7a4f"]
-            }]
-          },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-      } catch (e) { console.warn("Chart error", e); }
-    }, 50);
-  }
-};
-
-/* ---------------- ЗАЯВКИ ---------------- */
-window.renderRequestsPage = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Заявки";
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  app.appendChild(el('<section class="hero"><h1>Заявки</h1><p>Практические и доп. попытки</p></section>'));
-
-  if (!state.staff) {
-    app.appendChild(el('<div class="module">Доступно только преподавателю.</div>'));
-    return;
-  }
-
-  var wrap = el('<section class="module"><div style="color:var(--muted);">Загрузка...</div></section>');
-  app.appendChild(wrap);
-
-  fetch(APPS_SCRIPT_URL + "?action=getstudents&t=" + Date.now(), { cache: "no-store" })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      wrap.innerHTML = "";
-      if (!d || !d.ok || !d.students || !d.students.length) {
-        wrap.innerHTML = '<div style="color:var(--muted);">Нет данных.</div>';
-        return;
-      }
-      var hasAny = false;
-      d.students.forEach(function(s){
-        var p = {}; try { p = JSON.parse(s.payload || "{}") || {}; } catch(e){}
-        var sKey = String(s.name).trim().toLowerCase() + "|" + String(s.group).trim().toLowerCase();
-        var items = [];
-
-        if (p.practicalsDone) {
-          Object.keys(p.practicalsDone).forEach(function(tid){
-            Object.keys(p.practicalsDone[tid]).forEach(function(code){
-              if (p.practicalsDone[tid][code] === "pending") {
-                items.push({ kind: "practical", topicId: tid, code: code, label: "Практика " + code + " · " + (findTopic(tid) ? findTopic(tid).topic.title : tid) });
-              }
-            });
-          });
-        }
-        if (p.requests) {
-          Object.keys(p.requests).forEach(function(reqKey){
-            if (p.requests[reqKey] === "pending") {
-              items.push({ kind: "attempt", reqKey: reqKey, label: "Доп. попытка: " + reqKey });
-            }
-          });
-        }
-
-        if (!items.length) return;
-        hasAny = true;
-
-        var block = el('<div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:var(--card-soft);">' +
-          '<div style="font-weight:bold;margin-bottom:10px;">' + escapeHtml(s.name) + ' <span style="color:var(--muted);font-weight:normal;font-size:13px;">гр. ' + escapeHtml(s.group) + '</span></div>' +
-        '</div>');
-
-        items.forEach(function(it, idx){
-          var row = el('<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--card);border-radius:8px;margin-bottom:8px;gap:10px;flex-wrap:wrap;">' +
-            '<div style="flex:1;min-width:200px;">' + escapeHtml(it.label) + '</div>' +
-            '<div style="display:flex;gap:8px;flex-wrap:wrap;" id="req_' + it.kind + '_' + idx + '"></div>' +
-          '</div>');
-          var actionsWrap = row.querySelector("#req_" + it.kind + "_" + idx);
-          if (it.kind === "practical") {
-            [5,4,3,2].forEach(function(g){
-              var b = el('<button class="btn" style="padding:6px 12px;font-size:13px;">' + g + '</button>');
-              b.onclick = function(){ window.approvePractical(sKey, it.topicId, it.code, String(g)); };
-              actionsWrap.appendChild(b);
-            });
-          } else if (it.kind === "attempt") {
-            var b = el('<button class="btn" style="padding:6px 12px;font-size:13px;">✅ Одобрить</button>');
-            b.onclick = function(){ window.approveAttempt(sKey, it.reqKey); };
-            actionsWrapper.appendChild(b);
-          }
-          block.appendChild(row);
-        });
-        wrap.appendChild(block);
-      });
-      if (!hasAny) wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);">Заявок нет 🎉</div>';
-    }).catch(function(){ wrap.innerHTML = "Ошибка загрузки."; });
-};
-
-/* ---------------- УВЕДОМЛЕНИЯ ---------------- */
-window.renderNotificationsPage = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Уведомления";
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  app.appendChild(el('<section class="hero"><h1>🔔 Уведомления</h1></section>'));
-
-  var list = state.notifications || [];
-  if (!list.length) {
-    app.appendChild(el('<div class="module" style="text-align:center;padding:30px;color:var(--muted);">Пока нет уведомлений.</div>'));
-    return;
-  }
-
-  var block = el('<section class="module"></section>');
-  list.forEach(function(n){
-    var icon = n.type === "ok" ? "✅ " : n.type === "err" ? "❌ " : "ℹ️ ";
-    var dateStr = "";
-    try { dateStr = new Date(n.date).toLocaleString(); } catch(e){}
-    block.appendChild(el('<div style="padding:12px;border-bottom:1px solid var(--border);">' +
-      '<div>' + icon + escapeHtml(n.text) + '</div>' +
-      '<div style="font-size:11px;color:var(--muted);margin-top:4px;">' + dateStr + '</div>' +
-    '</div>'));
-  });
+  var block = el(`<section class="module" style="text-align:center;">
+    <h2>Крестики-нолики 4×4</h2>
+    <p class="sub" style="margin-bottom:15px;">Соберите 4 в ряд (по горизонтали, вертикали или диагонали)</p>
+    <div style="margin-bottom:20px;">
+      <select id="tttDiff" class="self-input" style="width:auto;display:inline-block;">
+        <option value="easy">Легкий</option>
+        <option value="medium">Средний</option>
+        <option value="hard">Невозможный</option>
+      </select>
+    </div>
+    <div id="tttBoard" style="display:grid;grid-template-columns:repeat(4,70px);gap:8px;justify-content:center;margin:20px auto;"></div>
+    <div id="tttStatus" style="font-weight:bold;font-size:18px;color:var(--accent);min-height:28px;"></div>
+    <div style="margin-top:20px;"><button class="btn ghost" id="tttReset">Сбросить</button></div>
+  </section>`);
   app.appendChild(block);
 
-  list.forEach(function(n){ n.read = true; });
-  if (typeof updateNotifBadge === "function") updateNotifBadge();
-  if (typeof saveStudentData === "function") saveStudentData();
-};
+  var boardEl = block.querySelector("#tttBoard"), status = block.querySelector("#tttStatus");
+  var cells = Array(16).fill(null), gameOver = false;
 
-/* ---------------- СЕРТИФИКАТ ---------------- */
-window.renderCertificatePage = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Сертификат";
-  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  var LINES = [
+    [0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15],
+    [0,4,8,12], [1,5,9,13], [2,6,10,14], [3,7,11,15],
+    [0,5,10,15], [3,6,9,12]
+  ];
 
-  if (!state.student) {
-    app.appendChild(el('<div class="module">Войдите как студент.</div>'));
-    return;
+  function checkWin(board) {
+    for (var i = 0; i < LINES.length; i++) {
+      var l = LINES[i];
+      if (board[l[0]] && board[l[0]] === board[l[1]] && board[l[0]] === board[l[2]] && board[l[0]] === board[l[3]]) return board[l[0]];
+    }
+    return board.indexOf(null) === -1 ? "draw" : null;
   }
 
-  var totalTopics = 0, doneTopics = 0;
-  var c = getCourse();
-  if (c) {
-    c.sections.forEach(function(sec){
-      (sec.topics || []).forEach(function(t){
-        totalTopics++;
-        if (state.results[t.id] || state.selfResults[t.id]) doneTopics++;
-      });
+  function render() {
+    boardEl.innerHTML = "";
+    cells.forEach(function(c, i){
+      var btn = el(`<button class="btn ghost" style="height:70px;font-size:28px;display:flex;align-items:center;justify-content:center;">${c || ""}</button>`);
+      btn.onclick = function(){ playerMove(i); };
+      boardEl.appendChild(btn);
     });
   }
-  var pct = totalTopics > 0 ? Math.round(doneTopics / totalTopics * 100) : 0;
-  var lvl = getLevel(state.xp);
-  var eligible = pct >= 70 && lvl >= 10;
 
-  app.appendChild(el('<div style="max-width:800px;margin:0 auto;">' +
-    '<div style="background:linear-gradient(135deg,var(--card),var(--card-soft));border:3px solid var(--accent);border-radius:20px;padding:50px 40px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.2);">' +
-      '<div style="font-size:48px;margin-bottom:16px;">📜</div>' +
-      '<h1 style="margin:0 0 8px 0;font-size:28px;color:var(--accent);">СЕРТИФИКАТ</h1>' +
-      '<p style="color:var(--muted);margin:0 0 24px 0;">об успешном прохождении курса</p>' +
-      '<p style="font-size:14px;color:var(--muted);margin:0;">Настоящим подтверждается, что</p>' +
-      '<h2 style="margin:12px 0;font-size:24px;">' + escapeHtml(state.student.name) + '</h2>' +
-      '<p style="font-size:14px;color:var(--muted);margin:0;">группы ' + escapeHtml(state.student.group) + '</p>' +
-      '<p style="margin:24px 0 8px 0;font-size:14px;color:var(--muted);">прошёл(ла) обучение по модулю</p>' +
-      '<p style="font-weight:bold;margin:0 0 24px 0;">МДК 07.01 — Технология обработки деталей на станках с программным управлением</p>' +
-      '<div style="display:flex;justify-content:space-around;margin:32px 0;flex-wrap:wrap;gap:20px;">' +
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Прогресс</div><div style="font-size:22px;font-weight:bold;color:var(--accent);">' + pct + '%</div></div>' +
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Уровень</div><div style="font-size:22px;font-weight:bold;color:var(--gold);">' + lvl + '</div></div>' +
-        '<div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Дата</div><div style="font-size:16px;font-weight:bold;">' + new Date().toLocaleDateString() + '</div></div>' +
-      '</div>' +
-      (eligible ? '<p style="color:var(--ok);font-weight:bold;">✅ Требования выполнены</p>' : '<p style="color:var(--muted);font-size:13px;">⚠️ Для сертификата нужно: ≥ 70% тем и 10 Уровень</p>') +
-    '</div>' +
-    '<div style="text-align:center;margin-top:20px;">' +
-      '<button class="btn" onclick="window.print()" ' + (eligible ? '' : 'disabled') + '>🖨 Распечатать</button>' +
-    '</div>' +
-  '</div>'));
+  function playerMove(i) {
+    if (cells[i] || gameOver) return;
+    cells[i] = "❌"; render();
+    var w = checkWin(cells);
+    if (w) return endGame(w);
+    status.textContent = "Ход станка...";
+    setTimeout(function() { aiMove(); }, 100);
+  }
+
+  function evaluateBoard(board) {
+    var score = 0;
+    for (var i = 0; i < LINES.length; i++) {
+      var oCount = 0, xCount = 0, l = LINES[i];
+      for (var j = 0; j < 4; j++) {
+        if (board[l[j]] === "⭕") oCount++;
+        if (board[l[j]] === "❌") xCount++;
+      }
+      if (oCount > 0 && xCount === 0) score += Math.pow(10, oCount);
+      if (xCount > 0 && oCount === 0) score -= Math.pow(10, xCount);
+    }
+    return score;
+  }
+
+  function minimax(board, depth, isMax, alpha, beta) {
+    var result = checkWin(board);
+    if (result === "⭕") return 100000;
+    if (result === "❌") return -100000;
+    if (result === "draw") return 0;
+    if (depth === 0) return evaluateBoard(board);
+
+    if (isMax) {
+      var maxEval = -Infinity;
+      for (var i = 0; i < board.length; i++) {
+        if (board[i] === null) {
+          board[i] = "⭕";
+          var eval = minimax(board, depth - 1, false, alpha, beta);
+          board[i] = null;
+          maxEval = Math.max(maxEval, eval);
+          alpha = Math.max(alpha, eval);
+          if (beta <= alpha) break;
+        }
+      }
+      return maxEval;
+    } else {
+      var minEval = Infinity;
+      for (var j = 0; j < board.length; j++) {
+        if (board[j] === null) {
+          board[j] = "❌";
+          var eval2 = minimax(board, depth - 1, true, alpha, beta);
+          board[j] = null;
+          minEval = Math.min(minEval, eval2);
+          beta = Math.min(beta, eval2);
+          if (beta <= alpha) break;
+        }
+      }
+      return minEval;
+    }
+  }
+
+  function getBestMove(board, depth) {
+    var bestScore = -Infinity, move = -1;
+    for (var i = 0; i < board.length; i++) {
+      if (board[i] === null) {
+        board[i] = "⭕";
+        var score = minimax(board, depth - 1, false, -Infinity, Infinity);
+        board[i] = null;
+        if (score > bestScore) { bestScore = score; move = i; }
+      }
+    }
+    return move === -1 ? board.indexOf(null) : move;
+  }
+
+  function aiMove() {
+    var diff = block.querySelector("#tttDiff").value;
+    var empty = cells.map(function(c, i){ return c === null ? i : null; }).filter(function(v){ return v !== null; });
+    if (!empty.length) return;
+
+    var move;
+    if (diff === "easy") move = empty[Math.floor(Math.random() * empty.length)];
+    else if (diff === "medium") move = getBestMove(cells, 2);
+    else {
+      var d = cells.filter(function(c){ return c === null; }).length > 10 ? 4 : 6;
+      move = getBestMove(cells, d);
+    }
+
+    if (move === undefined || move === -1) move = empty[Math.floor(Math.random() * empty.length)];
+
+    cells[move] = "⭕"; render();
+    var w = checkWin(cells);
+    if (w) return endGame(w);
+    status.textContent = "Ваш ход";
+  }
+
+  function endGame(w) {
+    gameOver = true;
+    if (w === "draw") status.textContent = "Ничья! 🤝";
+    else if (w === "❌") {
+      status.textContent = "Вы победили! 🎉";
+      var diff = block.querySelector("#tttDiff").value;
+      var xp = diff === "easy" ? 20 : (diff === "medium" ? 50 : 150);
+      if (window.addXP) window.addXP(xp);
+      if (window.unlockAchievement) window.unlockAchievement('t_ttt');
+    } else status.textContent = "Победил станок... ⚙️";
+  }
+
+  block.querySelector("#tttReset").onclick = function(){
+    cells = Array(16).fill(null); gameOver = false; status.textContent = "Ваш ход"; render();
+  };
+  render();
 };
 
-/* ---------------- СОБЫТИЕ ---------------- */
-window.renderDeadlyPartyPage = function(){
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Смертельная вечеринка";
+/* ---------- ШАХМАТЫ ---------- */
+window.renderChessPage = function() {
+  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Шахматы";
   app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
 
-  var questions = [
-    { q: "Что означает G00?", options: ["Быстрое позиционирование", "Линейная интерполяция", "Пауза", "Резьба"], correct: 0 },
-    { q: "Что означает M03?", options: ["Стоп шпинделя", "Шпиндель по часовой", "Смена инструмента", "Конец"], correct: 1 },
-    { q: "Угол профиля метрической резьбы", options: ["55°", "60°", "30°", "33°"], correct: 1 },
-    { q: "Какой код отменяет постоянный цикл?", options: ["G80", "G00", "G90", "M30"], correct: 0 },
-    { q: "Что такое ЧПУ?", options: ["Числовое программное управление", "Частное производственное устройство", "Часто повторяющийся узел", "Черновая правка углов"], correct: 0 }
+  var board = [
+    ["♜","♞","♝","♛","♚","♝","♞","♜"], ["♟","♟","♟","♟","♟","♟","♟","♟"],
+    [" "," "," "," "," "," "," "," "], [" "," "," "," "," "," "," "," "],
+    [" "," "," "," "," "," "," "," "], [" "," "," "," "," "," "," "," "],
+    ["♙","♙","♙","♙","♙","♙","♙","♙"], ["♖","♘","♗","♕","♔","♗","♘","♖"]
   ];
-  var currentQ = 0, lives = 3;
+  var selected = null, isWhiteTurn = true;
 
-  function renderQ(){
-    app.innerHTML = "";
-    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-    app.appendChild(el('<section class="module" style="background:#1a0a0a;border:2px solid #ff003c;color:#fff;">' +
-      '<div style="display:flex;justify-content:space-between;margin-bottom:16px;font-size:14px;">' +
-        '<span>Вопрос ' + (currentQ + 1) + ' / ' + questions.length + '</span>' +
-        '<span>❤️ '.repeat(lives) + '🤍 '.repeat(3 - lives) + '</span>' +
-      '</div>' +
-      '<h2 style="margin:0 0 20px 0;color:#ff003c;">' + escapeHtml(questions[currentQ].q) + '</h2>' +
-      '<div id="qOptions"></div>' +
-    '</section>'));
-    var qo = document.getElementById("qOptions");
-    questions[currentQ].options.forEach(function(opt, idx){
-      var b = el('<button class="btn" style="width:100%;margin-bottom:8px;text-align:left;background:#2a0a0a;border:1px solid #ff003c;color:#fff;">' + escapeHtml(opt) + '</button>');
-      b.onclick = function(){
-        if (idx === questions[currentQ].correct) {
-          if (window.showToast) window.showToast("✅ Верно!", "ok");
-          currentQ++;
-          if (currentQ >= questions.length) {
-            app.innerHTML = "";
-            app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-            app.appendChild(el('<section class="module" style="text-align:center;background:#0a1a0a;border:2px solid #00ff00;color:#fff;padding:50px;">' +
-              '<div style="font-size:64px;margin-bottom:16px;">🎉</div>' +
-              '<h1 style="color:#00ff00;">Протокол самоуничтожения отключён!</h1>' +
-              '<p>Вы прошли все ' + questions.length + ' вопросов.</p>' +
-              '<button class="btn" onclick="if(window.addXP) window.addXP(100);location.hash=\'#/\'">+100 XP и на главную</button>' +
-            '</section>'));
-          } else renderQ();
+  var block = el(`<section class="module" style="text-align:center; background:var(--card); border:1px solid var(--border);">
+    <h2 style="color:var(--text);">♞ Шахматы</h2>
+    <div style="color:var(--accent);font-weight:bold;margin-bottom:15px;" id="chessStatus">Ход белых</div>
+    <div style="display:flex; justify-content:center;">
+      <div id="chessBoard" style="display:grid;grid-template-columns:repeat(8,50px);gap:0;border:2px solid var(--border);user-select:none;"></div>
+    </div>
+    <div style="margin-top:20px;"><button class="btn" id="chessReset">Начать заново</button></div>
+  </section>`);
+  app.appendChild(block);
+
+  var boardEl = block.querySelector("#chessBoard"), statusEl = block.querySelector("#chessStatus");
+
+  function render() {
+    boardEl.innerHTML = "";
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        var piece = board[r][c], isDark = (r + c) % 2 === 1;
+        var color = isDark ? "#769656" : "#eeeed2";
+        var isWhitePiece = piece !== " " && piece === piece.toUpperCase();
+        var pieceColor = isWhitePiece ? "#ffffff" : "#000000";
+        var shadow = isWhitePiece ? "0 0 2px #000, 0 0 2px #000" : "0 0 2px #fff";
+
+        var cell = el(`<div style="width:50px;height:50px;background:${color};display:flex;align-items:center;justify-content:center;font-size:36px;cursor:pointer;color:${pieceColor};text-shadow:${shadow};">${piece}</div>`);
+        if (selected && selected.r === r && selected.c === c) cell.style.boxShadow = "inset 0 0 0 4px #ffcc00";
+        cell.onclick = (function(r,c){ return function(){ handleClick(r,c); }; })(r,c);
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function handleClick(r, c) {
+    if (selected) {
+      if (isValidMove(selected.r, selected.c, r, c)) {
+        board[r][c] = board[selected.r][selected.c];
+        board[selected.r][selected.c] = " ";
+        selected = null; isWhiteTurn = !isWhiteTurn;
+        statusEl.textContent = isWhiteTurn ? "Ход белых" : "Ход черных";
+      } else selected = null;
+    } else {
+      var piece = board[r][c];
+      if (piece !== " ") {
+        var isWhite = piece === piece.toUpperCase();
+        if (isWhite === isWhiteTurn) selected = { r: r, c: c };
+      }
+    }
+    render();
+  }
+
+  function isPathClear(r1, c1, r2, c2) {
+    var dr = Math.sign(r2 - r1), dc = Math.sign(c2 - c1);
+    var r = r1 + dr, c = c1 + dc;
+    while (r !== r2 || c !== c2) {
+      if (board[r][c] !== " ") return false;
+      r += dr; c += dc;
+    }
+    return true;
+  }
+
+  function isValidMove(r1, c1, r2, c2) {
+    var p = board[r1][c1], dr = r2 - r1, dc = c2 - c1, target = board[r2][c2];
+    if (target !== " ") {
+      var tw = target === target.toUpperCase(), sw = p === p.toUpperCase();
+      if (sw === tw) return false;
+    }
+    if (p === "♙" || p === "♟") {
+      var dir = p === "♙" ? -1 : 1;
+      if (dc === 0 && dr === dir && target === " ") return true;
+      if (Math.abs(dc) === 1 && dr === dir && target !== " ") return true;
+      if (dc === 0 && dr === dir * 2 && target === " " && board[r1 + dir][c1] === " ") return true;
+      return false;
+    }
+    if (p === "♖" || p === "♜") { if (dr === 0 || dc === 0) return isPathClear(r1, c1, r2, c2); }
+    if (p === "♗" || p === "♝") { if (Math.abs(dr) === Math.abs(dc)) return isPathClear(r1, c1, r2, c2); }
+    if (p === "♕" || p === "♛") { if (dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc)) return isPathClear(r1, c1, r2, c2); }
+    if (p === "♘" || p === "♞") { if ((Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2)) return true; }
+    if (p === "♔" || p === "♚") { if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) return true; }
+    return false;
+  }
+
+  block.querySelector("#chessReset").onclick = function(){ window.renderChessPage(); };
+  render();
+};
+
+/* ---------- СУДОКУ ---------- */
+window.renderSudokuPage = function() {
+  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Судоку 4×4";
+  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+
+  var solution = [[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]];
+  var puzzle = [[1,0,0,4],[0,4,1,0],[0,1,4,0],[4,0,0,1]];
+  var grid = puzzle.map(function(row){ return row.slice(); });
+
+  var block = el('<section class="module" style="text-align:center;"><h2>Судоку 4×4</h2><p class="sub">Заполните пустые клетки цифрами 1–4.</p><div id="sudokuGrid" style="display:inline-grid;grid-template-columns:repeat(4,60px);gap:2px;margin:20px auto;"></div><div id="sudokuStatus" style="font-weight:bold;min-height:28px;color:var(--accent);"></div><div style="margin-top:20px;"><button class="btn ghost" id="sudokuReset">Сбросить</button></div></section>');
+  app.appendChild(block);
+
+  function render() {
+    var gridEl = block.querySelector("#sudokuGrid");
+    gridEl.innerHTML = "";
+    for (var r = 0; r < 4; r++) {
+      for (var c = 0; c < 4; c++) {
+        var val = grid[r][c], isFixed = puzzle[r][c] !== 0;
+        var cell = el('<input type="number" min="1" max="4" value="' + (val || "") + '" style="width:60px;height:60px;font-size:24px;text-align:center;font-weight:bold;border:1px solid var(--border);background:' + (isFixed ? 'var(--accent-soft)' : 'var(--card)') + ';color:var(--text);border-radius:8px;" ' + (isFixed ? "disabled" : "") + ' data-r="' + r + '" data-c="' + c + '">');
+        cell.oninput = (function(r,c){ return function(e){
+            var v = parseInt(e.target.value, 10) || 0;
+            if (v < 1 || v > 4) { e.target.value = ""; grid[r][c] = 0; return; }
+            grid[r][c] = v; checkWin();
+        }; })(r, c);
+        gridEl.appendChild(cell);
+      }
+    }
+  }
+
+  function checkWin() {
+    var status = block.querySelector("#sudokuStatus");
+    for (var r = 0; r < 4; r++) {
+      for (var c = 0; c < 4; c++) {
+        if (grid[r][c] !== solution[r][c]) { status.textContent = ""; return; }
+      }
+    }
+    status.textContent = "🎉 Решено! +50 XP"; status.style.color = "var(--ok)";
+    if (window.addXP) window.addXP(50);
+    if (window.unlockAchievement) window.unlockAchievement('t_sudoku');
+  }
+
+  block.querySelector("#sudokuReset").onclick = function(){
+    grid = puzzle.map(function(row){ return row.slice(); });
+    block.querySelector("#sudokuStatus").textContent = "";
+    render();
+  };
+  render();
+};
+
+/* ---------- САПЁР ---------- */
+window.renderMinesweeperPage = function() {
+  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Сапёр";
+  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+
+  var SIZE = 8, MINES = 10;
+  var mines = [], revealed = [], gameOver = false;
+
+  function init() {
+    mines = []; revealed = []; gameOver = false;
+    for (var r = 0; r < SIZE; r++) {
+      mines.push(Array(SIZE).fill(false));
+      revealed.push(Array(SIZE).fill(false));
+    }
+    var placed = 0;
+    while (placed < MINES) {
+      var r = Math.floor(Math.random() * SIZE), c = Math.floor(Math.random() * SIZE);
+      if (!mines[r][c]) { mines[r][c] = true; placed++; }
+    }
+  }
+
+  function countNear(r, c) {
+    var n = 0;
+    for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      var nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && mines[nr][nc]) n++;
+    }
+    return n;
+  }
+
+  function reveal(r, c) {
+    if (gameOver || revealed[r][c]) return;
+    revealed[r][c] = true;
+    if (mines[r][c]) { gameOver = true; render(); return; }
+    if (countNear(r, c) === 0) {
+      for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        var nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && !revealed[nr][nc]) reveal(nr, nc);
+      }
+    }
+  }
+
+  var block = el('<section class="module" style="text-align:center;"><h2>💣 Сапёр 8×8</h2><div id="msGrid" style="display:inline-grid;grid-template-columns:repeat(8,40px);gap:2px;margin:20px auto;"></div><div id="msStatus" style="font-weight:bold;min-height:28px;color:var(--accent);"></div><div style="margin-top:20px;"><button class="btn ghost" id="msReset">Заново</button></div></section>');
+  app.appendChild(block);
+
+  function render() {
+    var gridEl = block.querySelector("#msGrid"); gridEl.innerHTML = "";
+    var won = true;
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        var isRev = revealed[r][c], isMine = mines[r][c];
+        var near = isRev ? countNear(r, c) : 0;
+        var label = "";
+        if (isRev) {
+          if (isMine) { label = "💥"; won = false; }
+          else if (near > 0) label = String(near);
+        } else if (!isMine) { won = false; }
+        var cell = el('<button style="width:40px;height:40px;font-size:16px;font-weight:bold;border:1px solid var(--border);border-radius:6px;background:' + (isRev ? 'var(--card-soft)' : 'var(--card)') + ';color:var(--text);cursor:pointer;">' + label + '</button>');
+        cell.onclick = (function(r, c){ return function(){
+            if (gameOver || revealed[r][c]) return;
+            reveal(r, c);
+            if (mines[r][c]) {
+              gameOver = true;
+              for (var rr = 0; rr < SIZE; rr++) for (var cc = 0; cc < SIZE; cc++) if (mines[rr][cc]) revealed[rr][cc] = true;
+            }
+            render();
+        }; })(r, c);
+        gridEl.appendChild(cell);
+      }
+    }
+    var status = block.querySelector("#msStatus");
+    if (gameOver) { status.textContent = "💥 Вы подорвались!"; status.style.color = "var(--err)"; }
+    else if (won) { status.textContent = "🎉 Победа! +100 XP"; status.style.color = "var(--ok)"; if (window.addXP) window.addXP(100); if (window.unlockAchievement) window.unlockAchievement('t_minesweeper'); }
+    else { status.textContent = ""; }
+  }
+
+  block.querySelector("#msReset").onclick = function(){ init(); render(); };
+  init(); render();
+};
+
+/* ---------- ПАСЬЯНС ПАУК ---------- */
+window.renderSpiderPage = function() {
+  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Пасьянс Паук";
+  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  
+  var deck = [], suits = ["♠", "♥", "♦", "♣"];
+  for (var i=0; i<8; i++) for (var r=1; r<=13; r++) deck.push({ rank: r, suit: suits[i % 4], faceUp: false });
+  for (var i=deck.length-1; i>0; i--) {
+    var j = Math.floor(Math.random()*(i+1)), t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+  }
+  
+  var cols = [[],[],[],[],[],[],[],[],[],[]];
+  for (var c=0; c<10; c++) {
+    var count = c < 4 ? 6 : 5;
+    for (var k=0; k<count; k++) {
+      var card = deck.pop(); if (k === count-1) card.faceUp = true; cols[c].push(card);
+    }
+  }
+  var stock = deck, selected = null;
+
+  var block = el(`<section class="module" style="text-align:center;">
+    <h2>🕷️ Пасьянс Паук</h2>
+    <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
+      <button class="btn" id="spiderDeal">Раздать (<span id="stockCount">${stock.length/10}</span>)</button>
+      <button class="btn ghost" id="spiderReset">Заново</button>
+    </div>
+    <div id="spiderBoard" style="display:flex; gap:10px; justify-content:center; min-height:400px; align-items:flex-start; overflow-x:auto; padding-bottom:100px;"></div>
+    <div id="spiderStatus" style="font-weight:bold; margin-top:20px; color:var(--ok);"></div>
+  </section>`);
+  app.appendChild(block);
+
+  function render() {
+    var board = block.querySelector("#spiderBoard"); board.innerHTML = "";
+    cols.forEach((col, cIdx) => {
+      var colEl = el(`<div style="width:60px; min-height:300px; background:rgba(0,0,0,0.05); border:1px dashed var(--border); border-radius:8px; display:flex; flex-direction:column; align-items:center; padding-top:10px;" data-col="${cIdx}"></div>`);
+      col.forEach((card, rIdx) => {
+        if (!card.faceUp) {
+          colEl.appendChild(el(`<div style="width:50px; height:70px; background:var(--accent); border-radius:6px; border:1px solid var(--border); margin-bottom:-50px; box-shadow: 0 1px 2px rgba(0,0,0,0.2); z-index:${rIdx};"></div>`));
         } else {
-          lives--;
-          if (window.showToast) window.showToast("❌ Неверно! Осталось жизней: " + lives, "err");
-          if (lives <= 0) {
-            app.innerHTML = "";
-            app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-            app.appendChild(el('<section class="module" style="text-align:center;background:#1a0000;border:2px solid #ff003c;color:#fff;padding:50px;">' +
-              '<div style="font-size:64px;margin-bottom:16px;">💀</div>' +
-              '<h1 style="color:#ff003c;">Проигрыш</h1>' +
-              '<button class="btn" onclick="window.renderDeadlyPartyPage()">Попробовать снова</button>' +
-            '</section>'));
+          var isSelected = selected && selected.col === cIdx && selected.idx === rIdx;
+          var color = (card.suit === "♥" || card.suit === "♦") ? "#e74c3c" : "#000";
+          var cardEl = el(`<div style="width:50px; height:70px; background:#fff; color:${color}; border-radius:6px; border:${isSelected ? '3px solid var(--accent)' : '1px solid #ccc'}; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:bold; font-size:18px; margin-bottom:-50px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); z-index:${rIdx}; cursor:pointer; position:relative;"><div>${card.suit}</div><div>${card.rank}</div></div>`);
+          cardEl.onclick = function(e) { e.stopPropagation(); handleCardClick(cIdx, rIdx); };
+          colEl.appendChild(cardEl);
+        }
+      });
+      colEl.appendChild(el(`<div style="height:70px; width:50px;"></div>`));
+      board.appendChild(colEl);
+    });
+  }
+
+  function handleCardClick(c, r) {
+    var card = cols[c][r]; if (!card.faceUp) return;
+    if (selected) {
+      if (selected.col === c && selected.idx === r) { selected = null; render(); return; }
+      var srcCards = cols[selected.col].slice(selected.idx), dstCol = cols[c], dstCard = dstCol[dstCol.length - 1];
+      var canMove = false;
+      if (!dstCard) canMove = true;
+      else if (dstCard.rank === srcCards[0].rank + 1) {
+        var validSeq = true;
+        for (var i=0; i<srcCards.length-1; i++) if (srcCards[i].rank !== srcCards[i+1].rank + 1) { validSeq = false; break; }
+        if (validSeq) canMove = true;
+      }
+      if (canMove) {
+        var moving = cols[selected.col].splice(selected.idx);
+        cols[c] = cols[c].concat(moving);
+        if (cols[selected.col].length > 0) cols[selected.col][cols[selected.col].length-1].faceUp = true;
+        selected = null; checkWin();
+      } else selected = { col: c, idx: r };
+    } else selected = { col: c, idx: r };
+    render();
+  }
+
+  function checkWin() {
+    for (var c=0; c<10; c++) {
+      var col = cols[c];
+      if (col.length >= 13) {
+        var top13 = col.slice(-13), isSeq = true;
+        for (var i=0; i<12; i++) if (top13[i].rank !== top13[i+1].rank + 1) { isSeq = false; break; }
+        if (isSeq) {
+          col.splice(-13, 13);
+          block.querySelector("#spiderStatus").textContent = "🎉 Собрана последовательность! +20 XP";
+          if (col.length > 0) col[col.length-1].faceUp = true;
+          if (window.addXP) window.addXP(20);
+          setTimeout(function(){ block.querySelector("#spiderStatus").textContent = ""; }, 3000);
+          render(); return;
+        }
+      }
+    }
+  }
+
+  block.querySelector("#spiderReset").onclick = function() { window.renderSpiderPage(); };
+  block.querySelector("#spiderDeal").onclick = function() {
+    if (stock.length === 0) return;
+    if (cols.some(c => c.length === 0)) { window.showToast("Нельзя раздавать при пустой колонке", "err"); return; }
+    for (var c=0; c<10; c++) { var card = stock.pop(); card.faceUp = true; cols[c].push(card); }
+    selected = null; render(); block.querySelector("#stockCount").textContent = stock.length / 10;
+  };
+  render();
+};
+
+/* ---------- ШАШКИ ---------- */
+window.renderCheckersPage = function() {
+  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
+  document.getElementById("crumbs").textContent = "Шашки";
+  app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+  var board = [], selected = null, isWhiteTurn = true, gameOver = false;
+
+  function init() {
+    board = []; selected = null; isWhiteTurn = true; gameOver = false;
+    for (var r = 0; r < 8; r++) {
+      var row = [];
+      for (var c = 0; c < 8; c++) {
+        if ((r + c) % 2 === 1 && r < 3) row.push("⚫");
+        else if ((r + c) % 2 === 1 && r > 4) row.push("⚪");
+        else row.push("");
+      }
+      board.push(row);
+    }
+  }
+
+  var block = el('<section class="module" style="text-align:center;"><h2>⚪ Шашки</h2><div style="font-weight:bold;margin-bottom:12px;" id="chkStatus">Ход белых</div><div id="chkBoard" style="display:inline-grid;grid-template-columns:repeat(8,45px);gap:0;border:2px solid var(--border);"></div><div style="margin-top:16px;"><button class="btn ghost" id="chkReset">Заново</button></div></section>');
+  app.appendChild(block);
+
+  function render() {
+    var gridEl = block.querySelector("#chkBoard"); gridEl.innerHTML = "";
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        var isDark = (r + c) % 2 === 1, bg = isDark ? "#8b6f47" : "#f0d9b5";
+        var piece = board[r][c];
+        var cell = el('<div style="width:45px;height:45px;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:30px;cursor:pointer;">' + piece + '</div>');
+        if (selected && selected.r === r && selected.c === c) cell.style.boxShadow = "inset 0 0 0 3px #ffcc00";
+        cell.onclick = (function(r,c){ return function(){ handleClick(r,c); }; })(r,c);
+        gridEl.appendChild(cell);
+      }
+    }
+  }
+
+  function canMove(r1, c1, r2, c2) {
+    if (r2 < 0 || r2 > 7 || c2 < 0 || c2 > 7) return false;
+    if (board[r2][c2] !== "") return false;
+    var p = board[r1][c1], dir = p === "⚪" ? -1 : 1;
+    if (r2 - r1 === dir && Math.abs(c2 - c1) === 1) return true;
+    if (r2 - r1 === 2 * dir && Math.abs(c2 - c1) === 2) {
+      var mid = board[r1 + dir][(c1 + c2) / 2];
+      if (mid && mid !== p) return true;
+    }
+    return false;
+  }
+
+  function handleClick(r, c) {
+    if (gameOver) return;
+    if (selected) {
+      if (canMove(selected.r, selected.c, r, c)) {
+        var p = board[selected.r][selected.c];
+        if (Math.abs(r - selected.r) === 2) board[(selected.r + r) / 2][(selected.c + c) / 2] = "";
+        board[r][c] = p; board[selected.r][selected.c] = "";
+        selected = null; isWhiteTurn = false;
+        block.querySelector("#chkStatus").textContent = "Ход чёрных";
+        render(); setTimeout(aiMove, 400); return;
+      }
+      selected = null; render(); return;
+    }
+    var piece = board[r][c];
+    if (piece && piece === (isWhiteTurn ? "⚪" : "⚫")) { selected = { r: r, c: c }; render(); }
+  }
+
+  function aiMove() {
+    if (gameOver) return;
+    var moves = [];
+    for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) {
+      if (board[r][c] !== "⚫") continue;
+      var dir = 1;
+      [[dir, -1], [dir, 1], [2*dir, -2], [2*dir, 2]].forEach(function(m){
+        var nr = r + m[0], nc = c + m[1];
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && board[nr][nc] === "") {
+          if (Math.abs(m[0]) === 1) moves.push({ from: { r: r, c: c }, to: { r: nr, c: nc }, kill: null });
+          else {
+            var mid = board[r + dir][(c + nc) / 2];
+            if (mid === "⚪") moves.push({ from: { r: r, c: c }, to: { r: nr, c: nc }, kill: { r: r + dir, c: (c + nc) / 2 } });
           }
         }
-      };
-      qo.appendChild(b);
-    });
+      });
+    }
+    if (!moves.length) {
+      gameOver = true; block.querySelector("#chkStatus").textContent = "🎉 Вы победили! +80 XP";
+      if (window.addXP) window.addXP(80); return;
+    }
+    var move = moves[Math.floor(Math.random() * moves.length)];
+    board[move.to.r][move.to.c] = "⚫"; board[move.from.r][move.from.c] = "";
+    if (move.kill) board[move.kill.r][move.kill.c] = "";
+    isWhiteTurn = true; block.querySelector("#chkStatus").textContent = "Ход белых"; render();
   }
-  renderQ();
+
+  block.querySelector("#chkReset").onclick = function(){ init(); render(); };
+  init(); render();
 };
