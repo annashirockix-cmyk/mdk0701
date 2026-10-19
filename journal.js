@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v88.0 — NO CACHE)
+   МДК 07.01 — journal.js (v101.0 — SAFE PARSING)
    ============================================================ */
 "use strict";
 
@@ -23,63 +23,20 @@ window.renderJournalPage = function() {
       app.appendChild(quickPanel);
   }
 
-  if (isTeacher) {
-    var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
-    app.appendChild(topPanel);
-    
-    topPanel.querySelector("#reportBtn").onclick = function() {
-      var email = prompt("Введите email для отчета:", "anna.shirockix@gmail.com"); 
-      if (!email) return;
-      
-      var btn = this;
-      btn.textContent = "Отправка...";
-      btn.disabled = true;
-      
-      var p = new URLSearchParams(); 
-      p.append("action", "journalreport"); 
-      p.append("group", state.staff.group || "Все"); 
-      p.append("email", email);
-      
-      window.showToast("Отчет отправляется...", "info");
-      
-      fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
-        .then(r => r.json())
-        .then(res => {
-            if(res.ok) window.showToast("Отчет успешно отправлен!", "ok");
-            else window.showToast("Ошибка сервера: " + (res.error || "Неизвестно"), "err");
-        })
-        .catch(err => {
-            console.error(err);
-            window.showToast("Ошибка сети при отправке.", "err");
-        })
-        .finally(() => {
-            btn.textContent = "📧 Отправить отчет";
-            btn.disabled = false;
-        });
-    };
-  }
-
   var tableWrap = el('<section class="module"><div class="skeleton" style="height:200px;"></div></section>'); app.appendChild(tableWrap);
 
-  // ДОБАВЛЕН &t= ДЛЯ ОБХОДА КЭША
-  fetch(APPS_SCRIPT_URL + "?action=getstudents&t=" + Date.now()).then(r => r.json()).then(d => {
+  fetch(APPS_SCRIPT_URL + "?action=getstudents&t=" + Date.now(), { cache: "no-store" }).then(r => r.json()).then(d => {
     tableWrap.innerHTML = "";
-    if (!d.ok || !d.students.length) { tableWrap.innerHTML = "Студентов пока нет."; return; }
+    if (!d.ok || !d.students || !d.students.length) { tableWrap.innerHTML = "Студентов пока нет."; return; }
     
     if (isTeacher) {
         var sel = document.getElementById("quickStudentSelect");
-        d.students.forEach(s => {
-            sel.appendChild(el(`<option value="${(s.name + "|" + s.group).toLowerCase()}">${s.name} (${s.group})</option>`));
-        });
-        
+        d.students.forEach(s => sel.appendChild(el(`<option value="${(s.name + "|" + s.group).toLowerCase()}">${s.name} (${s.group})</option>`)));
         document.getElementById("quickGrantBtn").onclick = function() {
             var sKey = sel.value;
             var sName = sel.options[sel.selectedIndex].text.split(' (')[0];
             var amount = parseInt(document.getElementById("quickXPAmount").value) || 50;
-            if (!sKey) return;
-            if (confirm(`Выдать ${amount} XP студенту ${sName}?`)) {
-                window.grantXP(sKey, sName, amount);
-            }
+            if (sKey && confirm(`Выдать ${amount} XP студенту ${sName}?`)) window.grantXP(sKey, sName, amount);
         };
     }
 
@@ -108,11 +65,8 @@ window.renderJournalPage = function() {
       var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
       var currentStudentKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
       
-      var nameCellHtml = `<div style="font-weight:bold; font-size:16px;">${s.name}</div>
-                          <div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
-      if (isTeacher) {
-          nameCellHtml += `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🎁 Выдать XP</button>`;
-      }
+      var nameCellHtml = `<div style="font-weight:bold; font-size:16px;">${s.name}</div><div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
+      if (isTeacher) nameCellHtml += `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🎁 Выдать XP</button>`;
       tr.appendChild(el(`<td style="padding:12px; vertical-align:top;">${nameCellHtml}</td>`));
       
       var tdWorks = el('<td style="padding:12px; vertical-align:top;"></td>');
@@ -126,49 +80,38 @@ window.renderJournalPage = function() {
       try {
         var p = JSON.parse(s.payload || "{}");
         
+        // Парсинг тестов (results)
         if (p.results) {
           Object.keys(p.results).forEach(k => {
-             var tName = k === "__final_exam__" ? "Итоговый экзамен" : k;
+             var tName = k === "__final_exam__" ? "Экзамен" : k;
              var topic = findTopic(k);
              if (topic) tName = topic.topic.code + ' - ' + topic.topic.title;
-             
              worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Тест)</span></div>`;
-             sum += p.results[k].grade; count++;
-             hasWorks = true;
+             sum += p.results[k].grade; count++; hasWorks = true;
           });
         }
         
+        // Парсинг самостоятельных (selfResults)
         if (p.selfResults) {
           Object.keys(p.selfResults).forEach(k => { 
             var topic = findTopic(k);
             var tName = topic ? topic.topic.code + ' - ' + topic.topic.title : k;
             worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Сам. работа)</span></div>`;
-            sum += p.selfResults[k].grade; count++;
-            hasWorks = true;
+            sum += p.selfResults[k].grade; count++; hasWorks = true;
           });
         }
 
+        // Парсинг практических
         if (p.practicalsDone) {
             Object.keys(p.practicalsDone).forEach(topicId => {
                 Object.keys(p.practicalsDone[topicId]).forEach(pCode => {
-                    var isDone = p.practicalsDone[topicId][pCode];
-                    if (!isDone) return;
-                    
+                    if (p.practicalsDone[topicId][pCode] !== "approved" && p.practicalsDone[topicId][pCode] !== "pending") return;
                     var topic = findTopic(topicId);
                     var tName = topic ? topic.topic.code : topicId;
                     var grade = (p.practicalGrades && p.practicalGrades[topicId] && p.practicalGrades[topicId][pCode]) || "";
-                    
-                    pracHtml += `<div style="margin-bottom:8px; padding:8px; background:var(--card-soft); border-radius:8px; border:1px solid var(--border);">
-                        <div style="font-size:12px; margin-bottom:4px;"><b>${tName}</b> - ${pCode}</div>`;
-                    
+                    pracHtml += `<div style="margin-bottom:8px; padding:8px; background:var(--card-soft); border-radius:8px; border:1px solid var(--border);"><div style="font-size:12px; margin-bottom:4px;"><b>${tName}</b> - ${pCode}</div>`;
                     if (isTeacher) {
-                        pracHtml += `<select onchange="window.approvePractical('${currentStudentKey}', '${topicId}', '${pCode}', this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:bold;">
-                            <option value="">— Оценка —</option>
-                            <option value="5" ${grade == "5" ? "selected" : ""}>5</option>
-                            <option value="4" ${grade == "4" ? "selected" : ""}>4</option>
-                            <option value="3" ${grade == "3" ? "selected" : ""}>3</option>
-                            <option value="2" ${grade == "2" ? "selected" : ""}>2</option>
-                        </select>`;
+                        pracHtml += `<select onchange="window.approvePractical('${currentStudentKey}', '${topicId}', '${pCode}', this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:bold;"><option value="">— Оценка —</option><option value="5" ${grade == "5" ? "selected" : ""}>5</option><option value="4" ${grade == "4" ? "selected" : ""}>4</option><option value="3" ${grade == "3" ? "selected" : ""}>3</option><option value="2" ${grade == "2" ? "selected" : ""}>2</option></select>`;
                     } else {
                         pracHtml += `<span style="font-size:14px; font-weight:bold; color:var(--accent);">${grade ? "Оценка: " + grade : "На проверке"}</span>`;
                     }
@@ -176,17 +119,13 @@ window.renderJournalPage = function() {
                 });
             });
         }
-      } catch(e) { console.error(e); }
+      } catch(e) { console.warn("Ошибка парсинга данных студента", e); }
       
       var avg = count > 0 ? (sum / count).toFixed(2) : "—";
-      
       tr.appendChild(el(`<td style="padding:12px; vertical-align:top; text-align:center; font-size:18px; font-weight:bold; color:var(--accent);">${avg}</td>`));
       
-      if (hasWorks) tdWorks.innerHTML = worksHtml;
-      else tdWorks.innerHTML = '<i style="color:var(--muted);">Нет сданных тестов</i>';
-      
-      if (pracHtml) tdPracticals.innerHTML = pracHtml;
-      else tdPracticals.innerHTML = '<i style="color:var(--muted);">Нет заявок</i>';
+      if (hasWorks) tdWorks.innerHTML = worksHtml; else tdWorks.innerHTML = '<i style="color:var(--muted);">Нет сданных тестов</i>';
+      if (pracHtml) tdPracticals.innerHTML = pracHtml; else tdPracticals.innerHTML = '<i style="color:var(--muted);">Нет заявок</i>';
       
       tr.appendChild(tdWorks);
       tr.appendChild(tdPracticals);

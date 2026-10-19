@@ -2,16 +2,22 @@
 <html lang="ru" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- Запрет кэширования для iPhone -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>МДК 07.01</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
+<!-- Графики и Салют -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;900&family=Orbitron:wght@400;600;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="style.css?v=98">
+<link rel="stylesheet" href="style.css?v=101">
 <script>
   (function(){ try { var t = localStorage.getItem("mdk0701.theme"); if (!t || t === "auto"){ var d = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches; t = d ? "dark" : "light"; } document.documentElement.setAttribute("data-theme", t); } catch(e){} })();
 </script>
@@ -75,16 +81,13 @@
     <a class="drawer-item" data-go="#/portfolio">🎓 <span>Портфолио</span></a>
     <a class="drawer-item" data-go="#/dashboard">📊 <span>Статистика</span></a>
     <a class="drawer-item" data-go="#/journal">📔 <span>Журнал</span></a>
-    
     <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;">📥 <span>Заявки</span></a>
-    
     <a class="drawer-item" data-go="#/rating">🏆 <span>Рейтинг</span></a>
     <a class="drawer-item" data-go="#/gcode-reference">📖 <span>Справочник G/M</span></a>
     <a class="drawer-item" data-go="#/links">📚 <span>Полезные материалы</span></a>
     <a class="drawer-item" data-go="#/final-exam">🎓 <span>Экзамен</span></a>
     <a class="drawer-item" data-go="#/final-training">🏋️ <span>Тренировка</span></a>
     
-    <!-- ИГРЫ -->
     <a class="drawer-item" data-go="#/event">💀 <span>Смертельная вечеринка</span></a>
     <a class="drawer-item" data-go="#/tictactoe">❌ <span>Крестики-нолики</span></a>
     <a class="drawer-item" data-go="#/sudoku">🔢 <span>Судоку</span></a>
@@ -99,19 +102,19 @@
 </aside>
 
 <main id="app"></main>
-<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v98.0</footer>
+<footer class="footer">ГБПОУ МО «Луховицкий авиационный технический техникум» · v101.0</footer>
 
-<script src="data.js?v=98"></script>
-<script src="data-extra.js?v=98"></script>
-<script src="info.js?v=98"></script>
-<script src="script.js?v=98"></script>
-<script src="extra.js?v=98"></script>
-<script src="final.js?v=98"></script>
-<script src="links.js?v=98"></script>
-<script src="rating.js?v=98"></script>
-<script src="journal.js?v=98"></script>
-<script src="minigames.js?v=98"></script>
-<script src="assistant.js?v=98"></script>
-<script src="easter-eggs.js?v=98"></script>
+<script src="data.js?v=101"></script>
+<script src="data-extra.js?v=101"></script>
+<script src="info.js?v=101"></script>
+<script src="script.js?v=101"></script>
+<script src="extra.js?v=101"></script>
+<script src="final.js?v=101"></script>
+<script src="links.js?v=101"></script>
+<script src="rating.js?v=101"></script>
+<script src="journal.js?v=101"></script>
+<script src="minigames.js?v=101"></script>
+<script src="assistant.js?v=101"></script>
+<script src="easter-eggs.js?v=101"></script>
 </body>
 </html>
