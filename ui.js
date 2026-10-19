@@ -1,8 +1,9 @@
 /* ============================================================
-   МДК 07.01 — ui.js (v170.0)
+   МДК 07.01 — ui.js (v177.0 — FIXED UNDEFINED CRASH)
    ============================================================ */
 "use strict";
 
+/* ---------------- УТИЛИТЫ ---------------- */
 window.$ = (id) => document.getElementById(id);
 window.el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
 window.escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,6 +28,7 @@ window.renderUserChip = function() {
         $("userChipName").textContent = state.staff.name;
         $("userChipGroup").textContent = state.staff.role === "admin" ? "Админ" : "Учитель";
         $("userChipAvatar").innerHTML = state.staff.role === "admin" ? "👑" : "👨‍🏫";
+        var reqEl = document.getElementById("navRequests"); if (reqEl) reqEl.style.display = "flex";
     } else {
         $("userChipName").textContent = state.student.name;
         $("userChipGroup").textContent = "Гр. " + state.student.group;
@@ -69,11 +71,37 @@ window.openThemeModal = function() {
   document.body.appendChild(modal);
 };
 
-// ГЛАВНАЯ
+/* ---------------- РЕНДЕР КВЕСТОВ ---------------- */
+window.renderQuestsWidget = function() {
+    if (!state.student) return "";
+    var q = state.dailyQuests || { read: false, game: false, chat: false };
+    return '<div id="questPanel" class="quest-panel">' +
+        '<h3 class="quest-title">📜 Ежедневные квесты</h3>' +
+        '<div class="quest-grid">' +
+            '<div class="quest-item ' + (q.read ? 'done' : '') + '"><div class="quest-checkbox">' + (q.read ? '✔' : '') + '</div>📖 Изучить лекцию</div>' +
+            '<div class="quest-item ' + (q.game ? 'done' : '') + '"><div class="quest-checkbox">' + (q.game ? '✔' : '') + '</div>🎮 Сыграть в игру</div>' +
+            '<div class="quest-item ' + (q.chat ? 'done' : '') + '"><div class="quest-checkbox">' + (q.chat ? '✔' : '') + '</div>💬 Написать в чат</div>' +
+        '</div>' +
+    '</div>';
+};
+
+/* ---------------- ГЛАВНАЯ ---------------- */
 function renderHome() {
     var app = $("app"); app.innerHTML = "";
     var c = window.COURSE;
+    
+    // ЗАЩИТА ОТ ОШИБКИ, ЕСЛИ DATA.JS НЕ ЗАГРУЗИЛСЯ
+    if (!c) {
+        app.innerHTML = '<div class="module" style="text-align:center; padding:40px; margin-top:40px;"><h2>Ошибка загрузки данных</h2><p>Файл data.js не загружен. Проверьте интернет и обновите страницу.</p><button class="btn" onclick="location.reload()">Обновить</button></div>';
+        return;
+    }
+
     app.appendChild(el('<section class="hero"><h1>' + c.title + '</h1><p>' + c.module + '</p></section>'));
+    
+    // Квесты
+    app.appendChild(el(window.renderQuestsWidget()));
+    
+    // Учебный план
     app.appendChild(el('<div class="steps-title">Учебный план</div>'));
     c.sections.forEach(sec => {
         app.appendChild(el('<div style="font-weight:bold; margin:20px 0 10px; color:var(--accent); text-transform:uppercase; font-size:12px; letter-spacing:1px;">' + sec.title + '</div>'));
@@ -86,10 +114,11 @@ function renderHome() {
     });
 }
 
-// ЛЕКЦИИ И ТЕСТЫ (Перенесено из script.js)
+/* ---------------- ТЕМЫ (ЛЕКЦИИ) ---------------- */
 window.renderTopic = function(id, tab){
   tab = tab || "lecture"; 
-  var c = window.COURSE; var t = null;
+  var c = window.COURSE; if (!c) return renderHome();
+  var t = null;
   for (var i = 0; i < c.sections.length; i++) { for (var j = 0; j < c.sections[i].topics.length; j++) { if (c.sections[i].topics[j].id === id) { t = { section: c.sections[i], topic: c.sections[i].topics[j] }; break; } } if (t) break; }
   if(!t) return renderHome();
 
@@ -103,7 +132,15 @@ window.renderTopic = function(id, tab){
     if(t.topic.lectures) t.topic.lectures.forEach(function(l){ panel.appendChild(el('<h3>' + l.code + '. ' + l.title + '</h3><div class="lecture-content">' + (l.content || '<p>Материал готовится.</p>') + '</div>')); });
     var isDone = state.progress[id] && state.progress[id].done >= 5;
     var markBtn = el('<button class="btn" style="width:100%;margin-top:20px;" ' + (isDone ? 'disabled' : '') + '>' + (isDone ? '✅ Тема изучена' : 'Отметить как изученное (+50 XP)') + '</button>');
-    markBtn.onclick = function() { if (!state.progress[id]) state.progress[id] = {}; state.progress[id].done = 5; addXP(50); markBtn.textContent = "✅ Тема изучена"; markBtn.disabled = true; }; panel.appendChild(markBtn);
+    markBtn.onclick = function() { 
+        if (!state.progress[id]) state.progress[id] = {}; 
+        state.progress[id].done = 5; 
+        window.addXP(50); 
+        window.completeQuest('read'); // Выполнение квеста
+        markBtn.textContent = "✅ Тема изучена"; 
+        markBtn.disabled = true; 
+    }; 
+    panel.appendChild(markBtn);
   }
   if (tab === "practice") {
     if(t.topic.practicals) t.topic.practicals.forEach(function(p){
@@ -124,7 +161,7 @@ window.renderTopic = function(id, tab){
       finishBtn.onclick = function() {
         var correct = 0; t.topic.test.forEach(function(q, qi) { var ch = testWrap.querySelector('input[name="q' + qi + '"]:checked'); if (ch && Number(ch.value) === q.correct) correct++; });
         finishBtn.disabled = true; finishBtn.textContent = "Тест завершен";
-        var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); state.results[id] = { grade: grade }; addXP(150); saveStudentData();
+        var grade = Math.max(2, Math.round((correct / t.topic.test.length) * 5)); state.results[id] = { grade: grade }; window.addXP(150); window.saveStudentData();
         window.showToast("Тест сдан! Оценка: " + grade, "ok"); 
       };
   }
@@ -135,7 +172,7 @@ window.renderTopic = function(id, tab){
       checkBtn.onclick = function() {
         var correctCount = 0; selfWrap.querySelectorAll(".self-input").forEach(function(inp) { var idx = Number(inp.getAttribute("data-idx")); if (inp.value.trim().toLowerCase() === t.topic.selfChecks[idx].a.trim().toLowerCase()) correctCount++; });
         checkBtn.disabled = true; checkBtn.textContent = "Результаты сохранены";
-        var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); state.selfResults[id] = { grade: grade }; addXP(100); saveStudentData(); window.showToast("Работа сдана! Оценка: " + grade, "ok");
+        var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); state.selfResults[id] = { grade: grade }; window.addXP(100); window.saveStudentData(); window.showToast("Работа сдана! Оценка: " + grade, "ok");
       };
   }
 };
@@ -147,7 +184,7 @@ window.markPracticalDone = function(topicId, code) {
     window.showToast("Отправлено на проверку!", "ok");
 };
 
-// МАГАЗИН
+/* ---------------- МАГАЗИН ---------------- */
 window.renderShopPage = function() {
     var app = $("app"); app.innerHTML = "";
     document.getElementById("crumbs").textContent = "Магазин XP";
@@ -174,7 +211,7 @@ window.renderShopPage = function() {
     app.appendChild(grid);
 };
 
-// ПРОФИЛЬ
+/* ---------------- ПРОФИЛЬ ---------------- */
 window.renderProfilePage = function(targetKey){
   var app = $("app"); app.innerHTML = "";
   document.getElementById("crumbs").textContent = "Личный кабинет";
@@ -204,7 +241,7 @@ window.renderProfilePage = function(targetKey){
   app.appendChild(el(card));
 };
 
-// РОУТИНГ
+/* ---------------- РОУТИНГ ---------------- */
 window.route = function() {
     closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = $("app");
@@ -247,9 +284,12 @@ window.addEventListener("DOMContentLoaded", () => {
             var query = this.value.trim().toLowerCase(), resultsBox = $("searchResults");
             resultsBox.innerHTML = ""; if (query.length < 2) { resultsBox.style.display = "none"; return; }
             var results = [];
-            window.COURSE.sections.forEach(sec => sec.topics.forEach(t => {
-                if (t.title.toLowerCase().includes(query) || t.code.toLowerCase().includes(query)) results.push({ type: "Тема", title: t.code + " - " + t.title, link: "#/topic/" + t.id + "/lecture" });
-            }));
+            var c = window.COURSE;
+            if (c) {
+                c.sections.forEach(sec => sec.topics.forEach(t => {
+                    if (t.title.toLowerCase().includes(query) || t.code.toLowerCase().includes(query)) results.push({ type: "Тема", title: t.code + " - " + t.title, link: "#/topic/" + t.id + "/lecture" });
+                }));
+            }
             if (results.length === 0) resultsBox.innerHTML = '<div style="padding:10px;color:var(--muted);">Ничего не найдено</div>';
             else results.slice(0, 8).forEach(r => resultsBox.appendChild(el('<a class="search-res-item" href="' + r.link + '" onclick="document.getElementById(\'searchResults\').style.display=\'none\'"><div>' + r.title + '</div><div class="search-res-type">' + r.type + '</div></a>')));
             resultsBox.style.display = "block";

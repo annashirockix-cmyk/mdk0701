@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — logic.js (v170.0)
+   МДК 07.01 — logic.js (v177.0 — FIXED QUESTS & STATE)
    ============================================================ */
 "use strict";
 
@@ -22,7 +22,8 @@ try {
   if (_st && _st.role) state.staff = _st; 
 } catch (e){}
 
-window.getLevel = function(xp) { return !xp || xp <= 0 ? 1 : Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100); }; // Ограничили до 100 уровней
+/* ---------------- УРОВНИ ---------------- */
+window.getLevel = function(xp) { return !xp || xp <= 0 ? 1 : Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100); };
 window.getXpForNextLevel = function(level) { return Math.pow(level, 2) * 100; };
 window.getLevelTitle = function(level) {
     if (level >= 100) return "Бесконечность";
@@ -35,16 +36,44 @@ window.getLevelTitle = function(level) {
     return "Новичок";
 };
 
-// Ачивки за реальные действия
+/* ---------------- КВЕСТЫ ---------------- */
+window.checkDailyQuests = function() {
+    var today = new Date().toDateString();
+    if (!state.dailyQuests || state.dailyQuests.lastReset !== today) {
+        state.dailyQuests = { read: false, game: false, chat: false, lastReset: today };
+        window.saveStudentData();
+    }
+};
+
+window.completeQuest = function(type) {
+    if (!state.dailyQuests) state.dailyQuests = { read: false, game: false, chat: false };
+    if (state.dailyQuests[type]) return; // Уже выполнено
+    
+    state.dailyQuests[type] = true;
+    window.showToast("Квест выполнен: " + type, "ok");
+    window.saveStudentData();
+    
+    // Обновляем виджет на главной, если мы на ней
+    var qp = document.getElementById("questPanel");
+    if (qp && window.renderQuestsWidget) {
+        qp.outerHTML = window.renderQuestsWidget();
+    }
+    
+    // Проверяем, все ли квесты выполнены
+    if (state.dailyQuests.read && state.dailyQuests.game && state.dailyQuests.chat) {
+        window.showToast("🎉 ВСЕ КВЕСТЫ ВЫПОЛНЕНЫ! +200 XP", "ok");
+        window.addXP(200);
+    }
+};
+
+/* ---------------- ДОСТИЖЕНИЯ ---------------- */
 window.getAchievementsList = function() {
     var list = [];
     for (var i = 1; i <= 100; i++) {
-        var xpReq = i * 100;
-        list.push({ id: "xp_" + i, xp: xpReq, title: "Ранг " + i, icon: i%10===0?"🏆":"🌟", desc: "Набрать " + xpReq + " XP" });
+        list.push({ id: "xp_" + i, xp: i * 100, title: "Ранг " + i, icon: i%10===0?"🏆":"🌟", desc: "Набрать " + (i*100) + " XP" });
     }
-    list.push({ id: "t_chat_100", title: "Болтун", icon: "💬", desc: "Написать 100 сообщений в чат", xp: 0 });
+    list.push({ id: "t_chat_100", title: "Болтун", icon: "💬", desc: "Написать 100 сообщений", xp: 0 });
     list.push({ id: "t_streak_30", title: "Верный сайту", icon: "🔥", desc: "Заходить 30 дней подряд", xp: 0 });
-    list.push({ id: "t_practical_5", title: "Идеальный студент", icon: "📝", desc: "Сдать 5 практических без ошибок", xp: 0 });
     return list;
 };
 
@@ -59,7 +88,6 @@ window.checkAchievements = function() {
     });
     if (state.chatMessageCount >= 100 && !state.achievements["t_chat_100"]) { state.achievements["t_chat_100"] = true; hasNew = true; }
     if (state.loginStreak >= 30 && !state.achievements["t_streak_30"]) { state.achievements["t_streak_30"] = true; hasNew = true; }
-    if (state.practicalStreak >= 5 && !state.achievements["t_practical_5"]) { state.achievements["t_practical_5"] = true; hasNew = true; }
     
     if (hasNew) {
         window.showToast("🏆 Получено новое достижение!", "ok");
@@ -67,27 +95,7 @@ window.checkAchievements = function() {
     }
 };
 
-window.checkDailyLogin = function() {
-    if (!state.student) return;
-    var today = new Date().toDateString();
-    if (state.lastLoginDate !== today) {
-        var xpGained = 20;
-        if (state.lastLoginDate) {
-            var lastDate = new Date(state.lastLoginDate);
-            var now = new Date(today);
-            lastDate.setHours(0,0,0,0); now.setHours(0,0,0,0);
-            var diffDays = Math.round((now - lastDate) / (1000 * 60 * 60 * 24));
-            if (diffDays === 1) {
-                state.loginStreak++;
-                xpGained += Math.min(state.loginStreak * 10, 100);
-            } else { state.loginStreak = 1; }
-        } else { state.loginStreak = 1; }
-        state.lastLoginDate = today;
-        window.addXP(xpGained);
-        checkAchievements();
-    }
-};
-
+/* ---------------- ЗАГРУЗКА/СОХРАНЕНИЕ ---------------- */
 window.loadStudentData = async function() {
     var k = window.studentKey(); if (!k) return;
     var ek = encodeURIComponent(k);
@@ -98,9 +106,12 @@ window.loadStudentData = async function() {
         state.avatar = localStorage.getItem("mdk0701.avatar." + ek) || null;
         state.avatarEffect = localStorage.getItem("mdk0701.avatarEffect." + ek) || null;
         state.chatMessageCount = parseInt(localStorage.getItem("mdk0701.chatCount." + ek) || "0", 10);
-        state.practicalStreak = parseInt(localStorage.getItem("mdk0701.practicalStreak." + ek) || "0", 10);
+        state.dailyQuests = JSON.parse(localStorage.getItem("mdk0701.quests." + ek) || '{"read":false,"game":false,"chat":false,"lastReset":null}');
     } catch(e) {}
+    
     window.updateXpDisplay();
+    window.checkDailyQuests();
+    
     try {
         const d = await API.getStudentData(k);
         if (d && d.ok && d.payload) {
@@ -117,12 +128,14 @@ window.saveStudentData = function() {
     var ek = encodeURIComponent(k);
     try {
         localStorage.setItem("mdk0701.xp." + ek, state.xp);
+        localStorage.setItem("mdk0701.shop." + ek, JSON.stringify(state.shop));
         localStorage.setItem("mdk0701.achievements." + ek, JSON.stringify(state.achievements));
         localStorage.setItem("mdk0701.chatCount." + ek, state.chatMessageCount);
-        localStorage.setItem("mdk0701.practicalStreak." + ek, state.practicalStreak);
+        localStorage.setItem("mdk0701.quests." + ek, JSON.stringify(state.dailyQuests));
         if (state.avatarEffect) localStorage.setItem("mdk0701.avatarEffect." + ek, state.avatarEffect);
         if (state.avatar) localStorage.setItem("mdk0701.avatar." + ek, state.avatar);
     } catch (e) {}
+    
     window.updateXpDisplay();
     if (state.student) {
         API.saveStudent(k, state.student.name, state.student.group, JSON.stringify({
@@ -136,18 +149,22 @@ window.addXP = function(amount) {
     var finalAmount = Math.round(amount * mult);
     state.xp += finalAmount;
     window.saveStudentData();
+    window.checkAchievements();
     window.updateXpDisplay();
     window.showToast("+" + finalAmount + " XP", "ok");
 };
 
-// Вход/Выход
+/* ---------------- ВХОД/ВЫХОД ---------------- */
 window.doStudentLogin = function() {
   var n = document.getElementById("loginName").value.trim(), g = document.getElementById("loginGroup").value.trim();
   if (!n || !g) return window.showToast("Введите ФИО и Группу!", "err");
   state.student = { name: n, group: g.toUpperCase() };
   localStorage.setItem("mdk0701.student", JSON.stringify(state.student));
   document.getElementById("loginOverlay").hidden = true;
-  window.renderUserChip(); window.loadStudentData(); window.checkDailyLogin(); window.route();
+  window.renderUserChip(); 
+  window.loadStudentData(); 
+  window.checkDailyLogin(); 
+  window.route();
 };
 
 window.doTeacherLogin = function() {
@@ -165,7 +182,7 @@ window.doTeacherLogin = function() {
 
 window.handleLogout = function() {
   if (confirm("Выйти?")) {
-    state.student = null; state.staff = null; state.customBg = null; state.avatarEffect = null;
+    state.student = null; state.staff = null;
     localStorage.removeItem("mdk0701.student"); sessionStorage.removeItem("mdk0701.staff");
     document.getElementById("loginOverlay").hidden = false;
     document.getElementById("userChipName").textContent = "Гость"; document.getElementById("userChipGroup").textContent = "Роль: Гость"; document.getElementById("userChipAvatar").innerHTML = "👨‍🎓";

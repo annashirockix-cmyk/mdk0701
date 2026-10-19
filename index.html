@@ -7,15 +7,17 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
 
+<!-- Внешние библиотеки -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+<!-- Шрифты -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;900&family=Orbitron:wght@400;600;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=175">
+<link rel="stylesheet" href="style.css?v=177">
 
 <script>
   (function(){
@@ -56,7 +58,7 @@
   <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
   
   <div class="search-container" style="flex:1; margin: 0 10px; max-width: 300px; position:relative;">
-    <input type="text" id="globalSearch" class="self-input" placeholder="Поиск..." style="margin:0; padding:8px 12px; width:100%; border-radius:20px; font-size:13px;">
+    <input type="text" id="globalSearch" class="self-input" placeholder="Поиск темы или G-кода..." style="margin:0; padding:8px 12px; width:100%; border-radius:20px; font-size:13px;">
     <div id="searchResults" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); z-index:100; max-height:250px; overflow-y:auto; margin-top:5px;"></div>
   </div>
 
@@ -78,54 +80,25 @@
     <button class="drawer-close" id="drawerClose">✕</button>
   </div>
   <nav class="drawer-nav" style="flex:1; overflow-y:auto; padding: 10px 0;">
-    <a class="drawer-item" data-go="#/">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Главная</span>
-    </a>
-    <a class="drawer-item" data-go="#/profile">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Личный кабинет</span>
-    </a>
-    <a class="drawer-item" data-go="#/shop">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-      <span>Магазин XP</span>
-    </a>
-    <a class="drawer-item" data-go="#/journal">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      <span>Журнал</span>
-    </a>
-    <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      <span>Заявки</span>
-    </a>
+    <a class="drawer-item" data-go="#/"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Главная</span></a>
+    <a class="drawer-item" data-go="#/profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Личный кабинет</span></a>
+    <a class="drawer-item" data-go="#/shop"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span>Магазин XP</span></a>
+    <a class="drawer-item" data-go="#/journal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Журнал</span></a>
+    <a class="drawer-item" data-go="#/requests" id="navRequests" style="display:none; color:var(--accent); font-weight:bold;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Заявки</span></a>
 
     <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">🎮 Игровой сектор</div>
-    <a class="drawer-item" data-go="#/arcade">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4"/><path d="M8 10v4"/><circle cx="16" cy="10" r="1"/><circle cx="18" cy="12" r="1"/></svg>
-      <span>Игровая комната</span>
-    </a>
-    <a class="drawer-item" data-go="#/gcode-test">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      <span>Тест G-кода</span>
-    </a>
-    <a class="drawer-item" data-go="#/rating">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      <span>Доска почета</span>
-    </a>
-    <a class="drawer-item" data-go="#/event">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <span>Вечеринка</span>
-    </a>
+    <a class="drawer-item" data-go="#/arcade"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4"/><path d="M8 10v4"/><circle cx="16" cy="10" r="1"/><circle cx="18" cy="12" r="1"/></svg><span>Игровая комната</span></a>
+    <a class="drawer-item" data-go="#/gcode-test"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Тест G-кода</span></a>
+    <a class="drawer-item" data-go="#/rating"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>Доска почета</span></a>
+    <a class="drawer-item" data-go="#/event"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Вечеринка</span></a>
+    <a class="drawer-item" data-go="#/chat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чат</span></a>
     
-    <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px;" onclick="window.handleLogout()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span>Выйти из системы</span>
-    </a>
+    <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px;" onclick="window.handleLogout()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Выйти</span></a>
   </nav>
 </aside>
 
 <main id="app"></main>
-<footer class="footer" style="text-align:center; padding:20px; color:var(--muted); font-size:12px;">ГБПОУ МО «Луховицкий авиационный технический техникум» · v175</footer>
+<footer class="footer" style="text-align:center; padding:20px; color:var(--muted); font-size:12px;">ГБПОУ МО «Луховицкий авиационный технический техникум» · v177</footer>
 
 <!-- НИЖНЯЯ ПАНЕЛЬ (МОБИЛЬНАЯ) -->
 <nav class="mobile-bottom-nav">
@@ -135,14 +108,23 @@
   <a href="#/profile" class="mbn-item"><span>👤</span>Профиль</a>
 </nav>
 
-<!-- СКРИПТЫ -->
-<script src="api.js?v=175"></script>
-<script src="logic.js?v=175"></script>
-<script src="ui.js?v=175"></script>
-<script src="extra.js?v=175"></script>
-<script src="journal.js?v=175"></script>
-<script src="rating.js?v=175"></script>
-<script src="minigames.js?v=175"></script>
+<!-- ============================================================
+     СКРИПТЫ (Порядок критически важен!)
+     ============================================================ -->
+<!-- 1. Сначала данные -->
+<script src="data.js?v=177"></script>
+<script src="data-extra.js?v=177"></script>
+
+<!-- 2. Потом логика и API -->
+<script src="api.js?v=177"></script>
+<script src="logic.js?v=177"></script>
+
+<!-- 3. Потом интерфейс и страницы -->
+<script src="ui.js?v=177"></script>
+<script src="extra.js?v=177"></script>
+<script src="journal.js?v=177"></script>
+<script src="rating.js?v=177"></script>
+<script src="minigames.js?v=177"></script>
 
 <script>
   if ("serviceWorker" in navigator) {
