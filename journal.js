@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v124.0 — LEVEL DOWN & CASINO)
+   МДК 07.01 — journal.js (v126.0 — FULL REWRITE & FIXES)
    ============================================================ */
 "use strict";
 
@@ -12,7 +12,7 @@ window.renderJournalPage = function() {
   
   var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
   
-  /* ------- Быстрая панель XP, Казино и Понижение уровня ------- */
+  /* ------- Панель управления для учителя ------- */
   if (isTeacher) {
       var quickPanel = el(
           '<section class="module" style="background:var(--accent-soft); border-color:var(--accent); margin-bottom:24px;">' +
@@ -41,11 +41,11 @@ window.renderJournalPage = function() {
     .then(function(d) {
       tableWrap.innerHTML = "";
       if (!d || !d.ok || !d.students || !d.students.length) {
-          tableWrap.innerHTML = "Студентов пока нет.";
+          tableWrap.innerHTML = "<div style='text-align:center; padding:20px;'>Студентов пока нет.</div>";
           return;
       }
       
-      /* ------- Наполняем селектор и вешаем обработчики ------- */
+      /* ------- Наполняем селектор и вешаем обработчики для учителя ------- */
       if (isTeacher) {
           var sel = document.getElementById("quickStudentSelect");
           var studentsList = d.students;
@@ -80,6 +80,7 @@ window.renderJournalPage = function() {
               return isNaN(v) || v <= 0 ? 50 : v;
           };
           
+          // Обработчики кнопок панели
           document.getElementById("quickAddBtn").onclick = function() {
               var data = getStudentData();
               if (!data) { window.showToast("Выберите студента", "err"); return; }
@@ -115,12 +116,12 @@ window.renderJournalPage = function() {
               }
           };
           
-          // ЛОГИКА КАЗИНО
+          // Логика Казино
           document.getElementById("quickCasinoBtn").onclick = function() {
               var data = getStudentData();
               if (!data) { window.showToast("Выберите студента для игры в казино", "err"); return; }
               
-              var winAmount = Math.floor(Math.random() * 601) - 100;
+              var winAmount = Math.floor(Math.random() * 601) - 100; // от -100 до +500
               var resultText = "";
               
               if (winAmount > 0) resultText = "🎉 ДЖЕКПОТ! ВЫИГРЫШ: +" + winAmount + " XP";
@@ -142,10 +143,11 @@ window.renderJournalPage = function() {
           });
       }
       if (!displayStudents.length) { 
-          tableWrap.innerHTML = "<p class='sub'>Ваших данных пока нет.</p>"; 
+          tableWrap.innerHTML = "<div style='text-align:center; padding:20px;'>Ваших данных пока нет.</div>"; 
           return; 
       }
       
+      /* ------- Построение таблицы ------- */
       var tableContainer = el('<div class="journal-container" style="overflow-x:auto;"></div>');
       var table = el('<table class="journal-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"></table>');
       
@@ -186,6 +188,7 @@ window.renderJournalPage = function() {
           try {
               var p = JSON.parse(s.payload || "{}") || {};
               
+              // Обработка тестов и самостоятельных работ
               if (p.results) {
                   Object.keys(p.results).forEach(function(k) {
                       var tName = k === "__final_exam__" ? "Экзамен" : k;
@@ -205,6 +208,7 @@ window.renderJournalPage = function() {
                   });
               }
 
+              // Обработка практических работ
               if (p.practicalsDone) {
                   Object.keys(p.practicalsDone).forEach(function(topicId) {
                       Object.keys(p.practicalsDone[topicId]).forEach(function(pCode) {
@@ -263,12 +267,11 @@ window.renderJournalPage = function() {
     })
     .catch(function(err) {
         console.error("Journal load error:", err);
-        tableWrap.innerHTML = "Ошибка загрузки журнала.";
+        tableWrap.innerHTML = "<div style='color:var(--err); padding:20px;'>Ошибка загрузки журнала. Проверьте подключение к интернету.</div>";
     });
 };
 
 /* ---------------- УДАЛЕНИЕ СТУДЕНТА ---------------- */
-
 window.deleteStudent = function(name, group) {
     if (!confirm("Вы уверены, что хотите удалить студента " + name + " (" + group + ")?\nЕго данные будут стерты навсегда!")) return;
     
@@ -283,7 +286,7 @@ window.deleteStudent = function(name, group) {
       .then(function(d) {
         if (d && d.ok) {
             window.showToast("Студент удален!", "ok");
-            window.renderJournalPage();
+            window.renderJournalPage(); // Перерисовываем страницу
         } else {
             window.showToast("Ошибка удаления: " + ((d && d.error) || "Неизвестно"), "err");
         }

@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v123.0 — RESTORED HOME & CASINO)
+   МДК 07.01 — script.js (v125.0 — LOGIN FIX)
    ============================================================ */
 "use strict";
 
@@ -24,17 +24,13 @@ try {
   if (_st && _st.role) state.staff = _st; 
 } catch (e){}
 
-/* ---------------- УРОВНИ И ПЛЮШКИ ---------------- */
-
+/* ---------------- УРОВНИ ---------------- */
 function getLevel(xp) { 
     if (!xp || xp <= 0) return 1;
     var lvl = Math.floor(Math.sqrt(xp / 100)) + 1;
     return Math.min(lvl, 9999);
 }
-
-function getXpForNextLevel(level) { 
-    return Math.pow(level, 2) * 100; 
-}
+function getXpForNextLevel(level) { return Math.pow(level, 2) * 100; }
 
 function getLevelTitle(level) {
     if (level >= 9999) return "Бесконечность";
@@ -94,7 +90,6 @@ window.addNotification = function(text, type) {
     if (state.notifications.length > 50) state.notifications.pop();
     updateNotifBadge();
 };
-
 function updateNotifBadge() {
     var badge = $("notifBadge");
     if (!badge) return;
@@ -186,7 +181,7 @@ function loadStudentData(){
   updateXpDisplay(); updateNotifBadge();
 
   if (APPS_SCRIPT_URL && state.student) {
-      fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now())
+      fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now(), { cache: "no-store" })
         .then(function(r){ return r.json(); })
         .then(function(d) {
             if (d && d.ok && d.payload) {
@@ -302,7 +297,6 @@ window.approvePractical = function(studentKeyStr, topicId, code, grade) {
             } else window.showToast("Ошибка сохранения", "err");
         }).catch(function(){ window.showToast("Ошибка сети", "err"); });
 };
-
 window.approveAttempt = function(studentKeyStr, reqKey) {
     var p = new URLSearchParams();
     p.append("action", "approveattempt"); p.append("key", studentKeyStr); p.append("reqKey", reqKey);
@@ -311,7 +305,6 @@ window.approveAttempt = function(studentKeyStr, reqKey) {
     window.showToast("Попытка одобрена!", "ok");
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).catch(function(){});
 };
-
 window.grantXP = function(studentKeyStr, studentName, presetAmount) {
     if (!state.staff) return;
     var amount = presetAmount;
@@ -331,7 +324,6 @@ window.grantXP = function(studentKeyStr, studentName, presetAmount) {
         } else window.showToast("Ошибка: " + ((d && d.error) || "Неизвестно"), "err");
       }).catch(function(){ window.showToast("Ошибка сети.", "err"); });
 };
-
 window.giveCustomAchievement = function(studentKeyStr, studentName) {
     if (!state.staff) return;
     var title = prompt("Введите название ачивки для " + studentName + ":");
@@ -340,10 +332,7 @@ window.giveCustomAchievement = function(studentKeyStr, studentName) {
     if (!icon) icon = "🏅";
     
     var p = new URLSearchParams();
-    p.append("action", "giveachievement"); 
-    p.append("key", studentKeyStr); 
-    p.append("title", title);
-    p.append("icon", icon);
+    p.append("action", "giveachievement"); p.append("key", studentKeyStr); p.append("title", title); p.append("icon", icon);
     
     window.showToast("Выдача ачивки...", "info");
     fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
@@ -356,10 +345,7 @@ window.giveCustomAchievement = function(studentKeyStr, studentName) {
 
 /* ---------------- ТЕМЫ, ШРИФТЫ, ЭФФЕКТЫ ---------------- */
 function applyTheme(theme){ document.documentElement.setAttribute("data-theme", theme); localStorage.setItem("mdk0701.theme", theme); }
-function applyFont(font){ 
-    document.documentElement.style.setProperty('--font-main', font);
-    localStorage.setItem("mdk0701.font", font);
-}
+function applyFont(font){ document.documentElement.style.setProperty('--font-main', font); localStorage.setItem("mdk0701.font", font); }
 function applyCustomBg() {
     var cls = Array.from(document.body.classList);
     cls.forEach(function(c){ if (c.indexOf("bg-") === 0) document.body.classList.remove(c); });
@@ -391,32 +377,79 @@ function openThemeModal(){
   document.body.appendChild(modal);
 }
 
-/* ---------------- ВХОД/ВЫХОД ---------------- */
+/* ---------------- ВХОД/ВЫХОД (ИСПРАВЛЕНО) ---------------- */
 window.doStudentLogin = function() {
   var n = $("loginName").value.trim(); var g = $("loginGroup").value.trim();
   if (!n || !g) { window.showToast("Введите ФИО и Группу!", "err"); return; }
+  
   state.student = { name: n, group: g.toUpperCase() };
   try { localStorage.setItem("mdk0701.student", JSON.stringify(state.student)); } catch(e){}
-  $("loginOverlay").hidden = true; renderUserChip(); loadStudentData(); checkDailyLogin(); route();
+  
+  $("loginOverlay").hidden = true; 
+  try {
+      renderUserChip(); 
+      loadStudentData(); 
+      checkDailyLogin(); 
+      route();
+  } catch (err) {
+      console.error("Login transition error:", err);
+  }
 };
 
 window.doTeacherLogin = function() {
   var user = $("loginStaffName").value.trim(); var pass = $("loginStaffPass").value.trim(); var btn = $("staffLoginBtn");
   if (!user || !pass) { window.showToast("Введите логин и пароль!", "err"); return; }
+  if (btn.disabled) return; // Защита от двойного клика
+  
   btn.textContent = "Проверяем..."; btn.disabled = true;
-  fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass) + "&t=" + new Date().getTime())
-    .then(function(r){ return r.json(); })
-    .then(function(d) {
-      if (d && d.ok) { state.staff = { role: d.role, name: d.name }; try { sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){} $("loginOverlay").hidden = true; renderUserChip(); route(); } 
-      else { window.showToast("Неверный логин или пароль.", "err"); btn.textContent = "Войти как сотрудник"; btn.disabled = false; }
-    }).catch(function() { window.showToast("Ошибка сети.", "err"); btn.textContent = "Войти как сотрудник"; btn.disabled = false; });
+  
+  fetch(APPS_SCRIPT_URL + "?action=login&username=" + encodeURIComponent(user) + "&password=" + encodeURIComponent(pass) + "&t=" + new Date().getTime(), { cache: "no-store" })
+    .then(function(r) { 
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text(); 
+    })
+    .then(function(text) {
+        var d;
+        try { d = JSON.parse(text); } 
+        catch(e) { throw new Error("Invalid JSON: " + text.substring(0, 50)); }
+        
+        if (d && d.ok) { 
+            state.staff = { role: d.role, name: d.name }; 
+            try { sessionStorage.setItem("mdk0701.staff", JSON.stringify(state.staff)); } catch(e){}
+            $("loginOverlay").hidden = true; 
+            renderUserChip(); 
+            route(); 
+        } 
+        else { 
+            window.showToast("Неверный логин или пароль.", "err"); 
+            btn.textContent = "Войти как сотрудник"; 
+            btn.disabled = false; 
+        }
+    }).catch(function(err) { 
+        console.error("Teacher login error:", err);
+        window.showToast("Ошибка сети или сервера. Попробуйте еще раз.", "err"); 
+        btn.textContent = "Войти как сотрудник"; 
+        btn.disabled = false; 
+    });
 };
 
 window.handleLogout = function() {
   if (confirm("Выйти из аккаунта?")) {
     state.student = null; state.staff = null; state.customBg = null;
     try { localStorage.removeItem("mdk0701.student"); sessionStorage.removeItem("mdk0701.staff"); } catch(e){}
-    $("loginOverlay").hidden = false; $("userChipName").textContent = "Гость"; $("userChipGroup").textContent = "Роль: Гость"; $("userChipAvatar").innerHTML = "👨‍🎓"; 
+    
+    $("loginOverlay").hidden = false; 
+    $("userChipName").textContent = "Гость"; 
+    $("userChipGroup").textContent = "Роль: Гость"; 
+    $("userChipAvatar").innerHTML = "👨‍🎓"; 
+    
+    // Очистка полей ввода
+    if ($("loginName")) $("loginName").value = "";
+    if ($("loginGroup")) $("loginGroup").value = "";
+    if ($("loginStaffName")) $("loginStaffName").value = "";
+    if ($("loginStaffPass")) $("loginStaffPass").value = "";
+    if ($("staffLoginBtn")) { $("staffLoginBtn").textContent = "Войти как сотрудник"; $("staffLoginBtn").disabled = false; }
+
     updateXpDisplay(); applyCustomBg(); closeDrawer(); route();
   }
 };
@@ -449,6 +482,9 @@ function renderHome(){
 
   // Баннер Казино
   app.appendChild(el('<div class="event-card" style="border-color: #f1c40f; box-shadow: 0 0 20px rgba(241, 196, 15, 0.4), inset 0 0 20px rgba(241, 196, 15, 0.1); background: #1a1a10;" onclick="location.hash=\'#/casino\'"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><h2 style="margin:0 0 10px 0; font-size:24px; color:#f1c40f; text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);">🎰 КАЗИНО XP</h2><p style="margin:0; color:#aaa; font-size:14px;">Испытай удачу! Умножь свой опыт или потеряй всё.</p></div><div style="font-size:40px; animation: pulse 1s infinite;">💰</div></div><div style="margin-top:20px; display:inline-block; background:#f1c40f; color:#000; padding:8px 16px; border-radius:8px; font-weight:bold; font-size:14px;">Играть →</div></div>'));
+
+  // Баннер Рулетка
+  app.appendChild(el('<div class="event-card" style="border-color: #8e44ad; box-shadow: 0 0 20px rgba(142, 68, 173, 0.4), inset 0 0 20px rgba(142, 68, 173, 0.1); background: #150a1a; margin-top:20px; margin-bottom:24px;" onclick="location.hash=\'#/roulette\'"><div style="display:flex; justify-content:space-between; align-items:flex-start;"><div><h2 style="margin:0 0 10px 0; font-size:24px; color:#9b59b6; text-shadow: 0 0 10px rgba(155, 89, 182, 0.5);">🎡 КОЛЕСО ФОРТУНЫ</h2><p style="margin:0; color:#aaa; font-size:14px;">Крути рулетку и выигрывай до x10 от ставки!</p></div><div style="font-size:40px; animation: pulse 1s infinite;">🎰</div></div><div style="margin-top:20px; display:inline-block; background:#8e44ad; color:#fff; padding:8px 16px; border-radius:8px; font-weight:bold; font-size:14px;">Крутить →</div></div>'));
 
   // Темы
   c.sections.forEach(function(sec) {
@@ -741,6 +777,7 @@ function route(){
       else if (parts[0] === "final-training") window.renderFinalTrainingPage && window.renderFinalTrainingPage();
       else if (parts[0] === "event") window.renderDeadlyPartyPage && window.renderDeadlyPartyPage();
       else if (parts[0] === "casino") window.renderCasinoPage && window.renderCasinoPage();
+      else if (parts[0] === "roulette") window.renderRoulettePage && window.renderRoulettePage();
       else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
       else if (parts[0] === "sudoku") window.renderSudokuPage && window.renderSudokuPage();
       else if (parts[0] === "minesweeper") window.renderMinesweeperPage && window.renderMinesweeperPage(); 
@@ -762,7 +799,6 @@ window.addEventListener("DOMContentLoaded", function() {
       if (state.student) { loadStudentData(); checkDailyLogin(); }
   } catch(e) { console.error(e); }
   
-  // Восстановление шрифта
   var savedFont = localStorage.getItem("mdk0701.font");
   if (savedFont) applyFont(savedFont);
 
