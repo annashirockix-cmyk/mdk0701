@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — minigames.js (v95.0 — MINESWEEPER & SPIDER)
+   МДК 07.01 — minigames.js (v97.0 — BALANCED XP)
    ============================================================ */
 "use strict";
 
@@ -45,7 +45,7 @@ window.renderTicTacToePage = function() {
     if (w) {
       gameOver = true;
       if (w === "draw") status.textContent = "Ничья! 🤝";
-      else if (w === "❌") { status.textContent = "Вы победили! 🎉"; if(window.celebrate) window.celebrate(); }
+      else if (w === "❌") { status.textContent = "Вы победили! +10 XP"; window.addXP(10); window.unlockAchievement('t_ttt'); }
       else status.textContent = "Победил станок... ⚙️";
     } else status.textContent = "Ваш ход";
   }
@@ -54,46 +54,113 @@ window.renderTicTacToePage = function() {
 };
 
 /* ============================================================
-   2. СУДОКУ
+   2. СУДОКУ (Сложности + Проверка)
    ============================================================ */
 window.renderSudokuPage = function() {
   var app = document.getElementById("app"); if(!app) return; app.innerHTML = ""; 
   document.getElementById("crumbs").textContent = "Судоку";
   app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-  var puzzle = [5,3,0,0,7,0,0,0,0, 6,0,0,1,9,5,0,0,0, 0,9,8,0,0,0,0,6,0, 8,0,0,0,6,0,0,0,3, 4,0,0,8,0,3,0,0,1, 7,0,0,0,2,0,0,0,6, 0,6,0,0,0,0,2,8,0, 0,0,0,4,1,9,0,0,5, 0,0,0,0,8,0,0,7,9];
+
+  // Базовая решенная сетка
   var solution = [5,3,4,6,7,8,9,1,2, 6,7,2,1,9,5,3,4,8, 1,9,8,3,4,2,5,6,7, 8,5,9,7,6,1,4,2,3, 4,2,6,8,5,3,7,9,1, 7,1,3,9,2,4,8,5,6, 9,6,1,5,3,7,2,8,4, 2,8,7,4,1,9,6,3,5, 3,4,5,2,8,6,1,7,9];
-  var block = el(`<section class="module"><h2 style="text-align:center;">Судоку</h2><div id="sudokuBoard" style="display:grid; grid-template-columns:repeat(9, 40px); gap:2px; justify-content:center; margin:20px auto; background:var(--border); padding:2px; border-radius:8px;"></div><div style="text-align:center; margin-top:20px; color:var(--muted); font-size:14px;">Заполните пустые клетки цифрами от 1 до 9.</div><div id="sudokuStatus" style="text-align:center; font-weight:bold; font-size:18px; color:var(--accent); margin-top:10px; min-height:28px;"></div><div style="text-align:center; margin-top:20px;"><button class="btn" id="sudokuReset">Сбросить</button></div></section>`);
+  
+  var block = el(`<section class="module">
+    <h2 style="text-align:center;">Судоку</h2>
+    <div style="text-align:center; margin-bottom:20px;">
+        <select id="sudokuDiff" class="self-input" style="width:auto; display:inline-block; margin-right:10px;">
+            <option value="easy">Легкий (30 пустых)</option>
+            <option value="medium" selected>Средний (40 пустых)</option>
+            <option value="hard">Сложный (50 пустых)</option>
+        </select>
+        <button class="btn" id="sudokuCheck" style="background:var(--ok);">Проверить</button>
+    </div>
+    <div id="sudokuBoard" style="display:grid; grid-template-columns:repeat(9, 40px); gap:2px; justify-content:center; margin:20px auto; background:var(--border); padding:2px; border-radius:8px;"></div>
+    <div id="sudokuStatus" style="text-align:center; font-weight:bold; font-size:18px; color:var(--accent); margin-top:10px; min-height:28px;"></div>
+    <div style="text-align:center; margin-top:20px;"><button class="btn ghost" id="sudokuReset">Новая игра</button></div>
+  </section>`);
   app.appendChild(block);
+  
   var board = block.querySelector("#sudokuBoard"), status = block.querySelector("#sudokuStatus");
+  var currentPuzzle = [];
+  var isGameOver = false;
+
+  function generatePuzzle(diff) {
+      var emptyCount = diff === 'easy' ? 30 : (diff === 'medium' ? 40 : 50);
+      var puzzle = solution.slice(); // копия
+      var indices = Array.from({length: 81}, (_, i) => i).sort(() => Math.random() - 0.5);
+      
+      for (var i = 0; i < emptyCount; i++) {
+          puzzle[indices[i]] = 0;
+      }
+      return puzzle;
+  }
+
   function renderBoard() {
     board.innerHTML = "";
-    puzzle.forEach((val, i) => {
+    isGameOver = false;
+    status.textContent = "";
+    currentPuzzle.forEach((val, i) => {
       var isFixed = val !== 0;
       var cell = el(`<input type="text" maxlength="1" value="${val !== 0 ? val : ''}" ${isFixed ? 'disabled' : ''} style="width:40px; height:40px; text-align:center; font-size:20px; font-weight:bold; border:none; background:${isFixed ? 'var(--card-soft)' : 'var(--card)'}; color:${isFixed ? 'var(--muted)' : 'var(--text)'}; outline:none; border-radius:4px;">`);
+      
       var row = Math.floor(i / 9); var col = i % 9;
       if (col === 2 || col === 5) cell.style.borderRight = "2px solid var(--text)";
       if (row === 2 || row === 5) cell.style.borderBottom = "2px solid var(--text)";
+      
       if (!isFixed) {
           cell.addEventListener("input", (e) => {
               var v = e.target.value.replace(/[^1-9]/g, '');
               e.target.value = v;
-              if (v === solution[i].toString()) { cell.style.color = "var(--ok)"; checkWin(); } else { cell.style.color = "var(--err)"; }
           });
       }
       board.appendChild(cell);
     });
   }
-  function checkWin() {
+
+  block.querySelector("#sudokuCheck").addEventListener("click", () => {
+      if (isGameOver) return;
       var inputs = board.querySelectorAll("input");
-      for (let i = 0; i < 81; i++) { if (Number(inputs[i].value) !== solution[i]) return; }
-      status.textContent = "🎉 Поздравляем, судоку решено!"; if (window.celebrate) window.celebrate();
-  }
-  block.querySelector("#sudokuReset").addEventListener("click", () => { renderBoard(); status.textContent = ""; });
+      var allCorrect = true;
+      var hasEmpty = false;
+
+      for (let i = 0; i < 81; i++) {
+          var val = Number(inputs[i].value);
+          if (val === 0) { hasEmpty = true; allCorrect = false; }
+          else if (val !== solution[i]) { 
+              allCorrect = false; 
+              inputs[i].style.color = "var(--err)"; 
+              inputs[i].style.background = "rgba(192,57,43,0.1)";
+          } else {
+              inputs[i].style.color = "var(--ok)"; 
+          }
+      }
+
+      if (allCorrect) {
+          status.textContent = "🎉 Поздравляем, судоку решено! +50 XP";
+          window.addXP(50);
+          window.unlockAchievement('t_sudoku');
+          isGameOver = true;
+          if (window.celebrate) window.celebrate();
+      } else if (hasEmpty) {
+          status.textContent = "Остались пустые клетки!";
+      } else {
+          status.textContent = "Есть ошибки (красные клетки).";
+      }
+  });
+
+  block.querySelector("#sudokuReset").addEventListener("click", () => {
+      var diff = block.querySelector("#sudokuDiff").value;
+      currentPuzzle = generatePuzzle(diff);
+      renderBoard();
+  });
+
+  // Инициализация
+  currentPuzzle = generatePuzzle("medium");
   renderBoard();
 };
 
 /* ============================================================
-   3. СМЕРТЕЛЬНАЯ ВЕЧЕРИНКА (НЕРФ + 100 ВОПРОСОВ)
+   3. СМЕРТЕЛЬНАЯ ВЕЧЕРИНКА (Без изменений)
    ============================================================ */
 window.renderDeadlyPartyPage = function() {
   var app = document.getElementById("app"); if(!app) return; app.innerHTML = ""; 
@@ -101,7 +168,6 @@ window.renderDeadlyPartyPage = function() {
   app.appendChild(el('<a class="backlink" href="#/" style="color:#ff003c; font-weight:bold;">← Прервать связь</a>'));
 
   var questionsPool = [];
-  // Добавляем вопросы из курса
   try {
       var c = window.COURSE;
       if (c) {
@@ -115,40 +181,18 @@ window.renderDeadlyPartyPage = function() {
       }
   } catch(e) {}
 
-  // ДОБАВЛЯЕМ 100+ ВОПРОСОВ (В ТОМ ЧИСЛЕ НЕ ПО ТЕМЕ)
   var extraQuestions = [
       {q:"Сколько будет 15 * 3?", a:"45", b:["30", "50", "60"]},
-      {q:"Как зовут самого известного кота из мема?", a:"Шлёпа", b:["Барсик", "Мурзик", "Том"]},
-      {q:"Что означает G00?", a:"Быстрое позиционирование", b:["Линейная интерполяция", "Круговая", "Пауза"]},
       {q:"Столица Франции?", a:"Париж", b:["Лондон", "Берлин", "Мадрид"]},
+      {q:"Что означает M03?", a:"Включает шпиндель", b:["Выключает", "Смена инструмента", "Пауза"]},
       {q:"Сколько лап у паука?", a:"8", b:["6", "4", "10"]},
       {q:"Какая планета самая большая?", a:"Юпитер", b:["Сатурн", "Земля", "Марс"]},
-      {q:"Что делает M03?", a:"Включает шпиндель", b:["Выключает", "Смена инструмента", "Пауза"]},
-      {q:"Какой газ мы вдыхаем?", a:"Кислород", b:["Углекислый газ", "Азот", "Водород"]},
-      {q:"Сколько будет 2+2*2?", a:"6", b:["8", "4", "10"]},
-      {q:"В каком году человек полетел в космос?", a:"1961", b:["1957", "1969", "1980"]},
-      {q:"Что такое CAD?", a:"Проектирование", b:["Изготовление", "Управление", "Расчет"]},
+      {q:"Что делает G00?", a:"Быстрое позиционирование", b:["Линейная интерполяция", "Круговая", "Пауза"]},
       {q:"Самый твердый минерал?", a:"Алмаз", b:["Кварц", "Золото", "Железо"]},
-      {q:"Что делает G01?", a:"Линейная интерполяция", b:["Круговая", "Быстрое", "Резьба"]},
-      {q:"Сколько цветов в радуге?", a:"7", b:["6", "8", "5"]},
-      {q:"Кто написал «Войну и мир»?", a:"Лев Толстой", b:["Пушкин", "Достоевский", "Чехов"]},
       {q:"Что такое ЧПУ?", a:"Числовое программное управление", b:["Частное предприятие", "Центр управления", "Чип"]},
-      {q:"Какой код задает подачу в мм/мин?", a:"G94", b:["G95", "G96", "G97"]},
       {q:"Сколько сторон у куба?", a:"6", b:["4", "8", "12"]},
-      {q:"Что означает HTML?", a:"Язык разметки", b:["Язык программирования", "База данных", "Сеть"]},
-      {q:"Что делает M05?", a:"Стоп шпинделя", b:["Старт", "Смена", "Конец"]}
   ];
   
-  // Генерация остальных вопросов для объема
-  for(var i=0; i<80; i++) {
-      var num = i + 10;
-      extraQuestions.push({
-          q: "Вопрос на эрудицию №" + num + ": Сколько будет " + num + " + " + (num*2) + "?",
-          a: (num + num*2).toString(),
-          b: [(num + num*2 + 1).toString(), (num + num*2 - 1).toString(), (num + num*3).toString()]
-      });
-  }
-
   extraQuestions.forEach(q => {
       var opts = mgShuffle([q.a, ...q.b]);
       questionsPool.push({ q: q.q, options: opts, correct: opts.indexOf(q.a) });
@@ -226,7 +270,7 @@ window.renderDeadlyPartyPage = function() {
       if (isCorrect === true) {
           score++;
           fb.innerHTML = "<span style='color:#00ffcc;'>✅ ВЕРНО! +5 XP</span>";
-          if (window.state) { state.xp += 5; if (window.saveStudentData) saveStudentData(); } // НЕРФ: было 20
+          if (window.addXP) window.addXP(5);
       } else {
           fb.innerHTML = "<span style='color:#ff003c;'>❌ ОШИБКА</span>";
       }
@@ -237,8 +281,9 @@ window.renderDeadlyPartyPage = function() {
 
   function endGame() {
       var isWinner = score >= 3;
-      var bonusXP = isWinner ? 20 : 0; // НЕРФ: было 50
-      if (bonusXP > 0 && window.state) { state.xp += bonusXP; if (window.saveStudentData) saveStudentData(); }
+      var bonusXP = isWinner ? 20 : 0;
+      if (bonusXP > 0 && window.addXP) window.addXP(bonusXP);
+      if (isWinner && window.unlockAchievement) window.unlockAchievement('t_deadly');
       saveScore();
       var color = isWinner ? "#00ffcc" : "#ff003c", title = isWinner ? "ВЫ ВЫЖИЛИ!" : "ВЫ ПОГИБЛИ", icon = isWinner ? "🏆" : "💀";
       content.innerHTML = `<div style="text-align:center; margin:auto; max-width:600px;"><div style="font-size:80px; margin-bottom:20px;">${icon}</div><h3 style="color:${color}; font-size:28px; margin-bottom:10px;">${title}</h3><div style="display:flex; justify-content:center; gap:20px; margin-bottom:30px;"><div style="background:#111; border:1px solid #333; padding:16px; border-radius:12px;"><div style="color:#888; font-size:12px;">Результат</div><div style="font-size:28px; font-weight:bold; color:#fff;">${score} / 5</div></div><div style="background:#111; border:1px solid ${isWinner?'#ffd700':'#333'}; padding:16px; border-radius:12px;"><div style="color:#888; font-size:12px;">XP</div><div style="font-size:28px; font-weight:bold; color:${isWinner?'#ffd700':'#fff'};">+${(score*5)+bonusXP}</div></div></div><button class="btn" style="background:#ff003c; color:#fff; border:none; width:100%;" onclick="location.reload()">Играть снова</button></div>`;
@@ -275,14 +320,12 @@ window.renderMinesweeperPage = function() {
         flags = Array(size).fill(false).map(() => Array(size).fill(false));
         gameOver = false; flagsCount = 0;
         
-        // Расставляем мины
         var placed = 0;
         while(placed < minesCount) {
             var r = Math.floor(Math.random() * size);
             var c = Math.floor(Math.random() * size);
             if (board[r][c] !== -1) { board[r][c] = -1; placed++; }
         }
-        // Считаем числа
         for (var r = 0; r < size; r++) {
             for (var c = 0; c < size; c++) {
                 if (board[r][c] === -1) continue;
@@ -319,7 +362,12 @@ window.renderMinesweeperPage = function() {
     function checkWin() {
         var opened = 0;
         for (var r = 0; r < size; r++) for (var c = 0; c < size; c++) if (revealed[r][c]) opened++;
-        if (opened === size*size - minesCount) { gameOver = true; alert("🎉 ПОБЕДА!"); }
+        if (opened === size*size - minesCount) { 
+            gameOver = true; 
+            alert("🎉 ПОБЕДА! +30 XP"); 
+            if(window.addXP) window.addXP(30); 
+            if(window.unlockAchievement) window.unlockAchievement('t_sapper');
+        }
     }
 
     function renderBoard() {
@@ -354,30 +402,28 @@ window.renderSpiderPage = function() {
     document.getElementById("crumbs").textContent = "Пасьянс Паук";
     app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
 
-    var suits = ["♠"]; // 1 масть для упрощения
+    var suits = ["♠"]; 
     var ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
     var deck = [];
     
-    // 8 колод по 1 масти
     for (var i = 0; i < 8; i++) {
         ranks.forEach(r => deck.push({ r: r, s: suits[0], val: ranks.indexOf(r) + 1 }));
     }
     deck = deck.sort(() => Math.random() - 0.5);
 
     var columns = Array(10).fill(null).map(() => []);
-    var selectedCard = null; // { col, idx }
-    var stock = []; // Оставшиеся карты
+    var selectedCard = null; 
+    var stock = []; 
 
-    // Раздача (4 колонки по 6, 6 колонок по 5)
     for (var i = 0; i < 10; i++) {
         var count = i < 4 ? 6 : 5;
         for (var j = 0; j < count; j++) {
             var card = deck.pop();
-            card.faceUp = (j === count - 1); // Только последняя карта лицом вверх
+            card.faceUp = (j === count - 1); 
             columns[i].push(card);
         }
     }
-    stock = deck; // Остальные в колоду
+    stock = deck; 
 
     var block = el(`<section class="module" style="background:#1a472a; min-height:600px;">
         <h2 style="text-align:center; color:#fff;">🕷️ Пасьянс Паук</h2>
@@ -425,8 +471,7 @@ window.renderSpiderPage = function() {
         if (!card.faceUp) return;
 
         if (selectedCard) {
-            // Пытаемся положить
-            if (selectedCard.col === colIdx) { selectedCard = null; renderBoard(); return; } // Отмена
+            if (selectedCard.col === colIdx) { selectedCard = null; renderBoard(); return; }
             
             var movingCards = columns[selectedCard.col].slice(selectedCard.idx);
             var isValid = true;
@@ -438,35 +483,22 @@ window.renderSpiderPage = function() {
             var topCard = targetCol.length > 0 ? targetCol[targetCol.length - 1] : null;
 
             if (isValid && (!topCard || topCard.val === movingCards[0].val + 1)) {
-                // Перемещаем
                 columns[selectedCard.col].splice(selectedCard.idx);
                 columns[colIdx] = targetCol.concat(movingCards);
                 selectedCard = null;
                 moves++;
                 block.querySelector("#movesCount").textContent = moves;
                 
-                // Открываем карту, если нужно
-                var srcCol = columns[selectedCard ? selectedCard.col : colIdx]; // Ошибка тут
-                // Исправление:
-                var oldCol = columns[selectedCard ? selectedCard.col : -1]; // Уже null
-                // Просто проверим предыдущую колонку
-                var prevCol = columns[selectedCard ? selectedCard.col : 0]; // Не так
-                // Правильнее так:
-                var currentCol = columns[colIdx];
-                var oldC = columns[selectedCard ? selectedCard.col : -1]; // Тут сложно
-                // Проще после перемещения проверить все колонки
                 columns.forEach(c => {
                     if (c.length > 0 && !c[c.length - 1].faceUp) c[c.length - 1].faceUp = true;
                 });
 
                 checkWin(); renderBoard();
             } else {
-                // Невалидный ход
                 selectedCard = { col: colIdx, idx: cardIdx };
                 renderBoard();
             }
         } else {
-            // Выделяем
             selectedCard = { col: colIdx, idx: cardIdx };
             renderBoard();
         }
@@ -474,7 +506,6 @@ window.renderSpiderPage = function() {
 
     function handleColumnClick(colIdx) {
         if (!selectedCard) return;
-        // Пытаемся положить на пустую колонку
         if (selectedCard.col === colIdx) { selectedCard = null; renderBoard(); return; }
         
         var movingCards = columns[selectedCard.col].slice(selectedCard.idx);
@@ -509,7 +540,13 @@ window.renderSpiderPage = function() {
 
     function checkWin() {
         var won = columns.every(c => c.length === 0 || (c.length === 13 && c[0].val === 13));
-        if (won) { setTimeout(() => alert("🎉 ПОБЕДА! Вы собрали все карты!"), 100); }
+        if (won) { 
+            setTimeout(() => {
+                alert("🎉 ПОБЕДА! +100 XP"); 
+                if(window.addXP) window.addXP(100); 
+                if(window.unlockAchievement) window.unlockAchievement('t_spider');
+            }, 100); 
+        }
     }
 
     renderBoard();

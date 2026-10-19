@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v96.0 — FULL FINAL)
+   МДК 07.01 — script.js (v97.0 — BALANCED XP & ACHIEVEMENTS)
    ============================================================ */
 "use strict";
 
@@ -12,7 +12,6 @@ var state = {
   notifications: [], schedule: [], avatar: null, effects: []
 };
 
-// Безопасная загрузка сессии (Mobile Fix)
 try { 
   var _s = JSON.parse(localStorage.getItem("mdk0701.student") || sessionStorage.getItem("mdk0701.student") || "null"); 
   if (_s && _s.name) state.student = _s; 
@@ -31,7 +30,6 @@ function escapeHtml(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, fu
 function findTopic(id){ var c = getCourse(); if (!c) return null; for (var i = 0; i < c.sections.length; i++){ if (!c.sections[i].topics) continue; for (var j = 0; j < c.sections[i].topics.length; j++){ if (c.sections[i].topics[j].id === id) return { section: c.sections[i], topic: c.sections[i].topics[j] }; } } return null; }
 function studentKey(s){ s = s || state.student; if (!s || !s.name) return null; return (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()); }
 
-// Глобальный перехватчик ошибок загрузки картинок (скрывает битые иконки)
 window.addEventListener('error', function(e) {
     if (e.target.tagName === 'IMG') { e.target.style.display = 'none'; }
 }, true);
@@ -65,21 +63,36 @@ function updateNotifBadge() {
     }
 }
 
+// --- НАЧИСЛЕНИЕ XP (ГЛОБАЛЬНАЯ ФУНКЦИЯ) ---
+window.addXP = function(amount) {
+    state.xp += amount;
+    checkAchievements();
+    if (window.saveStudentData) saveStudentData();
+    if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
+    window.showToast("+" + amount + " XP", "ok");
+};
+
 // --- ДОСТИЖЕНИЯ ---
 function checkAchievements() {
     var achList = [
-        { id: "t1", xp: 10, title: "Новичок" },
-        { id: "t2", xp: 50, title: "Студент" },
-        { id: "t3", xp: 100, title: "Книжный червь" },
-        { id: "t4", xp: 200, title: "Умник" },
-        { id: "t5", xp: 500, title: "Знаток" },
-        { id: "t6", xp: 1000, title: "Мастер" }
+        { id: "t1", xp: 50, title: "Новичок" },
+        { id: "t2", xp: 200, title: "Студент" },
+        { id: "t3", xp: 500, title: "Книжный червь" },
+        { id: "t4", xp: 1000, title: "Умник" },
+        { id: "t5", xp: 2500, title: "Знаток" },
+        { id: "t6", xp: 5000, title: "Мастер" },
+        { id: "t_ttt", title: "Крестики-нолики", desc: "Победить станок в крестики-нолики" },
+        { id: "t_sudoku", title: "Судоку-мастер", desc: "Решить судоку" },
+        { id: "t_sapper", title: "Сапер", desc: "Разминировать поле" },
+        { id: "t_spider", title: "Пасьянс", desc: "Собрать пасьянс Паук" },
+        { id: "t_deadly", title: "Выживший", desc: "Победить в Смертельной вечеринке" },
+        { id: "t_theme", title: "Стиляга", desc: "Купить любую тему" },
+        { id: "t_avatar", title: "Аватар", desc: "Установить кастомный аватар" }
     ];
     var hasNew = false;
     achList.forEach(a => {
-        if (state.xp >= a.xp && !state.achievements[a.id]) {
+        if (a.xp && state.xp >= a.xp && !state.achievements[a.id]) {
             state.achievements[a.id] = true;
-            window.showToast("🏆 Достижение: " + a.title + "!", "ok");
             if (!state.notifications) state.notifications = [];
             state.notifications.unshift({ id: Date.now(), text: "Получено достижение: " + a.title, type: "ok", date: new Date().toISOString(), read: false });
             hasNew = true;
@@ -87,6 +100,16 @@ function checkAchievements() {
     });
     if (hasNew) updateNotifBadge();
 }
+
+window.unlockAchievement = function(id) {
+    if (!state.achievements) state.achievements = {};
+    if (!state.achievements[id]) {
+        state.achievements[id] = true;
+        if (window.saveStudentData) saveStudentData();
+        window.showToast("🏆 Новое достижение!", "ok");
+        addNotification("Получено достижение: " + id, "ok");
+    }
+};
 
 // --- ЗАГРУЗКА И СОХРАНЕНИЕ ДАННЫХ ---
 function loadStudentData(){
@@ -116,7 +139,6 @@ function loadStudentData(){
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
   updateNotifBadge();
 
-  // Синхронизация с сервером
   if (APPS_SCRIPT_URL && state.student) {
       fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now())
         .then(r => r.json())
@@ -131,8 +153,6 @@ function loadStudentData(){
                 if (serverData.xp !== undefined) { state.xp = serverData.xp; changed = true; }
                 if (serverData.requests) { state.requests = serverData.requests; changed = true; }
                 else { state.requests = {}; changed = true; }
-                if (serverData.avatar) { state.avatar = serverData.avatar; changed = true; }
-                if (serverData.effects) { state.effects = serverData.effects; changed = true; }
 
                 if (changed) {
                     try {
@@ -141,8 +161,6 @@ function loadStudentData(){
                         localStorage.setItem("mdk0701.requests." + ek, JSON.stringify(state.requests));
                         localStorage.setItem("mdk0701.practicalsDone." + ek, JSON.stringify(state.practicalsDone));
                         localStorage.setItem("mdk0701.xp." + ek, state.xp);
-                        if (state.avatar) localStorage.setItem("mdk0701.avatar." + ek, state.avatar);
-                        localStorage.setItem("mdk0701.effects." + ek, JSON.stringify(state.effects));
                     } catch (e) {}
                     
                     if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
@@ -204,7 +222,7 @@ function checkDailyLogin() {
     if (!state.student) return;
     var today = new Date().toDateString();
     if (state.lastLoginDate !== today) {
-        var xpGained = 10;
+        var xpGained = 20;
         var streakMsg = "";
         if (state.lastLoginDate) {
             var lastDate = new Date(state.lastLoginDate);
@@ -213,7 +231,7 @@ function checkDailyLogin() {
             var diffDays = Math.round((now - lastDate) / (1000 * 60 * 60 * 24));
             if (diffDays === 1) {
                 state.loginStreak++;
-                var bonus = Math.min(state.loginStreak * 5, 50);
+                var bonus = Math.min(state.loginStreak * 10, 100);
                 xpGained += bonus;
                 streakMsg = " (🔥 Серия: " + state.loginStreak + " дней! Бонус +" + bonus + " XP)";
             } else {
@@ -552,8 +570,8 @@ function renderTopic(id, tab){
       });
     }
     var isDone = state.progress[id] && state.progress[id].done >= 5;
-    var markBtn = el('<button class="btn" style="width:100%; margin-top:20px;" ' + (isDone ? 'disabled' : '') + '>' + (isDone ? '✅ Тема изучена' : 'Отметить как изученное (+20 XP)') + '</button>');
-    markBtn.onclick = function() { if (!state.progress[id]) state.progress[id] = {}; state.progress[id].done = 5; state.xp += 20; saveStudentData(); window.showToast("Лекция изучена!", "ok"); markBtn.textContent = "✅ Тема изучена"; markBtn.disabled = true; };
+    var markBtn = el('<button class="btn" style="width:100%; margin-top:20px;" ' + (isDone ? 'disabled' : '') + '>' + (isDone ? '✅ Тема изучена' : 'Отметить как изученное (+50 XP)') + '</button>');
+    markBtn.onclick = function() { if (!state.progress[id]) state.progress[id] = {}; state.progress[id].done = 5; addXP(50); markBtn.textContent = "✅ Тема изучена"; markBtn.disabled = true; };
     panel.appendChild(markBtn);
   }
   
@@ -648,6 +666,7 @@ function renderTopic(id, tab){
         
         var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); 
         state.selfResults[id] = { grade: grade }; 
+        addXP(100);
         saveStudentData();
         window.showToast("Работа сдана! Оценка: " + grade, "ok");
       };
@@ -699,6 +718,7 @@ function renderTopic(id, tab){
         if (state.allowedAttempts && state.allowedAttempts[reqKey]) {
             state.allowedAttempts[reqKey] = 1; 
         }
+        addXP(150);
         saveStudentData();
         window.showToast("Тест сдан! Оценка: " + grade, "ok"); 
       };
@@ -719,20 +739,20 @@ function renderShopPage(){
   app.appendChild(el('<section class="hero"><h1>Магазин XP</h1><p>У вас: 🌟 <b>' + state.xp + ' XP</b></p></section>'));
   
   var items = [
-    { id: "avatar_custom", icon: "🖼️", title: "Загрузить аватар", price: 100000, type: "upload", desc: "Своя картинка вместо смайлика" },
-    { id: "avatar_animated", icon: "🎞️", title: "Анимированный аватар", price: 500000, type: "upload_animated", desc: "GIF-аватар" },
-    { id: "nick", icon: "🏷️", title: "Кастомный Ник", price: 200, type: "input", field: "nick", placeholder: "Введите ваш ник..." },
-    { id: "sign", icon: "✍️", title: "Подпись в профиле", price: 300, type: "input", field: "sign", placeholder: "Введите вашу подпись..." },
-    { id: "effect_waves", icon: "🌊", title: "Эффект 'Волны'", price: 50000, type: "effect", effect: "waves" },
-    { id: "effect_pulse", icon: "💓", title: "Эффект 'Пульс'", price: 75000, type: "effect", effect: "pulse" },
-    { id: "effect_matrix", icon: "🟩", title: "Эффект 'Матрица'", price: 100000, type: "effect", effect: "matrix" },
+    { id: "avatar_custom", icon: "🖼️", title: "Загрузить аватар", price: 1500, type: "upload", desc: "Своя картинка вместо смайлика" },
+    { id: "avatar_animated", icon: "🎞️", title: "Анимированный аватар", price: 3000, type: "upload_animated", desc: "GIF-аватар" },
+    { id: "nick", icon: "🏷️", title: "Кастомный Ник", price: 500, type: "input", field: "nick", placeholder: "Введите ваш ник..." },
+    { id: "sign", icon: "✍️", title: "Подпись в профиле", price: 500, type: "input", field: "sign", placeholder: "Введите вашу подпись..." },
+    { id: "effect_waves", icon: "🌊", title: "Эффект 'Волны'", price: 800, type: "effect", effect: "waves" },
+    { id: "effect_pulse", icon: "💓", title: "Эффект 'Пульс'", price: 1200, type: "effect", effect: "pulse" },
+    { id: "effect_matrix", icon: "🟩", title: "Эффект 'Матрица'", price: 2000, type: "effect", effect: "matrix" },
     { id: "theme_matrix", icon: "🟩", title: "Тема 'Матрица'", price: 500, type: "theme", theme: "matrix" },
-    { id: "theme_cosmos", icon: "🌌", title: "Тема 'Космос'", price: 800, type: "theme", theme: "cosmos" },
-    { id: "theme_gold", icon: "🪙", title: "Тема 'Золото'", price: 1000, type: "theme", theme: "gold" },
-    { id: "theme_anime", icon: "⛩️", title: "Тема 'Аниме'", price: 1500, type: "theme", theme: "anime" },
-    { id: "theme_hacker", icon: "💻", title: "Тема 'Хакер'", price: 2000, type: "theme", theme: "hacker" },
-    { id: "theme_cyber", icon: "🤖", title: "Тема 'Кибер'", price: 2500, type: "theme", theme: "cyber" },
-    { id: "theme_matrioska", icon: "🪆", title: "Тема 'Матрешка'", price: 3000, type: "theme", theme: "matrioska" }
+    { id: "theme_cosmos", icon: "🌌", title: "Тема 'Космос'", price: 700, type: "theme", theme: "cosmos" },
+    { id: "theme_gold", icon: "🪙", title: "Тема 'Золото'", price: 800, type: "theme", theme: "gold" },
+    { id: "theme_anime", icon: "⛩️", title: "Тема 'Аниме'", price: 1000, type: "theme", theme: "anime" },
+    { id: "theme_hacker", icon: "💻", title: "Тема 'Хакер'", price: 1200, type: "theme", theme: "hacker" },
+    { id: "theme_cyber", icon: "🤖", title: "Тема 'Кибер'", price: 1500, type: "theme", theme: "cyber" },
+    { id: "theme_matrioska", icon: "🪆", title: "Тема 'Матрешка'", price: 1500, type: "theme", theme: "matrioska" }
   ];
   
   var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:16px;"></div>');
@@ -754,6 +774,7 @@ function renderShopPage(){
                 state[it.field] = val.trim();
             } else if (it.type === "theme") {
                 applyTheme(it.theme);
+                unlockAchievement('t_theme');
             } else if (it.type === "effect") {
                 state.effects.push(it.effect);
                 applyEffects();
@@ -773,6 +794,7 @@ function renderShopPage(){
                         saveStudentData();
                         renderUserChip();
                         renderShopPage();
+                        unlockAchievement('t_avatar');
                         window.showToast("Аватар установлен!", "ok");
                     };
                     reader.readAsDataURL(file);
@@ -832,8 +854,8 @@ function route(){
       else if (parts[0] === "event") window.renderDeadlyPartyPage && window.renderDeadlyPartyPage();
       else if (parts[0] === "tictactoe") window.renderTicTacToePage && window.renderTicTacToePage();
       else if (parts[0] === "sudoku") window.renderSudokuPage && window.renderSudokuPage();
-      else if (parts[0] === "minesweeper") window.renderMinesweeperPage && window.renderMinesweeperPage(); // НОВОЕ
-      else if (parts[0] === "spider") window.renderSpiderPage && window.renderSpiderPage(); // НОВОЕ
+      else if (parts[0] === "minesweeper") window.renderMinesweeperPage && window.renderMinesweeperPage(); 
+      else if (parts[0] === "spider") window.renderSpiderPage && window.renderSpiderPage(); 
       else if (parts[0] === "chat") window.renderChatPage && window.renderChatPage();
       else if (parts[0] === "comments") window.renderCommentsPage && window.renderCommentsPage();
       else renderHome();
