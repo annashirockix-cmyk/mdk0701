@@ -1,10 +1,14 @@
 /* ============================================================
-   МДК 07.01 — ui.js (v181.0 — FULL FIXES & ROUTES)
+   МДК 07.01 — ui.js (v182.0 — FULL RESTORE & FIXES)
    ============================================================ */
 "use strict";
 
 window.$ = (id) => document.getElementById(id);
-window.el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; };
+window.el = (html) => { 
+    const div = document.createElement("div"); 
+    div.innerHTML = html.trim(); 
+    return div.firstChild; 
+};
 window.escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.studentKey = (s) => { s = s || state.student; return s ? (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()) : null; };
 
@@ -29,26 +33,24 @@ window.renderUserChip = function() {
         $("userChipAvatar").innerHTML = state.staff.role === "admin" ? "👑" : "👨‍🏫";
         var reqEl = document.getElementById("navRequests"); if (reqEl) reqEl.style.display = "flex";
     } else {
-        $("userChipName").textContent = state.student.name;
+        var vipHtml = state.isPremium ? '<span class="vip-badge">VIP</span>' : '';
+        $("userChipName").innerHTML = escapeHtml(state.student.name) + vipHtml;
         $("userChipGroup").textContent = "Гр. " + state.student.group;
         var avHtml = state.avatar ? '<img src="' + state.avatar + '" style="width:100%;height:100%;object-fit:cover;">' : "👨‍🎓";
         var effClass = state.avatarEffect ? " av-fx-" + state.avatarEffect : "";
+        if (state.isPremium) effClass = " av-fx-gold";
         $("userChipAvatar").innerHTML = '<div class="av-container' + effClass + '" style="width:100%; height:100%; font-size:24px;">' + avHtml + '</div>';
     }
 };
 
 window.closeDrawer = () => { $("drawer").classList.remove("open"); $("drawerOverlay").classList.remove("open"); };
 
-// --- ИСПРАВЛЕННЫЕ ТЕМЫ ---
 window.applyTheme = (theme) => { 
     document.documentElement.setAttribute("data-theme", theme); 
     localStorage.setItem("mdk0701.theme", theme); 
-    // Сбрасываем кастомные фоны при смене обычной темы
     document.body.classList.remove("bg-space", "bg-hyper", "bg-matrix-code", "bg-brutal");
     state.customBg = null;
 };
-
-window.applyFont = (font) => { document.documentElement.style.setProperty('--font-main', font); localStorage.setItem("mdk0701.font", font); };
 
 window.applyCustomBg = () => {
     document.body.className = document.body.className.replace(/bg-\S+/g, '');
@@ -64,11 +66,11 @@ window.openThemeModal = function() {
   themes.forEach(function(t, i){ 
       var btn = el('<button class="btn ' + (t===current ? '' : 'ghost') + '" style="padding:12px;">' + names[i] + '</button>'); 
       btn.onclick = function() { 
-          if (!state.staff && ["matrix", "cyber", "neon", "retro", "space", "hyper", "matrix-code", "brutal"].includes(t) && !state.shop.includes("theme_" + t)) {
+          if (!state.staff && !state.isPremium && ["matrix", "cyber", "neon", "retro", "space", "hyper", "matrix-code", "brutal"].includes(t) && !state.shop.includes("theme_" + t)) {
               window.showToast("Тема не куплена в магазине!", "err"); return;
           }
           if (["space", "hyper", "matrix-code", "brutal"].includes(t)) {
-              window.applyTheme("light"); // Сначала сбрасываем
+              window.applyTheme("light");
               state.customBg = t; window.applyCustomBg();
           } else {
               window.applyTheme(t); 
@@ -98,11 +100,38 @@ function renderHome() {
     var app = $("app"); app.innerHTML = "";
     var c = window.COURSE || (typeof COURSE !== 'undefined' ? COURSE : null);
     if (!c) {
-        app.innerHTML = '<div class="module" style="text-align:center; padding:40px; margin-top:40px;"><h2>Ошибка загрузки данных</h2><p>Файл data.js не загружен или в нем нет <code>window.COURSE</code>.</p><button class="btn" onclick="location.reload()">Обновить</button></div>';
+        app.innerHTML = '<div class="module" style="text-align:center; padding:40px; margin-top:40px;"><h2>Ошибка загрузки данных</h2><p>Файл data.js не загружен.</p><button class="btn" onclick="location.reload()">Обновить</button></div>';
         return;
     }
     app.appendChild(el('<section class="hero"><h1>' + c.title + '</h1><p>' + c.module + '</p></section>'));
+    
+    // Баннер VIP
+    if (state.student && !state.isPremium) {
+        app.appendChild(el(`
+            <div class="module" style="background: linear-gradient(135deg, #2c3e50, #000); color: #fff; border: 1px solid #ffd700; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h3 style="margin: 0; color: #ffd700;">👑 Станьте VIP-Оператором</h3>
+                    <p style="margin: 5px 0 0; font-size: 14px; opacity: 0.8;">Получите PRO-симулятор, аналитику и резюме!</p>
+                </div>
+                <button class="btn" onclick="location.hash='#/subscription'" style="background: #ffd700; color: #000; font-weight: bold;">Подробнее</button>
+            </div>
+        `));
+    }
+
     app.appendChild(el(window.renderQuestsWidget()));
+    
+    // Блок полезных ссылок
+    app.appendChild(el(`
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin:20px 0;">
+            <a href="#/schedule" class="module" style="text-align:center; margin:0; padding:15px; cursor:pointer;"><div style="font-size:24px;">📅</div><div style="font-size:12px; font-weight:bold; margin-top:5px;">Расписание</div></a>
+            <a href="#/videos" class="module" style="text-align:center; margin:0; padding:15px; cursor:pointer;"><div style="font-size:24px;">🎬</div><div style="font-size:12px; font-weight:bold; margin-top:5px;">Видео</div></a>
+            <a href="#/passports" class="module" style="text-align:center; margin:0; padding:15px; cursor:pointer;"><div style="font-size:24px;">📄</div><div style="font-size:12px; font-weight:bold; margin-top:5px;">Паспорта</div></a>
+            <a href="#/safety" class="module" style="text-align:center; margin:0; padding:15px; cursor:pointer;"><div style="font-size:24px;">🦺</div><div style="font-size:12px; font-weight:bold; margin-top:5px;">Охрана труда</div></a>
+            <a href="#/formatting" class="module" style="text-align:center; margin:0; padding:15px; cursor:pointer;"><div style="font-size:24px;">📝</div><div style="font-size:12px; font-weight:bold; margin-top:5px;">Оформление</div></a>
+            <a href="#/glossary" class="module" style="text-align:center; margin:0; padding:15px; cursor:pointer;"><div style="font-size:24px;">📖</div><div style="font-size:12px; font-weight:bold; margin-top:5px;">Глоссарий</div></a>
+        </div>
+    `));
+
     app.appendChild(el('<div class="steps-title">Учебный план</div>'));
     c.sections.forEach(sec => {
         app.appendChild(el('<div style="font-weight:bold; margin:20px 0 10px; color:var(--accent); text-transform:uppercase; font-size:12px; letter-spacing:1px;">' + sec.title + '</div>'));
@@ -115,122 +144,150 @@ function renderHome() {
     });
 }
 
-/* ---------------- СТРАНИЦЫ ---------------- */
+/* ---------------- ВОССТАНОВЛЕННЫЕ СТРАНИЦЫ ---------------- */
 
-window.renderArcadePage = function() {
+window.renderSchedulePage = function() {
     var app = $("app"); app.innerHTML = "";
-    document.getElementById("crumbs").textContent = "Игровая комната";
-    app.appendChild(el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🕹️ Игровая комната</h1></section>'));
-    var games = [
-        { title: "Казино", icon: "🎰", route: "#/casino" }, { title: "Рулетка", icon: "🎡", route: "#/roulette" },
-        { title: "Судоку", icon: "🔢", route: "#/sudoku" }, { title: "Сапёр", icon: "💣", route: "#/minesweeper" },
-        { title: "Пасьянс Паук", icon: "🕷️", route: "#/spider" }, { title: "Крестики-нолики", icon: "❌", route: "#/tictactoe" }
-    ];
-    var grid = el('<div class="arcade-grid"></div>');
-    games.forEach(g => {
-        grid.appendChild(el('<div class="arcade-card" onclick="location.hash=\'' + g.route + '\'"><div style="font-size:50px;">' + g.icon + '</div><div style="font-weight:bold; margin-top:10px;">' + g.title + '</div></div>'));
-    });
-    app.appendChild(grid);
-};
-
-window.render3DMachinePage = function() {
-    var app = $("app"); app.innerHTML = "";
-    document.getElementById("crumbs").textContent = "3D Станок";
-    app.appendChild(el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🖥️ 3D Модель станка</h1><p>Вращайте мышкой для просмотра</p></section>'));
-    var container = el('<div id="3dContainer" style="width:100%; height:500px; background:var(--card-soft); border-radius:16px; overflow:hidden; position:relative;"></div>');
-    app.appendChild(container);
-
-    setTimeout(() => {
-        if(typeof THREE === 'undefined') return;
-        var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-        var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        container.appendChild(renderer.domElement);
-
-        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
-        var dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight);
-
-        var machineGroup = new THREE.Group();
-        var bedGeo = new THREE.BoxGeometry(10, 1, 3);
-        var bedMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-        var bed = new THREE.Mesh(bedGeo, bedMat); bed.position.set(0, -1, 0); machineGroup.add(bed);
-
-        var headGeo = new THREE.BoxGeometry(2, 3, 3);
-        var head = new THREE.Mesh(headGeo, bedMat); head.position.set(-4, 0.5, 0); machineGroup.add(head);
-
-        var chuckGeo = new THREE.CylinderGeometry(1, 1, 1, 16);
-        var chuckMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        var chuck = new THREE.Mesh(chuckGeo, chuckMat); chuck.rotation.z = Math.PI / 2; chuck.position.set(-2.5, 0.5, 0); machineGroup.add(chuck);
-
-        var tailGeo = new THREE.BoxGeometry(1.5, 2, 2);
-        var tail = new THREE.Mesh(tailGeo, bedMat); tail.position.set(4, 0, 0); machineGroup.add(tail);
-
-        var toolGeo = new THREE.BoxGeometry(1, 1.5, 1);
-        var toolMat = new THREE.MeshStandardMaterial({ color: 0xc14a2a });
-        var tool = new THREE.Mesh(toolGeo, toolMat); tool.position.set(0, 0.5, 1); machineGroup.add(tool);
-
-        scene.add(machineGroup);
-        camera.position.set(8, 8, 12);
-        camera.lookAt(0, 0, 0);
-
-        function animate() {
-            requestAnimationFrame(animate);
-            machineGroup.rotation.y += 0.005;
-            renderer.render(scene, camera);
-        }
-        animate();
-    }, 100);
-};
-
-window.renderPortfolioPage = function() {
-    var app = $("app"); app.innerHTML = "";
-    document.getElementById("crumbs").textContent = "Портфолио";
+    document.getElementById("crumbs").textContent = "Расписание";
     app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
-    if (!state.student) { app.appendChild(el('<div class="module">Войдите.</div>')); return; }
+    app.appendChild(el('<section class="hero"><h1>Расписание занятий</h1></section>'));
+    
+    var block = el(`<section class="module"><div style="font-size:16px; margin-bottom:10px;">Пн: 08:30 - 10:00 (МДК 07.01, 204)</div><div style="font-size:16px; margin-bottom:20px;">Ср: 12:30 - 14:00 (Практика, Цех)</div><button class="btn" id="icalBtn" style="width:100%; max-width:300px;">📅 Добавить в календарь (.ics)</button></section>`);
+    app.appendChild(block);
 
-    var portfolioHtml = `
-        <div id="portfolioPrint" class="module" style="padding:40px; background:#fff; color:#000;">
-            <h1 style="text-align:center; color:#c14a2a;">ПОРТФОЛИО СТУДЕНТА</h1>
-            <hr style="margin:20px 0; border:1px solid #ccc;">
-            <p><b>ФИО:</b> ${escapeHtml(state.student.name)}</p>
-            <p><b>Группа:</b> ${escapeHtml(state.student.group)}</p>
-            <p><b>Уровень:</b> ${getLevel(state.xp)} (${getLevelTitle(getLevel(state.xp))})</p>
-            <p><b>Всего опыта (XP):</b> ${state.xp}</p>
-            <h3 style="margin-top:30px; color:#c14a2a;">Достижения:</h3>
-            <ul>${Object.keys(state.achievements || {}).slice(0, 20).map(id => `<li>${id}</li>`).join('')}</ul>
-        </div>
-        <div style="text-align:center; margin-top:20px;">
-            <button class="btn" id="pdfBtn">📥 Скачать PDF</button>
-        </div>`;
-    app.appendChild(el(portfolioHtml));
-
-    document.getElementById("pdfBtn").onclick = function() {
-        if(typeof html2pdf === 'undefined') return window.showToast("Библиотека PDF не загружена", "err");
-        var element = document.getElementById('portfolioPrint');
-        var opt = { margin: 10, filename: 'portfolio_' + state.student.name + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-        window.showToast("Генерация PDF...", "info");
-        html2pdf().set(opt).from(element).save().then(() => window.showToast("PDF готов!", "ok"));
+    block.querySelector("#icalBtn").onclick = () => {
+        var ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//MDK0701//RU\n";
+        var dt = new Date(); dt.setDate(dt.getDate() + 1);
+        var y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,'0'), d = String(dt.getDate()).padStart(2,'0');
+        ics += `BEGIN:VEVENT\nSUMMARY:МДК 07.01\nLOCATION:204\nDTSTART:${y}${m}${d}T083000\nDTEND:${y}${m}${d}T100000\nEND:VEVENT\nEND:VCALENDAR`;
+        var blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "schedule.ics"; a.click();
     };
 };
 
+window.renderVideosPage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Видеоматериалы";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    app.appendChild(el('<section class="hero"><h1>🎬 Видеоматериалы</h1></section>'));
+    var c = window.COURSE || COURSE;
+    var list = el('<div style="display:flex; flex-direction:column; gap:15px;"></div>');
+    if(c.videos) c.videos.forEach(v => {
+        list.appendChild(el(`<div class="module" style="margin:0; display:flex; justify-content:space-between; align-items:center; padding:15px;">
+            <div style="font-weight:bold;">${v.title}</div>
+            <button class="btn ghost" onclick="window.showToast('Видео ${v.src} будет доступно позже', 'info')">Смотреть</button>
+        </div>`));
+    });
+    app.appendChild(list);
+};
+
+window.renderPassportsPage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Паспорта станков";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    app.appendChild(el('<section class="hero"><h1>📄 Паспорта станков</h1></section>'));
+    var c = window.COURSE || COURSE;
+    var list = el('<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;"></div>');
+    if(c.passports) c.passports.forEach(p => {
+        list.appendChild(el(`<div class="module" style="margin:0;">
+            <h3 style="margin-top:0; color:var(--accent);">${p.title}</h3>
+            <p style="font-size:13px; color:var(--muted); min-height:40px;">${p.summary}</p>
+            <a href="${p.file}" target="_blank" class="btn ghost" style="width:100%; text-align:center; display:block;">Скачать PDF</a>
+        </div>`));
+    });
+    app.appendChild(list);
+};
+
+window.renderSafetyPage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Охрана труда";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    app.appendChild(el('<section class="hero"><h1>🦺 Инструкции по охране труда (ИОТ)</h1></section>'));
+    var c = window.COURSE || COURSE;
+    var list = el('<div style="display:flex; flex-direction:column; gap:10px;"></div>');
+    if(c.safety) c.safety.forEach(s => {
+        list.appendChild(el(`<div class="module" style="margin:0; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-weight:bold;">${s.title}</div><div style="font-size:12px; color:var(--muted); max-width:500px;">${s.summary}</div></div>
+            <a href="${s.file}" target="_blank" class="btn">Скачать</a>
+        </div>`));
+    });
+    app.appendChild(list);
+};
+
+window.renderFormattingPage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Требования к оформлению";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    var c = window.COURSE || COURSE;
+    if(!c.practiceFormatting) return;
+    
+    app.appendChild(el(`<section class="hero"><h1>📝 ${c.practiceFormatting.title}</h1><p>${c.practiceFormatting.intro}</p></section>`));
+    
+    var list = el('<div class="module"></div>');
+    c.practiceFormatting.blocks.forEach(b => {
+        var blockHtml = `<h3 style="color:var(--accent); margin-top:20px; border-bottom:1px solid var(--border); padding-bottom:5px;">${b.title}</h3><ul style="margin-top:10px;">`;
+        b.items.forEach(i => blockHtml += `<li style="margin-bottom:8px;">${i}</li>`);
+        blockHtml += `</ul>`;
+        list.appendChild(el(blockHtml));
+    });
+    app.appendChild(list);
+};
+
+window.renderGlossaryPage = function() {
+    var app = $("app"); app.innerHTML = "";
+    document.getElementById("crumbs").textContent = "Глоссарий";
+    app.appendChild(el('<a class="backlink" href="#/">← На главную</a>'));
+    app.appendChild(el('<section class="hero"><h1>📖 Глоссарий терминов</h1></section>'));
+    
+    var terms = [
+        { t: "G-код", d: "Язык программирования для станков с ЧПУ." },
+        { t: "ЧПУ", d: "Числовое программное управление." },
+        { t: "УП", d: "Управляющая программа." },
+        { t: "Интерполяция", d: "Расчет промежуточных точек траектории." },
+        { t: "Люнет", d: "Приспособление для поддержки длинных валов." }
+    ];
+    var list = el('<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;"></div>');
+    terms.forEach(item => {
+        list.appendChild(el(`<div class="module" style="margin:0;"><b style="color:var(--accent); font-size:16px;">${item.t}</b><p style="margin:5px 0 0; font-size:14px; color:var(--text-soft);">${item.d}</p></div>`));
+    });
+    app.appendChild(list);
+};
+
+// --- ОБНОВЛЕННЫЙ renderTopic (Исправлен вывод HTML) ---
 window.renderTopic = function(id, tab){
   tab = tab || "lecture"; 
-  var c = window.COURSE || (typeof COURSE !== 'undefined' ? COURSE : null); if (!c) return renderHome();
+  var c = window.COURSE || COURSE; if (!c) return renderHome();
   var t = null;
   for (var i = 0; i < c.sections.length; i++) { for (var j = 0; j < c.sections[i].topics.length; j++) { if (c.sections[i].topics[j].id === id) { t = { section: c.sections[i], topic: c.sections[i].topics[j] }; break; } } if (t) break; }
   if(!t) return renderHome();
 
   var app = $("app"); app.innerHTML = ""; 
   app.appendChild(el('<a class="backlink" href="#/">← К программе</a><section class="topic-head"><h1>' + t.topic.title + '</h1></section>'));
-  var tw = el('<div class="tabs"></div>');
-  [["lecture","01 Лекция"],["practice","02 Практика"],["self","03 Сам. работа"],["test","04 Тест"]].forEach(function(item){ tw.appendChild(el('<button class="tab ' + (item[0] === tab ? 'active' : '') + '" onclick="location.hash=\'#/topic/' + id + '/' + item[0] + '\'">' + item[1] + '</button>')); });
-  app.appendChild(tw); var panel = el('<section class="panel"></section>'); app.appendChild(panel);
+  
+  // Правильные стили для вкладок
+  var tw = el('<div style="display:flex; gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:5px;"></div>');
+  [["lecture","01 Лекция"],["practice","02 Практика"],["self","03 Сам. работа"],["test","04 Тест"]].forEach(function(item){ 
+      var btn = el(`<button style="padding:10px 20px; border-radius:8px; border:1px solid var(--border); background:${item[0] === tab ? 'var(--accent)' : 'var(--card)'}; color:${item[0] === tab ? '#fff' : 'var(--text)'}; cursor:pointer; font-weight:bold;" onclick="location.hash='#/topic/${id}/${item[0]}'">${item[1]}</button>`);
+      tw.appendChild(btn); 
+  });
+  app.appendChild(tw); 
+  
+  var panel = el('<section class="panel module"></section>'); 
+  app.appendChild(panel);
 
   if (tab === "lecture") {
-    if(t.topic.lectures) t.topic.lectures.forEach(function(l){ panel.appendChild(el('<h3>' + l.code + '. ' + l.title + '</h3><div class="lecture-content">' + (l.content || '<p>Материал готовится.</p>') + '</div>')); });
+    if(t.topic.lectures) t.topic.lectures.forEach(function(l){ 
+        // ИСПРАВЛЕНИЕ: Создаем контейнер и вставляем HTML напрямую
+        var h = el('<h3 style="color:var(--accent); margin-top:30px; border-bottom:1px solid var(--border); padding-bottom:5px;">' + l.code + '. ' + l.title + '</h3>');
+        panel.appendChild(h);
+        var contentDiv = document.createElement("div");
+        contentDiv.className = "lecture-content";
+        contentDiv.innerHTML = l.content || '<p>Материал готовится.</p>';
+        panel.appendChild(contentDiv);
+    });
+    
     var isDone = state.progress[id] && state.progress[id].done >= 5;
-    var markBtn = el('<button class="btn" style="width:100%;margin-top:20px;" ' + (isDone ? 'disabled' : '') + '>' + (isDone ? '✅ Тема изучена' : 'Отметить как изученное (+50 XP)') + '</button>');
+    var markBtn = el('<button class="btn" style="width:100%;margin-top:20px; padding:15px;" ' + (isDone ? 'disabled' : '') + '>' + (isDone ? '✅ Тема изучена' : 'Отметить как изученное (+50 XP)') + '</button>');
     markBtn.onclick = function() { 
         if (!state.progress[id]) state.progress[id] = {}; 
         state.progress[id].done = 5; 
@@ -241,22 +298,31 @@ window.renderTopic = function(id, tab){
     }; 
     panel.appendChild(markBtn);
   }
+  
   if (tab === "practice") {
     if(t.topic.practicals) t.topic.practicals.forEach(function(p){
         var status = state.practicalsDone[id] && state.practicalsDone[id][p.code], grade = state.practicalGrades[id] && state.practicalGrades[id][p.code];
-        var html = '<div class="practice" style="margin-bottom:24px;border:1px solid var(--border);padding:20px;border-radius:12px;background:var(--card-soft);"><div style="color:var(--accent);font-weight:bold;">' + p.code + '</div><div style="font-weight:bold;margin:4px 0 12px 0;font-size:18px;">' + p.title + '</div>';
+        var html = '<div style="margin-bottom:24px;border:1px solid var(--border);padding:20px;border-radius:12px;background:var(--card-soft);"><div style="color:var(--accent);font-weight:bold;">' + p.code + '</div><div style="font-weight:bold;margin:4px 0 12px 0;font-size:18px;">' + p.title + '</div>';
         if(p.goal) html += '<div style="font-size:14px;color:var(--muted);margin-bottom:12px;"><b>Цель:</b> ' + p.goal + '</div>';
         html += '<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">';
         if (status === "approved") html += '<div style="color:var(--ok);font-weight:bold;">✅ Работа подтверждена. Оценка: <b>' + (grade||'') + '</b></div>';
         else if (status === "pending") html += '<div style="color:#d97706;font-weight:bold;">⏳ На проверке.</div>';
         else html += '<button class="btn" onclick="window.markPracticalDone(\'' + id + '\', \'' + p.code + '\')">✅ Сделал</button>';
-        html += '</div></div>'; panel.appendChild(el(html));
+        html += '</div></div>'; 
+        panel.appendChild(el(html));
     });
   }
+  
   if (tab === "test" && t.topic.test) {
       var testWrap = el('<div></div>'); panel.appendChild(testWrap);
-      t.topic.test.forEach(function(q, qi){ var qb = el('<div class="question"><div class="q-text">' + (qi+1) + '. ' + q.q + '</div></div>'); q.options.forEach(function(opt, oi){ qb.appendChild(el('<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + opt + '</span></label>')); }); testWrap.appendChild(qb); });
-      var finishBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить тест</button>'); panel.appendChild(finishBtn);
+      t.topic.test.forEach(function(q, qi){ 
+          var qb = el('<div style="margin-bottom:20px;"><div style="font-weight:bold; margin-bottom:10px;">' + (qi+1) + '. ' + q.q + '</div></div>'); 
+          q.options.forEach(function(opt, oi){ 
+              qb.appendChild(el('<label style="display:block; padding:8px; border:1px solid var(--border); border-radius:6px; margin-bottom:5px; cursor:pointer;"><input type="radio" name="q' + qi + '" value="' + oi + '" style="margin-right:10px;">' + opt + '</label>')); 
+          }); 
+          testWrap.appendChild(qb); 
+      });
+      var finishBtn = el('<button class="btn" style="width:100%;margin-top:10px; padding:15px;">Завершить тест</button>'); panel.appendChild(finishBtn);
       finishBtn.onclick = function() {
         var correct = 0; t.topic.test.forEach(function(q, qi) { var ch = testWrap.querySelector('input[name="q' + qi + '"]:checked'); if (ch && Number(ch.value) === q.correct) correct++; });
         finishBtn.disabled = true; finishBtn.textContent = "Тест завершен";
@@ -264,12 +330,15 @@ window.renderTopic = function(id, tab){
         window.showToast("Тест сдан! Оценка: " + grade, "ok"); 
       };
   }
+  
   if (tab === "self" && t.topic.selfChecks) {
       var selfWrap = el('<div></div>'); panel.appendChild(selfWrap);
-      t.topic.selfChecks.forEach(function(q, i){ selfWrap.appendChild(el('<div class="question"><div class="q-text">' + (i+1) + '. ' + q.q + '</div><input type="text" class="self-input" data-idx="' + i + '" placeholder="Ваш ответ"></div>')); });
-      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px;">Завершить и проверить</button>'); panel.appendChild(checkBtn);
+      t.topic.selfChecks.forEach(function(q, i){ 
+          selfWrap.appendChild(el('<div style="margin-bottom:20px;"><div style="font-weight:bold; margin-bottom:10px;">' + (i+1) + '. ' + q.q + '</div><input type="text" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text);" data-idx="' + i + '" placeholder="Ваш ответ"></div>')); 
+      });
+      var checkBtn = el('<button class="btn" style="width:100%;margin-top:10px; padding:15px;">Завершить и проверить</button>'); panel.appendChild(checkBtn);
       checkBtn.onclick = function() {
-        var correctCount = 0; selfWrap.querySelectorAll(".self-input").forEach(function(inp) { var idx = Number(inp.getAttribute("data-idx")); if (inp.value.trim().toLowerCase() === t.topic.selfChecks[idx].a.trim().toLowerCase()) correctCount++; });
+        var correctCount = 0; selfWrap.querySelectorAll("input").forEach(function(inp) { var idx = Number(inp.getAttribute("data-idx")); if (inp.value.trim().toLowerCase() === t.topic.selfChecks[idx].a.trim().toLowerCase()) correctCount++; });
         checkBtn.disabled = true; checkBtn.textContent = "Результаты сохранены";
         var grade = Math.max(2, Math.round((correctCount/t.topic.selfChecks.length)*5)); state.selfResults[id] = { grade: grade }; window.addXP(100); window.saveStudentData(); window.showToast("Работа сдана! Оценка: " + grade, "ok");
       };
@@ -278,21 +347,33 @@ window.renderTopic = function(id, tab){
 
 window.markPracticalDone = function(topicId, code) {
     if (!state.practicalsDone[topicId]) state.practicalsDone[topicId] = {};
-    state.practicalsDone[topicId][code] = "pending";
+    if (!state.practicalGrades[topicId]) state.practicalGrades[topicId] = {};
+    
+    if (state.isPremium) {
+        state.practicalsDone[topicId][code] = "approved";
+        state.practicalGrades[topicId][code] = 5;
+        window.showToast("👑 VIP: Работа подтверждена! Оценка: 5", "ok");
+    } else {
+        state.practicalsDone[topicId][code] = "pending";
+        window.showToast("Отправлено на проверку!", "ok");
+    }
     window.saveStudentData(); window.renderTopic(topicId, "practice");
-    window.showToast("Отправлено на проверку!", "ok");
 };
 
+/* ---------------- МАГАЗИН И ПРОФИЛЬ ---------------- */
 window.renderShopPage = function() {
     var app = $("app"); app.innerHTML = "";
     document.getElementById("crumbs").textContent = "Магазин XP";
     app.appendChild(el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>Магазин</h1><p>Баланс: <b>' + state.xp + ' XP</b></p></section>'));
+    
     var items = [
         { id: "fx_gold", icon: "👑", title: "Маска: Золото", price: 2000, type: "avatar_effect", effect: "gold" },
         { id: "theme_space", icon: "🌍", title: "Фон: Космос", price: 1000, type: "bg", bg: "space" },
         { id: "theme_hyper", icon: "🧮", title: "Фон: Формулы", price: 1500, type: "bg", bg: "hyper" },
-        { id: "theme_matrix", icon: "🟢", title: "Тема: Матрица", price: 800, type: "theme", theme: "matrix" }
+        { id: "theme_matrix", icon: "🟢", title: "Тема: Матрица", price: 800, type: "theme", theme: "matrix" },
+        { id: "theme_cyber", icon: "🌆", title: "Тема: Киберпанк", price: 1200, type: "theme", theme: "cyber" }
     ];
+    
     var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');
     items.forEach(it => {
         var owned = state.shop.includes(it.id) || (it.type === "theme" && state.shop.includes("theme_" + it.theme));
@@ -318,17 +399,18 @@ window.renderProfilePage = function(targetKey){
   if (!state.student && !state.staff) return;
   var data = state.student || state.staff, isStaff = !!state.staff, level = getLevel(isStaff ? 1 : state.xp);
   var avatarHtml = state.avatar ? '<img src="' + state.avatar + '" style="width:100%; height:100%; object-fit:cover;">' : (isStaff ? "👨‍🏫" : "👨‍🎓");
+  var vipHtml = state.isPremium ? '<span class="vip-badge">VIP</span>' : '';
   
   var card = `
     <div class="id-card">
         <div class="id-card-header">
             <div><h1 class="id-card-title">STUDENT DOCUMENT</h1><div class="id-card-subtitle">MDK 07.01 · CNC OPERATOR</div></div>
-            <div><div style="font-size:10px; font-weight:bold; border:1px solid #111; padding:2px 6px; display:inline-block;">REGISTERED</div></div>
+            <div><div style="font-size:10px; font-weight:bold; border:1px solid #111; padding:2px 6px; display:inline-block;">${state.isPremium ? 'VIP' : 'REGISTERED'}</div></div>
         </div>
         <div class="id-card-body">
             <div class="id-photo">${avatarHtml}</div>
             <div class="id-info"><table>
-                <tr><td class="label">NAME</td><td class="value">${escapeHtml(data.name)}</td></tr>
+                <tr><td class="label">NAME</td><td class="value">${escapeHtml(data.name)} ${vipHtml}</td></tr>
                 <tr><td class="label">GROUP</td><td class="value">${isStaff ? 'STAFF' : escapeHtml(state.student.group)}</td></tr>
                 <tr><td class="label">LEVEL</td><td class="value" style="color:#c14a2a;">${level} (${getLevelTitle(level)})</td></tr>
                 <tr><td class="label">XP POINTS</td><td class="value">${isStaff ? '∞' : state.xp}</td></tr>
@@ -340,7 +422,7 @@ window.renderProfilePage = function(targetKey){
   app.appendChild(el(card));
 };
 
-// --- ИСПРАВЛЕННЫЙ РОУТЕР (Добавлены все игры) ---
+/* ---------------- РОУТЕР ---------------- */
 window.route = function() {
     closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = $("app");
@@ -358,15 +440,26 @@ window.route = function() {
         else if (parts[0] === "arcade") renderArcadePage();
         else if (parts[0] === "3d-machine") render3DMachinePage();
         else if (parts[0] === "portfolio") renderPortfolioPage();
-        else if (parts[0] === "gcode-test") window.renderGCodeTestPage();
         
-        // --- РОУТЫ ДЛЯ МИНИ-ИГР ---
+        // --- ВОССТАНОВЛЕННЫЕ СТРАНИЦЫ ---
+        else if (parts[0] === "schedule") window.renderSchedulePage();
+        else if (parts[0] === "videos") window.renderVideosPage();
+        else if (parts[0] === "passports") window.renderPassportsPage();
+        else if (parts[0] === "safety") window.renderSafetyPage();
+        else if (parts[0] === "formatting") window.renderFormattingPage();
+        else if (parts[0] === "glossary") window.renderGlossaryPage();
+
+        // --- ИГРЫ И VIP ---
+        else if (parts[0] === "gcode-test") window.renderGCodeTestPage();
         else if (parts[0] === "casino") window.renderCasinoPage();
         else if (parts[0] === "roulette") window.renderRoulettePage();
         else if (parts[0] === "sudoku") window.renderSudokuPage();
         else if (parts[0] === "minesweeper") window.renderMinesweeperPage();
         else if (parts[0] === "spider") window.renderSpiderPage();
         else if (parts[0] === "tictactoe") window.renderTicTacToePage();
+        else if (parts[0] === "subscription") window.renderSubscriptionPage();
+        else if (parts[0] === "dashboard") window.renderDashboardPage();
+        else if (parts[0] === "vip-materials") window.renderVipMaterialsPage();
 
         else renderHome();
     } catch (err) { app.innerHTML = '<div class="module">Ошибка: ' + escapeHtml(err.message) + '</div>'; }
@@ -388,7 +481,7 @@ window.addEventListener("DOMContentLoaded", () => {
             var query = this.value.trim().toLowerCase(), resultsBox = $("searchResults");
             resultsBox.innerHTML = ""; if (query.length < 2) { resultsBox.style.display = "none"; return; }
             var results = [];
-            var c = window.COURSE || (typeof COURSE !== 'undefined' ? COURSE : null);
+            var c = window.COURSE || COURSE;
             if (c) {
                 c.sections.forEach(sec => sec.topics.forEach(t => {
                     if (t.title.toLowerCase().includes(query) || t.code.toLowerCase().includes(query)) results.push({ type: "Тема", title: t.code + " - " + t.title, link: "#/topic/" + t.id + "/lecture" });
