@@ -96,6 +96,32 @@
     <button class="btn" onclick="location.hash='#/'" style="flex:1; margin:0 5px;">🏠 Главная</button>
     <button class="btn ghost" onclick="history.forward()" style="flex:1; margin:0 5px;">Вперед →</button>
 </div>
+<!-- ЛОГИН -->
+<div class="login-overlay" id="loginOverlay" hidden>
+  <div class="login-card">
+    <div style="text-align: center; margin-bottom: 25px;">
+        <span class="brand-badge" style="font-size: 16px; padding: 8px 16px;">Учебный портал</span>
+    </div>
+    
+    <!-- ВХОД СТУДЕНТА -->
+    <form onsubmit="event.preventDefault(); window.doStudentLogin();">
+      <h3>🎓 Вход студента</h3>
+      <input id="loginName" type="text" placeholder="ФИО" required>
+      <input id="loginGroup" type="text" placeholder="Группа" required>
+      <button type="submit" class="btn" style="width:100%; margin-top:15px;">Войти в систему</button>
+    </form>
+
+    <div style="text-align:center; margin:20px 0; color:var(--muted); font-size:12px; font-weight:bold; letter-spacing: 2px;">─── ИЛИ ───</div>
+
+    <!-- ВХОД ПРЕПОДАВАТЕЛЯ / АДМИНА -->
+    <form onsubmit="event.preventDefault(); window.doTeacherLogin();">
+      <h3>👨‍🏫 Вход сотрудника</h3>
+      <input id="loginStaffName" type="text" placeholder="Логин" required>
+      <input id="loginStaffPass" type="password" placeholder="Пароль" required>
+      <button id="staffLoginBtn" type="submit" class="btn ghost" style="width:100%; margin-top:15px;">Войти как сотрудник</button>
+    </form>
+  </div>
+</div>
 
 <!-- СКРИПТЫ -->
 <script src="data.js?v=184"></script>
