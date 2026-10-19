@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — journal.js (v101.0 — SAFE PARSING)
+   МДК 07.01 — journal.js (v102.0 — DELETE STUDENT)
    ============================================================ */
 "use strict";
 
@@ -53,9 +53,9 @@ window.renderJournalPage = function() {
     var table = el('<table class="journal-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"></table>');
     
     table.appendChild(el('<thead><tr>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:20%;">Студент</th>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:10%; text-align:center;">Средний балл</th>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:45%;">Сданные темы и работы</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:25%;">Студент</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:10%; text-align:center;">Ср. балл</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:40%;">Сданные работы</th>'
         + '<th style="border-bottom:2px solid var(--border); padding:12px; width:25%;">Практические</th>'
         + '</tr></thead>'));
         
@@ -66,7 +66,13 @@ window.renderJournalPage = function() {
       var currentStudentKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
       
       var nameCellHtml = `<div style="font-weight:bold; font-size:16px;">${s.name}</div><div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
-      if (isTeacher) nameCellHtml += `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🎁 Выдать XP</button>`;
+      
+      if (isTeacher) {
+          nameCellHtml += `<div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🎁 XP</button>
+              <button class="btn ghost" style="padding:6px 12px; font-size:12px; border-color:var(--err); color:var(--err);" onclick="window.deleteStudent('${s.name}', '${s.group}')">🗑️ Удалить</button>
+          </div>`;
+      }
       tr.appendChild(el(`<td style="padding:12px; vertical-align:top;">${nameCellHtml}</td>`));
       
       var tdWorks = el('<td style="padding:12px; vertical-align:top;"></td>');
@@ -80,7 +86,6 @@ window.renderJournalPage = function() {
       try {
         var p = JSON.parse(s.payload || "{}");
         
-        // Парсинг тестов (results)
         if (p.results) {
           Object.keys(p.results).forEach(k => {
              var tName = k === "__final_exam__" ? "Экзамен" : k;
@@ -91,7 +96,6 @@ window.renderJournalPage = function() {
           });
         }
         
-        // Парсинг самостоятельных (selfResults)
         if (p.selfResults) {
           Object.keys(p.selfResults).forEach(k => { 
             var topic = findTopic(k);
@@ -101,7 +105,6 @@ window.renderJournalPage = function() {
           });
         }
 
-        // Парсинг практических
         if (p.practicalsDone) {
             Object.keys(p.practicalsDone).forEach(topicId => {
                 Object.keys(p.practicalsDone[topicId]).forEach(pCode => {
@@ -119,7 +122,7 @@ window.renderJournalPage = function() {
                 });
             });
         }
-      } catch(e) { console.warn("Ошибка парсинга данных студента", e); }
+      } catch(e) { console.warn("Ошибка парсинга данных", e); }
       
       var avg = count > 0 ? (sum / count).toFixed(2) : "—";
       tr.appendChild(el(`<td style="padding:12px; vertical-align:top; text-align:center; font-size:18px; font-weight:bold; color:var(--accent);">${avg}</td>`));
@@ -136,4 +139,26 @@ window.renderJournalPage = function() {
     tableContainer.appendChild(table);
     tableWrap.appendChild(tableContainer);
   }).catch(() => { tableWrap.innerHTML = "Ошибка загрузки."; });
+};
+
+// ФУНКЦИЯ УДАЛЕНИЯ СТУДЕНТА (Добавлена)
+window.deleteStudent = function(name, group) {
+    if (!confirm(`Вы уверены, что хотите удалить студента ${name} (${group})?\nЕго данные будут стерты навсегда!`)) return;
+    
+    var p = new URLSearchParams();
+    p.append("action", "deleteStudent");
+    p.append("name", name);
+    p.append("group", group);
+    
+    window.showToast("Удаление...", "info");
+    fetch(APPS_SCRIPT_URL, { method: "POST", body: p })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+            window.showToast("Студент удален!", "ok");
+            window.renderJournalPage(); // Перерисовать
+        } else {
+            window.showToast("Ошибка удаления: " + (d.error || "Неизвестно"), "err");
+        }
+      }).catch(() => window.showToast("Ошибка сети.", "err"));
 };

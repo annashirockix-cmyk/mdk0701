@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — script.js (v100.0 — FULL & STABLE)
+   МДК 07.01 — script.js (v103.0 — FINAL & STABLE)
    ============================================================ */
 "use strict";
 
@@ -133,7 +133,7 @@ function loadStudentData(){
   if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
   updateNotifBadge();
 
-  // Синхронизация с сервером (оценки, попытки, заявки)
+  // Синхронизация с сервером
   if (APPS_SCRIPT_URL && state.student) {
       fetch(APPS_SCRIPT_URL + "?action=getstudentdata&key=" + encodeURIComponent(k) + "&t=" + Date.now())
         .then(r => r.json())
@@ -148,6 +148,8 @@ function loadStudentData(){
                 if (serverData.xp !== undefined) { state.xp = serverData.xp; changed = true; }
                 if (serverData.requests) { state.requests = serverData.requests; changed = true; }
                 else { state.requests = {}; changed = true; }
+                if (serverData.avatar) { state.avatar = serverData.avatar; changed = true; }
+                if (serverData.effects) { state.effects = serverData.effects; changed = true; }
 
                 if (changed) {
                     try {
@@ -156,6 +158,8 @@ function loadStudentData(){
                         localStorage.setItem("mdk0701.requests." + ek, JSON.stringify(state.requests));
                         localStorage.setItem("mdk0701.practicalsDone." + ek, JSON.stringify(state.practicalsDone));
                         localStorage.setItem("mdk0701.xp." + ek, state.xp);
+                        if (state.avatar) localStorage.setItem("mdk0701.avatar." + ek, state.avatar);
+                        localStorage.setItem("mdk0701.effects." + ek, JSON.stringify(state.effects));
                     } catch (e) {}
                     
                     if ($("xpCount")) $("xpCount").textContent = "🌟 " + state.xp + " XP";
@@ -610,7 +614,6 @@ function renderTopic(id, tab){
     }
   }
 
-  // ЖЕСТКОЕ РАЗДЕЛЕНИЕ САМОСТОЯТЕЛЬНОЙ И ТЕСТА
   if (tab === "self" || tab === "test") {
     var result = (tab === "self") ? state.selfResults[id] : state.results[id];
     var reqKey = id + "_" + tab;
@@ -762,7 +765,6 @@ function renderShopPage(){
         btn.style.border = "1px solid var(--accent)";
     } else if (!has && state.xp >= it.price) { 
         btn.onclick = function() { 
-            // ЖЕСТКОЕ СПИСАНИЕ XP
             state.xp -= it.price;
             state.shop.push(it.id);
             
@@ -820,7 +822,6 @@ function renderPortfolioPage(){
   app.appendChild(el('<div id="portfolioPrint" class="module" style="padding:40px;"><h1 style="text-align:center;">ПОРТФОЛИО</h1><hr style="margin:20px 0;"><p><b>ФИО:</b> ' + state.student.name + '</p><p><b>Группа:</b> ' + state.student.group + '</p><p><b>XP:</b> ' + state.xp + '</p></div><button class="btn" style="margin-top:20px;width:100%;" onclick="window.print()">🖨 В PDF</button>'));
 }
 
-// --- РОУТИНГ ---
 function route(){
   closeDrawer();
   
@@ -835,6 +836,7 @@ function route(){
       else if (parts[0] === "shop") renderShopPage();
       else if (parts[0] === "portfolio") renderPortfolioPage();
       else if (parts[0] === "profile") window.renderProfilePage && window.renderProfilePage();
+      else if (parts[0] === "certificate") window.renderCertificatePage && window.renderCertificatePage();
       else if (parts[0] === "dashboard") window.renderDashboard && window.renderDashboard();
       else if (parts[0] === "journal") window.renderJournalPage && window.renderJournalPage();
       else if (parts[0] === "requests") window.renderRequestsPage && window.renderRequestsPage();
@@ -850,6 +852,8 @@ function route(){
       else if (parts[0] === "sudoku") window.renderSudokuPage && window.renderSudokuPage();
       else if (parts[0] === "minesweeper") window.renderMinesweeperPage && window.renderMinesweeperPage(); 
       else if (parts[0] === "spider") window.renderSpiderPage && window.renderSpiderPage(); 
+      else if (parts[0] === "checkers") window.renderCheckersPage && window.renderCheckersPage();
+      else if (parts[0] === "chess") window.renderChessPage && window.renderChessPage();
       else if (parts[0] === "chat") window.renderChatPage && window.renderChatPage();
       else if (parts[0] === "comments") window.renderCommentsPage && window.renderCommentsPage();
       else renderHome();
