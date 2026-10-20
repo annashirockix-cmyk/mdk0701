@@ -1,5 +1,5 @@
 /* ============================================================
-   ui.js — Интерфейс и Роутинг (v193.0 — FULL)
+   ui.js — Интерфейс и Роутинг (v194.0 — FIX BLANK SCREEN)
    ============================================================ */
 "use strict";
 
@@ -174,12 +174,10 @@ window.renderProfilePage = function() {
 window.renderShopPage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>Магазин XP</h1><p>Баланс: <b>' + window.state.xp + ' XP</b></p></section>'));
-    
     var items = [
         { id: "fx_gold", icon: "👑", title: "Маска: Золото", price: 2000 },
         { id: "theme_matrix", icon: "🟢", title: "Тема: Матрица", price: 800, theme: "matrix" }
     ];
-    
     var grid = window.el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');
     items.forEach(it => {
         var owned = window.state.shop.includes(it.id);
@@ -233,7 +231,6 @@ window.renderFormattingPage = function() {
     app.appendChild(window.el(`<section class="hero"><h1>📝 ${fmt.title}</h1><p>${fmt.intro}</p></section><div class="module"><ul>` + fmt.blocks.map(b => `<li>${b.title}</li>`).join('') + `</ul></div>`));
 };
 
-/* ---------------- VIP ---------------- */
 window.renderSubscriptionPage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
@@ -277,7 +274,6 @@ window.renderPortfolioPage = function() {
     document.getElementById("pdfBtn").onclick = () => window.showToast("Генерация PDF...", "info");
 };
 
-/* ---------------- ИГРЫ И АРКАДА ---------------- */
 window.renderArcadePage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🕹️ Игровая комната</h1></section>'));
@@ -293,12 +289,17 @@ window.renderArcadePage = function() {
     app.appendChild(grid);
 };
 
-/* ---------------- РОУТЕР (ПОДКЛЮЧАЕТ ВСЕ ФАЙЛЫ) ---------------- */
+/* ---------------- РОУТЕР ---------------- */
 window.route = function() {
     window.closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = window.$("app");
     if (!app) return;
-    if (!window.state.student && !window.state.staff) { app.innerHTML = ""; return; }
+    
+    // Защита от пустого экрана
+    if (!window.state.student && !window.state.staff) { 
+        app.innerHTML = "<div class='module' style='text-align:center; margin-top:50px;'><h2>Доступ ограничен</h2><p>Пожалуйста, войдите в систему, чтобы просматривать материалы.</p><button class='btn' onclick='location.reload()'>Войти</button></div>";
+        return; 
+    }
 
     try {
         if (parts[0] === "topic") window.renderTopic(parts[1], parts[2]);
@@ -312,8 +313,6 @@ window.route = function() {
         else if (parts[0] === "passports") window.renderPassportsPage();
         else if (parts[0] === "safety") window.renderSafetyPage();
         else if (parts[0] === "formatting") window.renderFormattingPage();
-        
-        // Игровой сектор
         else if (parts[0] === "arcade") window.renderArcadePage();
         else if (parts[0] === "casino") window.renderCasinoPage();
         else if (parts[0] === "roulette") window.renderRoulettePage();
@@ -324,14 +323,11 @@ window.route = function() {
         else if (parts[0] === "gcode-test") window.renderGCodeTestPage();
         else if (parts[0] === "event") window.renderDeadlyPartyPage();
         else if (parts[0] === "3d-machine") window.render3DMachinePage();
-        
-        // Остальные страницы
         else if (parts[0] === "journal") window.renderJournalPage();
         else if (parts[0] === "rating") window.renderRatingPage();
         else if (parts[0] === "final") window.renderFinalExamPage();
         else if (parts[0] === "chat") window.renderChatPage();
         else if (parts[0] === "links") window.renderLinksPage();
-        
         else renderHome();
     } catch (err) { app.innerHTML = '<div class="module">Ошибка: ' + window.escapeHtml(err.message) + '</div>'; }
     window.scrollTo(0, 0);
