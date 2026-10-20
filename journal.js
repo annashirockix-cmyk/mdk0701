@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК — journal.js (v301.0 — С выводом ошибок)
+   МДК — journal.js (v302.0 — Безопасное создание DOM)
    ============================================================ */
 "use strict";
 
@@ -35,6 +35,7 @@ window.renderJournalPage = function() {
       return;
   }
 
+  // Панель управления
   var topPanel = el(`<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
       <h2 style="margin:0; font-size:20px;">Журнал успеваемости (2026-2027)</h2>
       <div style="margin-left:auto; display:flex; gap:10px;">
@@ -70,36 +71,61 @@ window.renderJournalPage = function() {
               contentWrap.innerHTML = "<div class='module'>В выбранной группе пока нет студентов.</div>"; return;
           }
 
-          var tableWrap = el(`<div class="module" style="overflow-x:auto; padding: 10px; max-width: 100%;">
-              <table class="journal-table" style="border-collapse:collapse; text-align:center; font-size:13px; min-width:max-content;">
-                  <thead>
-                      <tr>
-                          <th style="border:1px solid var(--border); padding:8px; position:sticky; left:0; background:var(--card); z-index:2; text-align:left; min-width:180px; box-shadow: 2px 0 5px rgba(0,0,0,0.1);">ФИО студента / Группа</th>
-                          ${ACADEMIC_DATES.map(date => `<th style="border:1px solid var(--border); padding:4px; min-width:35px; font-size:11px; font-weight:normal; writing-mode:vertical-rl; transform:rotate(180deg); height:80px;">${date}</th>`).join('')}
-                      </tr>
-                  </thead>
-                  <tbody></tbody>
-              </table>
-          </div>`);
+          // Безопасное создание таблицы
+          var tableWrap = document.createElement("div");
+          tableWrap.className = "module";
+          tableWrap.style = "overflow-x:auto; padding: 10px; max-width: 100%;";
 
-          var tbody = tableWrap.querySelector("tbody");
+          var table = document.createElement("table");
+          table.className = "journal-table";
+          table.style = "border-collapse:collapse; text-align:center; font-size:13px; min-width:max-content;";
+
+          var thead = document.createElement("thead");
+          var trHead = document.createElement("tr");
           
+          var thName = document.createElement("th");
+          thName.style = "border:1px solid var(--border); padding:8px; position:sticky; left:0; background:var(--card); z-index:2; text-align:left; min-width:180px; box-shadow: 2px 0 5px rgba(0,0,0,0.1);";
+          thName.textContent = "ФИО студента / Группа";
+          trHead.appendChild(thName);
+
+          ACADEMIC_DATES.forEach(date => {
+              var thDate = document.createElement("th");
+              thDate.style = "border:1px solid var(--border); padding:4px; min-width:35px; font-size:11px; font-weight:normal; writing-mode:vertical-rl; transform:rotate(180deg); height:80px;";
+              thDate.textContent = date;
+              trHead.appendChild(thDate);
+          });
+
+          thead.appendChild(trHead);
+          table.appendChild(thead);
+
+          var tbody = document.createElement("tbody");
+
           students.forEach((s) => {
               var sKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
-              var tr = el(`<tr></tr>`);
-              
-              tr.appendChild(el(`<td style="border:1px solid var(--border); padding:8px; text-align:left; font-weight:bold; position:sticky; left:0; background:var(--card); z-index:1; box-shadow: 2px 0 5px rgba(0,0,0,0.1);">
-                  ${s.name}<br><span style="font-size:11px;color:var(--accent);font-weight:normal;">гр. ${s.group}</span>
-              </td>`));
+              var tr = document.createElement("tr");
+
+              // Колонка с ФИО
+              var tdName = document.createElement("td");
+              tdName.style = "border:1px solid var(--border); padding:8px; text-align:left; font-weight:bold; position:sticky; left:0; background:var(--card); z-index:1; box-shadow: 2px 0 5px rgba(0,0,0,0.1);";
+              tdName.innerHTML = window.escapeHtml(s.name) + "<br><span style='font-size:11px;color:var(--accent);font-weight:normal;'>гр. " + window.escapeHtml(s.group) + "</span>";
+              tr.appendChild(tdName);
 
               var p = {};
               try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
               var manualGrades = p.manualGrades || {};
 
+              // Колонки с оценками
               ACADEMIC_DATES.forEach(date => {
-                  var grade = manualGrades[date] || "";
-                  var input = el(`<input type="text" value="${grade}" maxlength="3" style="width:32px; height:32px; text-align:center; font-weight:bold; border:1px solid transparent; background:transparent; color:var(--text); border-radius:4px; font-size:14px;" placeholder="-">`);
+                  var tdGrade = document.createElement("td");
+                  tdGrade.style = "border:1px solid var(--border); padding:2px;";
                   
+                  var input = document.createElement("input");
+                  input.type = "text";
+                  input.maxLength = 3;
+                  input.value = manualGrades[date] || "";
+                  input.placeholder = "-";
+                  input.style = "width:32px; height:32px; text-align:center; font-weight:bold; border:1px solid transparent; background:transparent; color:var(--text); border-radius:4px; font-size:14px;";
+
                   input.onchange = function() {
                       var val = this.value.trim();
                       var newPayload = { ...p };
@@ -123,15 +149,18 @@ window.renderJournalPage = function() {
                   input.onfocus = function() { this.style.borderColor = "var(--accent)"; this.style.background = "var(--card-soft)"; };
                   input.onblur = function() { this.style.borderColor = "transparent"; this.style.background = "transparent"; };
 
-                  tr.appendChild(el(`<td style="border:1px solid var(--border); padding:2px;"></td>`)).appendChild(input);
+                  tdGrade.appendChild(input);
+                  tr.appendChild(tdGrade);
               });
-              
+
               tbody.appendChild(tr);
           });
 
+          table.appendChild(tbody);
+          tableWrap.appendChild(table);
           contentWrap.appendChild(tableWrap);
+
       }).catch((err) => { 
-          // ВЫВОДИМ РЕАЛЬНУЮ ОШИБКУ НА ЭКРАН
           var errorMsg = err && err.message ? err.message : "Неизвестная ошибка сети";
           contentWrap.innerHTML = `<div class="module" style="color:var(--err); padding:20px;">
               <b>Ошибка загрузки данных:</b><br>
