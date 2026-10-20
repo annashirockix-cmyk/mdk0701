@@ -17,7 +17,9 @@ window.showToast = function(msg, type) {
 // --- СОСТОЯНИЕ ---
 window.state = { 
   activeCourseId: localStorage.getItem("mdk.active") || "07.01",
-  student: null, xp: 0, results: {}
+  student: null, 
+  staff: null, // Для преподавателя
+  xp: 0, results: {}
 };
 
 if (!window.MDK_DATA[window.state.activeCourseId]) {
@@ -26,12 +28,26 @@ if (!window.MDK_DATA[window.state.activeCourseId]) {
 }
 window.COURSE = window.MDK_DATA[window.state.activeCourseId];
 
-try { var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); if (_s && _s.name) window.state.student = _s; } catch (e){}
+// Восстанавливаем сессии при загрузке
+try { 
+    var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); 
+    if (_s && _s.name) window.state.student = _s; 
+    var _st = JSON.parse(localStorage.getItem("mdk.staff") || "null");
+    if (_st && _st.name) window.state.staff = _st;
+} catch (e){}
 
 window.getLevel = function(xp) { return !xp || xp <= 0 ? 1 : Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100); };
 window.getLevelTitle = function(lvl) { return "Уровень " + lvl; };
 
-window.updateXpDisplay = function() { if (window.$("xpCount")) window.$("xpCount").textContent = "🌟 " + window.state.xp + " XP · Lv." + window.getLevel(window.state.xp); };
+window.updateXpDisplay = function() { 
+    if (window.$("xpCount")) {
+        if (window.state.staff) {
+            window.$("xpCount").textContent = "👨‍🏫 " + window.state.staff.name;
+        } else {
+            window.$("xpCount").textContent = "🌟 " + window.state.xp + " XP · Lv." + window.getLevel(window.state.xp);
+        }
+    }
+};
 
 window.saveStudentData = function() {
     var k = window.studentKey(); if (!k) return;
@@ -67,7 +83,11 @@ window.doStudentLogin = function() {
   if (!n || !g) return window.showToast("Введите ФИО и Группу!", "err");
   
   window.state.student = { name: n, group: g.toUpperCase() };
-  try { localStorage.setItem("mdk.student", JSON.stringify(window.state.student)); } catch(e){}
+  window.state.staff = null;
+  try { 
+      localStorage.setItem("mdk.student", JSON.stringify(window.state.student)); 
+      localStorage.removeItem("mdk.staff");
+  } catch(e){}
   
   document.getElementById("loginOverlay").hidden = true;
   window.renderUserChip(); 
@@ -75,10 +95,51 @@ window.doStudentLogin = function() {
   window.route();
 };
 
+window.doTeacherLogin = function() {
+    var u = document.getElementById("teacherUser").value.trim();
+    var p = document.getElementById("teacherPass").value.trim();
+    var errBox = document.getElementById("teacherLoginError");
+    
+    if (!u || !p) {
+        errBox.textContent = "Введите логин и пароль!";
+        errBox.style.display = "block";
+        return;
+    }
+
+    errBox.style.display = "none";
+
+    window.API.login(u, p).then(function(res) {
+        if (res && res.ok) {
+            window.state.staff = { name: res.name, role: res.role };
+            window.state.student = null;
+            try { 
+                localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff));
+                localStorage.removeItem("mdk.student");
+            } catch(e){}
+            
+            document.getElementById("loginOverlay").hidden = true;
+            window.showToast("Добро пожаловать, " + res.name, "ok");
+            window.renderUserChip();
+            window.updateXpDisplay();
+            window.route();
+        } else {
+            errBox.textContent = res.error || "Неверный логин или пароль";
+            errBox.style.display = "block";
+        }
+    }).catch(function(err) {
+        errBox.textContent = "Ошибка сети. Проверьте подключение к API.";
+        errBox.style.display = "block";
+    });
+};
+
 window.handleLogout = function() {
   if (confirm("Выйти из аккаунта?")) {
     window.state.student = null;
-    try { localStorage.removeItem("mdk.student"); } catch(e){}
+    window.state.staff = null;
+    try { 
+        localStorage.removeItem("mdk.student"); 
+        localStorage.removeItem("mdk.staff");
+    } catch(e){}
     document.getElementById("loginOverlay").hidden = false;
     window.closeDrawer(); 
     window.route();
@@ -94,6 +155,12 @@ window.closeDrawer = () => { if(window.$("drawer")) window.$("drawer").classList
 window.applyTheme = (theme) => { document.documentElement.setAttribute("data-theme", theme); try { localStorage.setItem("mdk.theme", theme); } catch(e){} };
 
 window.renderUserChip = function() {
+    if (window.state.staff) {
+        window.$("userChipName").textContent = window.state.staff.name;
+        window.$("userChipGroup").textContent = "Преподаватель";
+        window.$("userChipAvatar").innerHTML = "👨‍🏫";
+        return;
+    }
     if (!window.state.student) return;
     window.$("userChipName").textContent = window.state.student.name;
     window.$("userChipGroup").textContent = "Гр. " + window.state.student.group;
@@ -201,6 +268,13 @@ window.renderTopic = function(id, tab){
 
 window.renderProfilePage = function() {
     var app = window.$("app");
+    if (window.state.staff) {
+        app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>Профиль преподавателя</h1></section>
+        <div class="module"><p><b>Имя:</b> ${window.state.staff.name}</p>
+        <p><b>Роль:</b> ${window.state.staff.role === 'admin' ? 'Администратор' : 'Преподаватель'}</p>
+        <p><a href="#/journal" class="btn" style="margin-top:10px;">📒 Перейти в журнал успеваемости</a></p></div>`;
+        return;
+    }
     app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>Личный кабинет</h1></section>
     <div class="module"><p><b>ФИО:</b> ${window.state.student ? window.state.student.name : 'Гость'}</p>
     <p><b>Группа:</b> ${window.state.student ? window.state.student.group : '—'}</p>
@@ -219,7 +293,7 @@ window.route = function() {
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = window.$("app");
     if (!app) return;
     
-    if (!window.state.student) { 
+    if (!window.state.student && !window.state.staff) { 
         if(window.$("loginOverlay")) window.$("loginOverlay").hidden = false;
         app.innerHTML = "<div class='module' style='text-align:center;'><h2>Войдите в систему</h2></div>"; 
         return; 
@@ -244,12 +318,16 @@ window.route = function() {
     window.scrollTo(0, 0);
 };
 
-// --- ИНИЦИАЛИЗАЦИЯ ---
+// --- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ---
 window.addEventListener("DOMContentLoaded", () => {
-    if (!window.state.student) window.$("loginOverlay").hidden = false;
-    if (window.state.student) window.loadStudentData();
+    // Показываем окно входа, если никто не авторизован
+    if (!window.state.student && !window.state.staff) window.$("loginOverlay").hidden = false;
     
-    // ИСПРАВЛЕНИЕ: Обработчик кнопки "Войти"
+    // Загружаем данные
+    if (window.state.student) window.loadStudentData();
+    if (window.state.staff) window.updateXpDisplay();
+    
+    // Привязка формы студента
     var loginForm = document.getElementById("studentLoginForm");
     if (loginForm) {
         loginForm.addEventListener("submit", function(e) {
@@ -258,17 +336,29 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Привязка формы преподавателя
+    var teacherForm = document.getElementById("teacherLoginForm");
+    if (teacherForm) {
+        teacherForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            window.doTeacherLogin();
+        });
+    }
+
+    // Всякие кнопки управления
     if (window.$("themeToggle")) window.$("themeToggle").onclick = () => { var t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; window.applyTheme(t); };
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
     if (window.$("drawerClose")) window.$("drawerClose").onclick = window.closeDrawer; 
     if (window.$("drawerOverlay")) window.$("drawerOverlay").onclick = window.closeDrawer;
     if (window.$("topbarLogout")) window.$("topbarLogout").onclick = window.handleLogout;
     
+    // Селектор МДК
     if (window.$("mdkSelector")) {
         window.$("mdkSelector").value = window.state.activeCourseId;
         window.$("mdkSelector").onchange = function(e) { window.switchCourse(e.target.value); };
     }
     
+    // Меню навигации
     document.querySelectorAll("[data-go]").forEach(item => {
         item.onclick = (e) => { e.preventDefault(); location.hash = item.getAttribute("data-go"); window.closeDrawer(); };
     });
