@@ -1,7 +1,7 @@
 "use strict";
 
 // ============================================================
-// МДК Портал — app.js (полностью переписан)
+// МДК Портал — app.js (Исправленная версия)
 // ============================================================
 
 // --- УТИЛИТЫ ---
@@ -627,21 +627,27 @@ window.renderProfilePage = function() {
     '</div>';
 };
 
-// --- РЕНДЕРИНГ: ПРОСТАЯ СТРАНИЦА ---
+// --- РЕНДЕРИНГ: ПРОСТАЯ СТРАНИЦА (Исправлено!) ---
 window.renderSimplePage = function(title, items, icon) {
   var app = window.$("app");
   if (!app) return;
   var list = "";
-  (items || []).forEach(function(s) {
-    var text = (s && typeof s === "object") ? (s.title || "") : String(s || "");
-    if (!text) return;
-    list += '<div style="padding:10px 0; border-bottom:1px solid var(--border);"><b>' +
-            window.escapeHtml(text) + '</b></div>';
-  });
+  
+  if (items && items.length > 0) {
+    items.forEach(function(s) {
+      var text = (s && typeof s === "object") ? (s.title || "Без названия") : String(s || "");
+      if (!text) return;
+      list += '<div style="padding:10px 0; border-bottom:1px solid var(--border);"><b>' +
+              window.escapeHtml(text) + '</b></div>';
+    });
+  } else {
+    list = '<div style="color:var(--muted); text-align:center; padding:20px;">Материалы в разработке или отсутствуют.</div>';
+  }
+
   app.innerHTML =
     '<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>' +
     '<section class="hero"><h1>' + (icon || "") + ' ' + window.escapeHtml(title) + '</h1></section>' +
-    '<div class="module">' + (list || "Нет данных") + '</div>';
+    '<div class="module">' + list + '</div>';
 };
 
 // --- РОУТЕР ---
