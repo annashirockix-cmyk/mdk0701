@@ -1,5 +1,14 @@
 "use strict";
 
+// ================= ГЛАВНАЯ СТРАНИЦА ИГР =================
+window.saveScore = function(game, score) {
+    var current = parseInt(localStorage.getItem('hs_' + game) || '0');
+    if (score > current) {
+        localStorage.setItem('hs_' + game, score);
+        if(window.showToast) window.showToast("🏆 Новый рекорд!", "ok");
+    }
+};
+
 window.renderArcadePage = function() {
     var app = document.getElementById("app"); if (!app) return; app.innerHTML = "";
     document.getElementById("crumbs").textContent = "Игровая комната";
@@ -12,16 +21,22 @@ window.renderArcadePage = function() {
         { id: "sudoku", title: "🔢 Судоку", desc: "Разные уровни сложности." },
         { id: "casino", title: "🎰 Казино", desc: "Испытай удачу на слотах." },
         { id: "roulette", title: "🎡 Рулетка", desc: "Красное или черное? Угадай число!" },
-        { id: "spider", title: "🕷️ Солитёр Паук", desc: "Упрощенная версия классического пасьянса." },
-        { id: "party", title: "☠️ Смертельная вечеринка", desc: "Викторина на выживание с 2000+ вопросов (МДК, Аниме, Игры, Логика)." }
+        { id: "spider", title: "🕷️ Солитёр Паук", desc: "Собирайте последовательности от Короля до Туза." },
+        { id: "party", title: "☠️ Смертельная вечеринка", desc: "Викторина на выживание с таймером." }
     ];
 
     var grid = el('<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;"></div>');
     games.forEach(g => {
-        grid.appendChild(el(`<div class="module" style="cursor:pointer; transition:0.2s;" onclick="window.startGame('${g.id}')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-            <h3 style="margin-top:0; color:var(--accent);">${g.title}</h3>
-            <p style="color:var(--muted); font-size:14px;">${g.desc}</p>
-            <button class="btn ghost" style="width:100%; margin-top:10px;">Играть</button>
+        var best = localStorage.getItem('hs_' + g.id) || 0;
+        var bestTxt = best > 0 ? `<div style="color:var(--gold); font-size:13px; font-weight:bold; margin-top:10px;">⭐ Рекорд: ${best}</div>` : '';
+        
+        grid.appendChild(el(`<div class="module" style="cursor:pointer; transition:0.2s; display:flex; flex-direction:column; justify-content:space-between;" onclick="window.startGame('${g.id}')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div>
+                <h3 style="margin-top:0; color:var(--accent);">${g.title}</h3>
+                <p style="color:var(--muted); font-size:14px;">${g.desc}</p>
+                ${bestTxt}
+            </div>
+            <button class="btn ghost" style="width:100%; margin-top:15px;">Играть</button>
         </div>`));
     });
     app.appendChild(grid);
@@ -29,7 +44,24 @@ window.renderArcadePage = function() {
 
 window.startGame = function(gameId) {
     var app = document.getElementById("app"); app.innerHTML = "";
-    app.appendChild(el('<a class="backlink" href="#/arcade" style="color:var(--accent);">← В меню игр</a>'));
+    // Исправленная кнопка "Назад" (вызывает рендер напрямую, а не меняет хэш)
+    app.appendChild(el('<a class="backlink" href="javascript:void(0)" onclick="window.renderArcadePage()" style="color:var(--accent); cursor:pointer;">← В меню игр</a>'));
+
+    var rules = {
+        minesweeper: "Клик открывает клетку. Правая кнопка мыши ставит флажок. Цифры показывают мины рядом.",
+        tictactoe: "Соберите линию из N символов (зависит от поля) раньше робота.",
+        sudoku: "Заполните поле цифрами так, чтобы они не повторялись в строках, столбцах и блоках.",
+        casino: "Сделайте ставку и крутите слоты. 3 одинаковых — джекпот.",
+        roulette: "Угадайте число (х35) или чёт/нечет (х2).",
+        spider: "Кликните по карте, чтобы взять её, и по другой колонке, чтобы положить. Собирайте от Короля до Туза в одной масти. Кнопка 'Раздать' выдает новый ряд.",
+        party: "У вас 15 секунд на ответ и 3 жизни. Ошибка или просрочка времени отнимает жизнь."
+    };
+
+    app.appendChild(el(`<details style="margin-bottom:15px; background:var(--card-soft); padding:12px; border-radius:8px; border:1px solid var(--border);">
+        <summary style="cursor:pointer; font-weight:bold; color:var(--accent);">❓ Как играть</summary>
+        <p style="margin-top:10px; font-size:14px; color:var(--muted); line-height:1.4;">${rules[gameId]}</p>
+    </details>`));
+
     var container = el('<div class="module" id="gameContainer" style="min-height:400px;"></div>');
     app.appendChild(container);
 
@@ -135,7 +167,7 @@ function startMinesweeper(container) {
     function showWin() {
         setTimeout(() => {
             if (confirm("💥 БУМ! Вы подорвались. Начать заново?")) startMinesweeper(container);
-            else location.hash = "#/arcade";
+            else window.renderArcadePage();
         }, 100);
     }
     init('medium');
@@ -206,7 +238,7 @@ function startTicTacToe(container) {
         function end(w) {
             gameOver = true;
             if (w === "draw") alert("Ничья!");
-            else if (w === "❌") { alert("Вы победили! +50 XP"); if(window.addXP) window.addXP(50); }
+            else if (w === "❌") { alert("Вы победили! +50 XP"); if(window.addXP) window.addXP(50); window.saveScore('tictactoe', 50); }
             else alert("Победил робот!");
             setTimeout(() => window._initTTT(size), 1000);
         }
@@ -217,39 +249,71 @@ function startTicTacToe(container) {
 
 // ================= СУДОКУ =================
 function startSudoku(container) {
-    // Упрощенное судоку 4x4 для примера (можно расширить до 9x9)
-    var solution = [[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]];
-    var puzzle = [[1,0,0,4],[0,4,1,0],[0,1,4,0],[4,0,0,1]];
-    var grid = puzzle.map(r => r.slice());
+    var solution = [], puzzle = [], size = 4;
 
-    container.innerHTML = `<div style="text-align:center;"><h3>Судоку 4x4</h3><p>Заполните пустые клетки цифрами 1-4.</p>
-    <div id="sudokuGrid" style="display:inline-grid; grid-template-columns:repeat(4,50px); gap:2px; margin:20px auto;"></div>
-    <div id="sudokuStatus" style="font-weight:bold; margin-top:10px;"></div></div>`;
+    container.innerHTML = `<div style="text-align:center;">
+        <h3>Судоку</h3>
+        <select id="sudokuLevel" style="padding:8px; border-radius:6px; margin-bottom:15px;" onchange="window._initSudoku(parseInt(this.value))">
+            <option value="4">Легкий (4x4)</option>
+            <option value="6">Средний (6x6)</option>
+            <option value="9">Сложный (9x9)</option>
+        </select>
+        <div id="sudokuStatus" style="font-weight:bold; margin-top:10px; color:var(--ok);"></div>
+        <div style="display:flex; justify-content:center; margin-top:15px;">
+            <div id="sudokuGrid" style="display:grid; gap:2px;"></div>
+        </div>
+    </div>`;
 
-    function render() {
+    window._initSudoku = function(lvl) {
+        size = lvl;
+        if (size === 4) {
+            solution = [[1,2,3,4],[3,4,1,2],[2,1,4,3],[4,3,2,1]];
+            puzzle = [[1,0,0,4],[0,4,1,0],[0,1,4,0],[4,0,0,1]];
+        } else if (size === 6) {
+            solution = [[1,2,3,4,5,6],[4,5,6,1,2,3],[2,3,4,5,6,1],[5,6,1,2,3,4],[3,4,5,6,1,2],[6,1,2,3,4,5]];
+            puzzle = [[1,0,3,4,0,6],[0,5,0,1,2,0],[2,0,4,0,6,1],[0,6,1,0,3,4],[3,4,0,6,0,2],[6,0,2,3,4,0]];
+        } else {
+            solution = [
+                [5,3,4,6,7,8,9,1,2],[6,7,2,1,9,5,3,4,8],[1,9,8,3,4,2,5,6,7],
+                [8,5,9,7,6,1,4,2,3],[4,2,6,8,5,3,7,9,1],[7,1,3,9,2,4,8,5,6],
+                [9,6,1,5,3,7,2,8,4],[2,8,7,4,1,9,6,3,5],[3,4,5,2,8,6,1,7,9]
+            ];
+            puzzle = [
+                [5,3,0,0,7,0,0,0,0],[6,0,0,1,9,5,0,0,0],[0,9,8,0,0,0,0,6,0],
+                [8,0,0,0,6,0,0,0,3],[4,0,0,8,0,3,0,0,1],[7,0,0,0,2,0,0,0,6],
+                [0,6,0,0,0,0,2,8,0],[0,0,0,4,1,9,0,0,5],[0,0,0,0,8,0,0,7,9]
+            ];
+        }
+        var grid = puzzle.map(r => r.slice());
         var gridEl = document.getElementById("sudokuGrid"); gridEl.innerHTML = "";
-        for (var r = 0; r < 4; r++) for (var c = 0; c < 4; c++) {
+        document.getElementById("sudokuStatus").textContent = "";
+        
+        gridEl.style.gridTemplateColumns = `repeat(${size}, ${size === 9 ? '35px' : '50px'})`;
+        
+        for (var r = 0; r < size; r++) for (var c = 0; c < size; c++) {
             var input = document.createElement("input");
-            input.type = "number"; input.min = 1; input.max = 4;
+            input.type = "number"; input.min = 1; input.max = size;
             input.value = grid[r][c] || "";
-            input.style = `width:50px; height:50px; text-align:center; font-size:20px; font-weight:bold; border:1px solid var(--border); background:${puzzle[r][c] ? 'var(--accent-soft)' : 'var(--card)'}; color:var(--text); border-radius:6px;`;
+            input.style = `width:100%; height:100%; min-height:${size === 9 ? '35px' : '50px'}; text-align:center; font-size:${size === 9 ? '16px' : '20px'}; font-weight:bold; border:1px solid var(--border); background:${puzzle[r][c] ? 'var(--accent-soft)' : 'var(--card)'}; color:var(--text); border-radius:4px;`;
             if (puzzle[r][c]) input.disabled = true;
-            input.oninput = (function(r,c){ return function(e){
-                var v = parseInt(e.target.value) || 0;
-                if (v < 1 || v > 4) { e.target.value = ""; grid[r][c] = 0; return; }
-                grid[r][c] = v;
-                checkWin();
-            }; })(r,c);
+            input.oninput = (function(r,c, el){
+                return function(e){
+                    var v = parseInt(e.target.value) || 0;
+                    if (v < 1 || v > size) { e.target.value = ""; grid[r][c] = 0; return; }
+                    grid[r][c] = v;
+                    var win = true;
+                    for (var i = 0; i < size; i++) for (var j = 0; j < size; j++) if (grid[i][j] !== solution[i][j]) win = false;
+                    if (win) {
+                        document.getElementById("sudokuStatus").textContent = "🎉 Решено! +100 XP";
+                        if(window.addXP) window.addXP(100);
+                        window.saveScore('sudoku', 100);
+                    }
+                };
+            })(r,c, input);
             gridEl.appendChild(input);
         }
-    }
-    function checkWin() {
-        for (var r = 0; r < 4; r++) for (var c = 0; c < 4; c++) if (grid[r][c] !== solution[r][c]) return;
-        document.getElementById("sudokuStatus").textContent = "🎉 Решено! +100 XP";
-        document.getElementById("sudokuStatus").style.color = "var(--ok)";
-        if(window.addXP) window.addXP(100);
-    }
-    render();
+    };
+    window._initSudoku(4);
 }
 
 // ================= КАЗИНО (СЛОТЫ) =================
@@ -286,12 +350,12 @@ function startCasino(container) {
             clearInterval(spin);
             this.disabled = false;
             var s1 = symbols[Math.floor(Math.random()*symbols.length)], s2 = symbols[Math.floor(Math.random()*symbols.length)], s3 = symbols[Math.floor(Math.random()*symbols.length)];
-            if (Math.random() < 0.15) s2 = s1; // Шанс на выигрыш
+            if (Math.random() < 0.15) s2 = s1; 
             if (Math.random() < 0.1) s3 = s2;
             r1.textContent = s1; r2.textContent = s2; r3.textContent = s3;
             
             var win = 0; var resEl = document.getElementById("casinoResult");
-            if (s1 === s2 && s2 === s3) { win = bet * 5; resEl.textContent = "🎉 ДЖЕКПОТ! +" + win; resEl.style.color = "var(--ok)"; }
+            if (s1 === s2 && s2 === s3) { win = bet * 5; resEl.textContent = "🎉 ДЖЕКПОТ! +" + win; resEl.style.color = "var(--ok)"; window.saveScore('casino', win); }
             else if (s1 === s2 || s2 === s3 || s1 === s3) { win = bet * 2; resEl.textContent = "✨ Выигрыш! +" + win; resEl.style.color = "var(--ok)"; }
             else { resEl.textContent = "💸 Проигрыш..."; resEl.style.color = "var(--err)"; }
             if (win > 0) window.addXP(win);
@@ -318,7 +382,7 @@ function startRoulette(container) {
         var win = Math.floor(Math.random() * 37);
         var res = document.getElementById("roulRes");
         res.textContent = "Выпало: " + win;
-        if (win === num) { res.textContent += " | 🎉 УГАДАЛИ x35!"; window.addXP(bet * 35); }
+        if (win === num) { res.textContent += " | 🎉 УГАДАЛИ x35!"; window.addXP(bet * 35); window.saveScore('roulette', bet * 35); }
         else if ((win === 0 && num === 0) || (win % 2 === num % 2)) { res.textContent += " | ✨ Угадали цвет x2!"; window.addXP(bet * 2); }
         else { res.textContent += " | 💸 Проигрыш."; }
     };
@@ -326,83 +390,187 @@ function startRoulette(container) {
 
 // ================= СМЕРТЕЛЬНАЯ ВЕЧЕРИНКА =================
 function startParty(container) {
-    // База вопросов (можно расширять до 2000+)
-    var questions = [
-        { q: "Что такое техническое диагностирование?", opts: ["Ремонт", "Определение состояния", "Наладка", "Сборка"], a: 1 },
-        { q: "Какой код включает шпиндель по часовой?", opts: ["M03", "M04", "M05", "M08"], a: 0 },
-        { q: "Что делает G00?", opts: ["Линейная интерполяция", "Ускоренное перемещение", "Круговая", "Пауза"], a: 1 },
-        { q: "Какой прибор измеряет вибрацию?", opts: ["Пирометр", "Виброметр", "Шумомер", "Микрометр"], a: 1 },
-        { q: "Сколько степеней свободы у твердого тела?", opts: ["3", "4", "6", "8"], a: 2 },
-        { q: "Аниме: Как зовут главного героя 'Наруто'?", opts: ["Саске", "Наруто", "Какаши", "Итачи"], a: 1 },
-        { q: "Игры: В какой игре есть персонаж Кратос?", opts: ["God of War", "Minecraft", "CS:GO", "Dota 2"], a: 0 },
-        { q: "Логика: Что тяжелее 1 кг железа или 1 кг ваты?", opts: ["Железо", "Вата", "Одинаково", "Зависит от цвета"], a: 2 }
-    ];
-    
-    var lives = 3; var score = 0;
+    if (!window._Q) {
+        container.innerHTML = '<div style="color:var(--err);">Нет файлов с вопросами!</div>'; return;
+    }
+    var TARGET = 20;
+    var allQ = [].concat(_Q.mdk, _Q.anime, _Q.games, _Q.logic);
+    var pool = _shuffle(allQ);
+    var lives = 3, score = 0, idx = 0;
+    var timerId, timeLeft = 15;
+
+    function startTimer() {
+        clearInterval(timerId);
+        timeLeft = 15;
+        var timerEl = document.getElementById("partyTimer");
+        if (timerEl) timerEl.textContent = `⏱ ${timeLeft}с`;
+        timerId = setInterval(() => {
+            timeLeft--;
+            if (timerEl) timerEl.textContent = `⏱ ${timeLeft}с`;
+            if (timeLeft <= 0) {
+                clearInterval(timerId);
+                lives--;
+                window.showToast("❌ Время вышло! Осталось жизней: " + lives, "err");
+                setTimeout(nextQ, 500);
+            }
+        }, 1000);
+    }
+
     function nextQ() {
-        if (lives <= 0) {
-            container.innerHTML = `<div style="text-align:center; padding:30px;"><h2 style="color:var(--err);">💀 Вы проиграли</h2><p>Счет: ${score}</p><button class="btn" onclick="window.startGame('party')">Реванш</button></div>`;
-            return;
-        }
-        if (score === questions.length) {
-            container.innerHTML = `<div style="text-align:center; padding:30px;"><h2 style="color:var(--ok);">🎉 Вы выжили!</h2><p>Счет: ${score}</p><button class="btn" onclick="window.startGame('party')">Еще раз</button></div>`;
-            return;
-        }
-        
-        var q = questions[Math.floor(Math.random() * questions.length)];
+        clearInterval(timerId);
+        if (lives <= 0) return showEnd('lose');
+        if (score >= TARGET) return showEnd('win');
+        if (idx >= pool.length) { pool = _shuffle(pool); idx = 0; }
+
+        var q = pool[idx++];
+        var correctText = q[1].split("|")[q[2]];
+        var opts = _shuffle(q[1].split("|"));
+        var correctIdx = opts.indexOf(correctText);
+
         container.innerHTML = `<div style="text-align:center;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold; color:var(--err);"><span>❤️ ${'❤️'.repeat(lives)}</span><span>Счет: ${score}</span></div>
-            <h3 style="margin-bottom:20px;">${q.q}</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-weight:bold; color:var(--err);">
+                <span>${'❤️'.repeat(lives)}</span>
+                <span id="partyTimer" style="color:var(--accent); font-size:20px;">⏱ 15с</span>
+                <span>Счет: ${score}/${TARGET}</span>
+            </div>
+            <h3 style="margin-bottom:20px;">${q[0]}</h3>
             <div style="display:flex; flex-direction:column; gap:10px; max-width:400px; margin:0 auto;">
-                ${q.opts.map((opt, i) => `<button class="btn ghost" style="padding:12px;" onclick="window._partyAns(${i}, ${q.a})">${opt}</button>`).join('')}
+                ${opts.map((opt, i) => `<button class="btn ghost" style="padding:12px;" onclick="window._partyAns(${i}, ${correctIdx})">${opt}</button>`).join('')}
             </div>
         </div>`;
+        startTimer();
     }
-    
+
     window._partyAns = function(selected, correct) {
+        clearInterval(timerId);
         if (selected === correct) { score++; window.showToast("✅ Верно!", "ok"); }
         else { lives--; window.showToast("❌ Ошибка! Осталось жизней: " + lives, "err"); }
-        setTimeout(nextQ, 1000);
+        setTimeout(nextQ, 700);
     };
+
+    function showEnd(type) {
+        clearInterval(timerId);
+        if (type === 'win') {
+            var best = parseInt(localStorage.getItem('hs_party') || '0');
+            window.saveScore('party', score);
+            if (window.addXP) window.addXP(200);
+            container.innerHTML = `<div style="text-align:center;padding:30px;">
+                <h2 style="color:var(--ok);">🎉 Вы выжили!</h2>
+                <p>Счет: ${score}/${TARGET}</p>
+                <p style="color:var(--gold);">Рекорд: ${Math.max(score, best)}</p>
+                <button class="btn" onclick="window.startGame('party')">Еще раз</button></div>`;
+        } else {
+            window.saveScore('party', score);
+            container.innerHTML = `<div style="text-align:center;padding:30px;">
+                <h2 style="color:var(--err);">💀 Вы проиграли</h2>
+                <p>Счет: ${score}/${TARGET}</p>
+                <button class="btn" onclick="window.startGame('party')">Реванш</button></div>`;
+        }
+    }
     nextQ();
 }
 
-// ================= СОЛИТЁР ПАУК (Упрощенный) =================
+// ================= СОЛИТЁР ПАУК =================
 function startSpider(container) {
-    // Простая реализация "найди пару"
-    var cards = [];
-    for (var i = 1; i <= 4; i++) { cards.push(i); cards.push(i); }
-    cards = cards.sort(() => Math.random() - 0.5);
-    
-    var flipped = []; var matched = 0;
-    container.innerHTML = `<div style="text-align:center;"><h3>🕷️ Солитёр Паук (Найди пару)</h3><p>Откройте две одинаковые карты.</p>
-    <div id="spiderGrid" style="display:grid; grid-template-columns:repeat(4, 70px); gap:10px; justify-content:center; margin-top:20px;"></div></div>`;
-    
-    var gridEl = document.getElementById("spiderGrid");
-    cards.forEach((val, i) => {
-        var btn = document.createElement("button");
-        btn.className = "btn ghost"; btn.style = "height:90px; font-size:28px; background:var(--card-soft);";
-        btn.textContent = "🎴";
-        btn.onclick = function() {
-            if (flipped.includes(i) || btn.disabled) return;
-            btn.textContent = val; flipped.push(i);
+    var suits = ['♠', '♥'];
+    var deck = [];
+    for (var s of suits) for (var r = 1; r <= 13; r++) deck.push({ suit: s, rank: r, faceUp: false });
+    deck.sort(() => Math.random() - 0.5);
+
+    var cols = [[], [], [], [], [], [], [], [], [], []];
+    for (var i = 0; i < 10; i++) {
+        var count = i < 4 ? 6 : 5; // 54 карты в раздаче
+        for (var j = 0; j < count; j++) {
+            var card = deck.pop();
+            if (j === count - 1) card.faceUp = true;
+            cols[i].push(card);
+        }
+    }
+
+    var selectedCol = null, selectedIdx = null;
+
+    function render() {
+        container.innerHTML = `<div style="text-align:center;">
+            <h3>🕷️ Солитёр Паук</h3>
+            <button class="btn ghost" onclick="window._dealSpider()" style="margin-bottom:15px;">Раздать (Осталось: ${deck.length})</button>
+            <div id="spiderBoard" style="display:flex; gap:8px; justify-content:center; margin-top:10px; min-height:250px;"></div>
+        </div>`;
+        
+        var boardEl = document.getElementById("spiderBoard");
+        cols.forEach((col, cIdx) => {
+            var colEl = document.createElement("div");
+            colEl.style = "width:65px; min-height:200px; border:1px dashed var(--border); border-radius:5px; padding:5px 0; display:flex; flex-direction:column; align-items:center; background:var(--bg);";
             
-            if (flipped.length === 2) {
-                var idx1 = flipped[0], idx2 = flipped[1];
-                if (cards[idx1] === cards[idx2]) {
-                    matched += 2; window.showToast("Пара!", "ok");
-                    gridEl.children[idx1].disabled = true; gridEl.children[idx2].disabled = true;
-                    gridEl.children[idx1].style.background = "var(--ok)";
-                    gridEl.children[idx2].style.background = "var(--ok)";
-                    if (matched === cards.length) setTimeout(() => { alert("Победа! +100 XP"); window.addXP(100); }, 500);
-                } else {
-                    setTimeout(() => {
-                        gridEl.children[idx1].textContent = "🎴"; gridEl.children[idx2].textContent = "🎴";
-                    }, 800);
+            // Обработка клика по пустой колонке
+            colEl.onclick = (e) => {
+                if (e.target === colEl && selectedCol !== null) {
+                    var movingCards = cols[selectedCol].slice(selectedIdx);
+                    cols[selectedCol] = cols[selectedCol].slice(0, selectedIdx);
+                    if (cols[selectedCol].length > 0) cols[selectedCol][cols[selectedCol].length - 1].faceUp = true;
+                    cols[cIdx] = cols[cIdx].concat(movingCards);
+                    selectedCol = null; selectedIdx = null;
+                    checkWin(); render();
                 }
-                flipped = [];
-            }
-        };
-        gridEl.appendChild(btn);
-    });
+            };
+
+            col.forEach((card, rIdx) => {
+                var cardEl = document.createElement("div");
+                var rankStr = card.rank === 1 ? 'A' : card.rank === 11 ? 'J' : card.rank === 12 ? 'Q' : card.rank === 13 ? 'K' : card.rank;
+                var isRed = card.suit === '♥';
+                cardEl.style = `width:55px; height:75px; border-radius:5px; border:1px solid var(--border); margin-bottom:-55px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:20px; font-weight:bold; background:${card.faceUp ? '#fff' : 'var(--card-soft)'}; color:${card.faceUp ? (isRed ? '#d32f2f' : '#000') : 'transparent'}; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.3); z-index:${rIdx};`;
+                if (selectedCol === cIdx && selectedIdx === rIdx) cardEl.style.border = "2px solid var(--gold)";
+                if (card.faceUp) {
+                    cardEl.innerHTML = `<div>${rankStr}</div><div>${card.suit}</div>`;
+                    cardEl.onclick = (e) => {
+                        e.stopPropagation();
+                        if (selectedCol === null) {
+                            var isValid = true;
+                            for (var i = rIdx; i < col.length - 1; i++) {
+                                if (col[i].rank - 1 !== col[i+1].rank || col[i].suit !== col[i+1].suit) { isValid = false; break; }
+                            }
+                            if (isValid) { selectedCol = cIdx; selectedIdx = rIdx; render(); }
+                        } else {
+                            if (selectedCol === cIdx) { selectedCol = null; selectedIdx = null; render(); return; }
+                            var movingCards = cols[selectedCol].slice(selectedIdx);
+                            var targetCol = cols[cIdx];
+                            var validMove = true;
+                            if (targetCol.length > 0) {
+                                var topCard = targetCol[targetCol.length - 1];
+                                if (!topCard.faceUp || topCard.rank !== movingCards[0].rank + 1 || topCard.suit !== movingCards[0].suit) validMove = false;
+                            }
+                            if (validMove) {
+                                cols[selectedCol] = cols[selectedCol].slice(0, selectedIdx);
+                                if (cols[selectedCol].length > 0 && !cols[selectedCol][cols[selectedCol].length - 1].faceUp) cols[selectedCol][cols[selectedCol].length - 1].faceUp = true;
+                                cols[cIdx] = cols[cIdx].concat(movingCards);
+                                selectedCol = null; selectedIdx = null;
+                                checkWin(); render();
+                            }
+                        }
+                    };
+                }
+                colEl.appendChild(cardEl);
+            });
+            boardEl.appendChild(colEl);
+        });
+    }
+
+    window._dealSpider = function() {
+        if (deck.length < 10) return window.showToast("Мало карт", "err");
+        for (var i = 0; i < 10; i++) {
+            var card = deck.pop();
+            card.faceUp = true;
+            cols[i].push(card);
+        }
+        render();
+    };
+
+    function checkWin() {
+        var total = cols.reduce((acc, col) => acc + col.length, 0);
+        if (total === 0) {
+            window.showToast("🎉 Победа!", "ok");
+            window.saveScore('spider', 100);
+            if(window.addXP) window.addXP(100);
+        }
+    }
+    render();
 }
