@@ -1,7 +1,7 @@
 "use strict";
 
 // ============================================================
-// МДК Портал — app.js (Исправленная версия)
+// МДК Портал — app.js (Финальная версия v201.0)
 // ============================================================
 
 // --- УТИЛИТЫ ---
@@ -159,13 +159,20 @@ window.doTeacherLogin = function() {
     errBox.style.display = "block";
   }
 
+  // Жестко прописанные логины
   if (u === "admin" && p === "admin") {
     finishOk({ name: "Администратор", role: "admin" });
     return;
   }
+  
+  if (u === "teacher" && p === "teacher") {
+    finishOk({ name: "Анна Анатольевна", role: "teacher" });
+    return;
+  }
 
+  // Проверка через сервер (если нужно)
   if (!window.API) {
-    finishErr("Сервер недоступен. Используйте admin/admin.");
+    finishErr("Сервер недоступен. Используйте admin/admin или teacher/teacher.");
     return;
   }
 
@@ -176,7 +183,7 @@ window.doTeacherLogin = function() {
       finishErr((res && res.error) || "Неверный логин или пароль");
     }
   }).catch(function() {
-    finishErr("Ошибка сети. Используйте admin/admin.");
+    finishErr("Ошибка сети. Используйте admin/admin или teacher/teacher.");
   });
 };
 
@@ -614,7 +621,6 @@ window.renderSimplePage = function(title, items, icon) {
       var desc = (s && s.description) ? '<p style="font-size:14px; color:var(--muted); margin-top:5px;">' + window.escapeHtml(s.description) + '</p>' : '';
       var content = (s && s.content) ? '<div style="font-size:14px; margin-top:5px;">' + window.escapeHtml(s.content) + '</div>' : '';
       
-      // Определяем тип кнопки
       var btnText = "📥 Скачать / Открыть";
       if (s.file && s.file.endsWith('.mp4')) {
         btnText = "▶️ Смотреть видео";
@@ -660,16 +666,12 @@ window.route = function() {
     } else if (page === "profile") {
       window.renderProfilePage();
     } else if (page === "videos") {
-      // Берем из глобальных данных
       window.renderSimplePage("Видео", window.GLOBAL_DATA ? window.GLOBAL_DATA.videos : [], "🎬");
     } else if (page === "passports") {
-      // Берем из глобальных данных
       window.renderSimplePage("Паспорта", window.GLOBAL_DATA ? window.GLOBAL_DATA.passports : [], "📄");
     } else if (page === "safety") {
-      // Берем из глобальных данных
       window.renderSimplePage("Охрана труда", window.GLOBAL_DATA ? window.GLOBAL_DATA.safety : [], "🦺");
     } else if (page === "formatting") {
-      // Берем из глобальных данных
       var fmt = window.GLOBAL_DATA ? window.GLOBAL_DATA.formatting : null;
       var items = (fmt && fmt.title) ? [{ title: fmt.title, content: fmt.content }] : [];
       window.renderSimplePage("Оформление", items, "📝");

@@ -1,152 +1,203 @@
+/* ============================================================
+   МДК — journal.js (Журнал успеваемости)
+   ============================================================ */
 "use strict";
 
-window.renderArcadePage = function() {
-  var app = document.getElementById("app"); app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Игровая комната";
-  app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>🎮 Игровая комната</h1></section>'));
+window.renderJournalPage = function() {
+  var app = document.getElementById("app"); if (!app) return; app.innerHTML = ""; document.getElementById("crumbs").textContent = "Журнал";
   
-  var games = [
-    { name: "Крестики-нолики 4×4", render: window.renderTicTacToePage },
-    { name: "Викторина по G-коду", render: window.renderGCodeTestPage }
-  ];
+  app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
+  app.appendChild(el('<section class="hero"><h1>Журнал успеваемости</h1></section>'));
   
-  var grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;"></div>');
-  games.forEach(g => {
-    var card = el(`<div class="module" style="cursor:pointer;text-align:center;padding:20px;"><h3>${g.name}</h3></div>`);
-    card.onclick = g.render;
-    grid.appendChild(card);
-  });
-  app.appendChild(grid);
-};
+  var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
+  
+  if (isTeacher) {
+      var quickPanel = el(`<section class="module" style="background:var(--accent-soft); border-color:var(--accent); margin-bottom:24px;">
+          <h3 style="margin-top:0; color:var(--accent);">🎁 Быстрая выдача XP</h3>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <select id="quickStudentSelect" class="self-input" style="flex:1; min-width:200px; margin:0;"></select>
+              <input id="quickXPAmount" type="number" class="self-input" style="width:100px; margin:0;" placeholder="XP" value="50" min="1">
+              <button class="btn" id="quickGrantBtn" style="background:var(--gold); color:#000;">Выдать</button>
+          </div>
+      </section>`);
+      app.appendChild(quickPanel);
+  }
 
-window.renderTicTacToePage = function() {
-  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Крестики-нолики 4×4";
-  app.appendChild(el('<a class="backlink" href="#/arcade" style="color:var(--accent);">← Назад в комнату</a>'));
-  
-  var block = el(`<section class="module" style="text-align:center;">
-    <h2>Крестики-нолики 4×4</h2>
-    <p class="sub" style="margin-bottom:15px;">Соберите 4 в ряд (X - вы, O - компьютер)</p>
-    <div id="tttBoard" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;max-width:320px;margin:20px auto;width:100%;"></div>
-    <div id="tttStatus" style="font-weight:bold;font-size:18px;color:var(--accent);min-height:28px;"></div>
-    <div style="margin-top:20px;"><button class="btn ghost" id="tttReset">Сбросить</button></div>
-  </section>`);
-  app.appendChild(block);
-  
-  var board = Array(16).fill("");
-  var boardEl = block.querySelector("#tttBoard");
-  var statusEl = block.querySelector("#tttStatus");
-  
-  function renderBoard() {
-    boardEl.innerHTML = "";
-    board.forEach(function(cell, i) {
-      var b = document.createElement("button");
-      b.className = "btn ghost";
-      b.style = "height: 60px; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; border-radius: 8px;";
-      if (cell === "X") b.style.color = "var(--accent)";
-      if (cell === "O") b.style.color = "var(--ok)";
-      b.textContent = cell;
-      b.onclick = function() { play(i); };
-      if (cell !== "" || statusEl.textContent !== "") b.disabled = true;
-      boardEl.appendChild(b);
-    });
+  if (isTeacher) {
+    var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
+    app.appendChild(topPanel);
+    topPanel.querySelector("#reportBtn").onclick = function() {
+      var email = prompt("Введите email для отчета:", "anna.shirockix@gmail.com"); if (!email) return;
+      var p = new URLSearchParams(); p.append("action", "journalreport"); p.append("group", state.staff.group || "ТМ-3"); p.append("email", email);
+      window.showToast("Отчет отправляется...", "info");
+      fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r=>r.json()).then(res=>{
+         if(res.ok) window.showToast("Отчет отправлен!", "ok"); else window.showToast("Ошибка отправки.", "err");
+      });
+    };
   }
-  
-  function checkWin(player) {
-    const lines = [
-        [0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],
-        [0,4,8,12],[1,5,9,13],[2,6,10,14],[3,7,11,15],
-        [0,5,10,15],[3,6,9,12]
-    ];
-    return lines.some(line => line.every(idx => board[idx] === player));
-  }
-  
-  function play(i) {
-    if (board[i] !== "" || statusEl.textContent !== "") return;
-    board[i] = "X";
-    renderBoard();
-    if (checkWin("X")) { statusEl.textContent = "Вы победили!"; return; }
-    if (!board.includes("")) { statusEl.textContent = "Ничья!"; return; }
+
+  var tableWrap = el('<section class="module"><div class="skeleton" style="height:200px;"></div></section>'); app.appendChild(tableWrap);
+
+  window.API.getStudents().then(d => {
+    tableWrap.innerHTML = "";
+    if (!d || !d.ok || !d.students || !d.students.length) { tableWrap.innerHTML = "Студентов пока нет."; return; }
     
-    setTimeout(function() {
-        let empty = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
-        if (empty.length > 0) {
-            let aiMove = empty[Math.floor(Math.random() * empty.length)];
-            board[aiMove] = "O";
-            renderBoard();
-            if (checkWin("O")) { statusEl.textContent = "Компьютер победил!"; return; }
-            if (!board.includes("")) { statusEl.textContent = "Ничья!"; }
-        }
-    }, 300);
-  }
-  
-  block.querySelector("#tttReset").onclick = function() {
-    board = Array(16).fill("");
-    statusEl.textContent = "";
-    renderBoard();
-  };
-  
-  renderBoard();
-};
-
-window.renderGCodeTestPage = function() {
-  var app = document.getElementById("app"); if(!app) return; app.innerHTML = "";
-  document.getElementById("crumbs").textContent = "Тест G-кода";
-  app.appendChild(el('<a class="backlink" href="#/arcade" style="color:var(--accent);">← Назад в комнату</a>'));
-  
-  var block = el(`<section class="module" style="text-align:center;">
-    <h2>Тест на знание G-кода</h2>
-    <div id="gcodeQuestion" style="font-size: 18px; margin: 20px 0; font-weight: bold;"></div>
-    <div id="gcodeOptions" style="display: flex; flex-direction: column; gap: 10px; max-width: 400px; margin: 0 auto;"></div>
-    <div id="gcodeResult" style="font-weight: bold; margin-top: 20px; min-height: 28px;"></div>
-  </section>`);
-  app.appendChild(block);
-  
-  var qEl = block.querySelector("#gcodeQuestion");
-  var optsEl = block.querySelector("#gcodeOptions");
-  var resEl = block.querySelector("#gcodeResult");
-  
-  var questions = [
-    { q: "Что означает G00?", options: ["Линейная интерполяция", "Быстрое перемещение", "Круговая интерполяция"], correct: 1 },
-    { q: "Что означает M30?", options: ["Конец программы", "Включение шпинделя", "Включение СОЖ"], correct: 0 },
-    { q: "Какая команда задаёт подачу?", options: ["S", "F", "T"], correct: 1 },
-    { q: "Какой код отвечает за коррекцию длины инструмента?", options: ["G41", "G42", "G43"], correct: 2 }
-  ];
-  
-  var current = 0;
-  var score = 0;
-  
-  function renderQ() {
-    if (current >= questions.length) {
-      qEl.textContent = "Тест завершен!";
-      optsEl.innerHTML = "";
-      resEl.innerHTML = `Ваш результат: ${score} из ${questions.length}<br><button class="btn" onclick="window.renderGCodeTestPage()" style="margin-top:15px;">Пройти снова</button>`;
-      return;
+    if (isTeacher) {
+        var sel = document.getElementById("quickStudentSelect");
+        d.students.forEach(s => {
+            sel.appendChild(el(`<option value="${(s.name + "|" + s.group).toLowerCase()}">${s.name} (${s.group})</option>`));
+        });
+        
+        document.getElementById("quickGrantBtn").onclick = function() {
+            var sKey = sel.value;
+            var sName = sel.options[sel.selectedIndex].text.split(' (')[0];
+            var amount = parseInt(document.getElementById("quickXPAmount").value) || 50;
+            if (!sKey) return;
+            if (confirm(`Выдать ${amount} XP студенту ${sName}?`)) {
+                window.grantXP(sKey, sName, amount);
+            }
+        };
     }
-    var q = questions[current];
-    qEl.textContent = (current + 1) + ". " + q.q;
-    optsEl.innerHTML = "";
-    resEl.textContent = "";
+
+    var displayStudents = d.students;
+    if (!state.staff && state.student) {
+      displayStudents = d.students.filter(function(s) {
+        return s.name.trim().toLowerCase() === state.student.name.trim().toLowerCase() && 
+               s.group.trim().toUpperCase() === state.student.group.trim().toUpperCase();
+      });
+    }
+    if (!displayStudents.length) { tableWrap.innerHTML = "<p class='sub'>Ваших данных пока нет.</p>"; return; }
     
-    q.options.forEach(function(opt, i) {
-      var btn = document.createElement("button");
-      btn.className = "btn ghost";
-      btn.textContent = opt;
-      btn.onclick = function() {
-        if (i === q.correct) {
-          score++;
-          resEl.textContent = "✅ Верно!";
-          resEl.style.color = "var(--ok)";
-        } else {
-          resEl.textContent = "❌ Неверно. Правильно: " + q.options[q.correct];
-          resEl.style.color = "var(--err)";
+    var tableContainer = el('<div class="journal-container" style="overflow-x:auto;"></div>');
+    var table = el('<table class="journal-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"></table>');
+    
+    table.appendChild(el('<thead><tr>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:20%;">Студент</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:10%; text-align:center;">Средний балл</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:35%;">Сданные темы и работы</th>'
+        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:35%;">Практические</th>'
+        + '</tr></thead>'));
+        
+    var tbody = el('<tbody></tbody>');
+    
+    displayStudents.forEach(s => {
+      var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
+      var currentStudentKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
+      
+      var nameCellHtml = `<div style="font-weight:bold; font-size:16px;">${s.name}</div>
+                          <div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
+      if (isTeacher) {
+          nameCellHtml += `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🎁 Выдать XP</button>`;
+      }
+      tr.appendChild(el(`<td style="padding:12px; vertical-align:top;">${nameCellHtml}</td>`));
+      
+      var tdWorks = el('<td style="padding:12px; vertical-align:top;"></td>');
+      var tdPracticals = el('<td style="padding:12px; vertical-align:top;"></td>');
+      
+      var worksHtml = "", pracHtml = "", hasWorks = false, sum = 0, count = 0;
+      
+      try {
+        var p = JSON.parse(s.payload || "{}");
+        
+        if (p.results) {
+          Object.keys(p.results).forEach(k => {
+             var tName = k === "__final_exam__" ? "Итоговый экзамен" : k;
+             var topic = findTopic(k);
+             if (topic) tName = topic.topic.code + ' - ' + topic.topic.title;
+             
+             worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Тест)</span></div>`;
+             sum += p.results[k].grade || 0; count++;
+             hasWorks = true;
+          });
         }
-        current++;
-        setTimeout(renderQ, 1000);
-        optsEl.querySelectorAll("button").forEach(b => b.disabled = true);
-      };
-      optsEl.appendChild(btn);
+        
+        if (p.selfResults) {
+          Object.keys(p.selfResults).forEach(k => { 
+            var topic = findTopic(k);
+            var tName = topic ? topic.topic.code + ' - ' + topic.topic.title : k;
+            worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Сам. работа)</span></div>`;
+            sum += p.selfResults[k].grade || 0; count++;
+            hasWorks = true;
+          });
+        }
+
+        if (p.practicalsDone) {
+            Object.keys(p.practicalsDone).forEach(topicId => {
+                Object.keys(p.practicalsDone[topicId]).forEach(pCode => {
+                    var isDone = p.practicalsDone[topicId][pCode];
+                    if (!isDone) return;
+                    
+                    var topic = findTopic(topicId);
+                    var tName = topic ? topic.topic.code : topicId;
+                    var grade = (p.practicalGrades && p.practicalGrades[topicId] && p.practicalGrades[topicId][pCode]) || "";
+                    
+                    pracHtml += `<div style="margin-bottom:8px; padding:8px; background:var(--card-soft); border-radius:8px; border:1px solid var(--border);">
+                        <div style="font-size:12px; margin-bottom:4px;"><b>${tName}</b> - ${pCode}</div>`;
+                    
+                    if (isTeacher) {
+                        pracHtml += `<select onchange="window.approvePractical('${currentStudentKey}', '${topicId}', '${pCode}', this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:bold;">
+                            <option value="">— Оценка —</option>
+                            <option value="5" ${grade == "5" ? "selected" : ""}>5</option>
+                            <option value="4" ${grade == "4" ? "selected" : ""}>4</option>
+                            <option value="3" ${grade == "3" ? "selected" : ""}>3</option>
+                            <option value="2" ${grade == "2" ? "selected" : ""}>2</option>
+                        </select>`;
+                    } else {
+                        pracHtml += `<span style="font-size:14px; font-weight:bold; color:var(--accent);">${grade ? "Оценка: " + grade : "На проверке"}</span>`;
+                    }
+                    pracHtml += `</div>`;
+                });
+            });
+        }
+      } catch(e) { console.error(e); }
+      
+      var avg = count > 0 ? (sum / count).toFixed(2) : "—";
+      tr.appendChild(el(`<td style="padding:12px; vertical-align:top; text-align:center; font-size:18px; font-weight:bold; color:var(--accent);">${avg}</td>`));
+      
+      if (hasWorks) tdWorks.innerHTML = worksHtml;
+      else tdWorks.innerHTML = '<i style="color:var(--muted);">Нет сданных тестов</i>';
+      
+      if (pracHtml) tdPracticals.innerHTML = pracHtml;
+      else tdPracticals.innerHTML = '<i style="color:var(--muted);">Нет заявок</i>';
+      
+      tr.appendChild(tdWorks);
+      tr.appendChild(tdPracticals);
+      tbody.appendChild(tr);
     });
-  }
-  renderQ();
+    
+    table.appendChild(tbody);
+    tableContainer.appendChild(table);
+    tableWrap.appendChild(tableContainer);
+  }).catch(() => { tableWrap.innerHTML = "Ошибка загрузки."; });
+};
+
+// Вспомогательная функция поиска темы для красивого названия
+function findTopic(id) {
+    if (!window.COURSE || !window.COURSE.sections) return null;
+    for (var i = 0; i < window.COURSE.sections.length; i++) {
+        var topics = window.COURSE.sections[i].topics || [];
+        for (var j = 0; j < topics.length; j++) {
+            if (topics[j].id === id) return { topic: topics[j], section: window.COURSE.sections[i] };
+        }
+    }
+    return null;
+}
+
+// Сохранение оценки за практическую
+window.approvePractical = function(studentKey, topicId, pracCode, grade) {
+    window.API.getStudentData(studentKey).then(res => {
+        if (!res.ok) return window.showToast("Ошибка загрузки данных", "err");
+        var p = {};
+        try { p = JSON.parse(res.payload || "{}"); } catch(e) {}
+        
+        if (!p.practicalGrades) p.practicalGrades = {};
+        if (!p.practicalGrades[topicId]) p.practicalGrades[topicId] = {};
+        
+        p.practicalGrades[topicId][pracCode] = grade;
+        
+        window.API.saveStudent(studentKey, "", "", JSON.stringify(p)).then(r => {
+            if (r.ok) window.showToast("Оценка сохранена!", "ok");
+            else window.showToast("Ошибка сохранения", "err");
+        });
+    });
 };

@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК 07.01 — assistant.js (v20.0 — FIXED)
+   МДК — assistant.js (Помощник с экскурсией)
    ============================================================ */
 "use strict";
 
@@ -17,6 +17,9 @@ window.openAssistant = function(){
       <button id="asClose" style="background:none;border:none;color:var(--text);cursor:pointer;">✕</button>
     </div>
     <div id="asLog" style="height:300px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:14px;"></div>
+    <div style="padding: 10px; border-top: 1px solid var(--border); display: flex; gap: 8px;">
+      <button class="btn" id="asTourBtn" style="flex:1; font-size:12px; padding:8px; background:var(--gold); color:#000;">🗺️ Экскурсия по сайту</button>
+    </div>
     <form id="asForm" style="display:flex;padding:10px;border-top:1px solid var(--border);">
       <input type="text" id="asInput" placeholder="Спроси про G-код..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-right:8px;">
       <button type="submit" class="btn">➤</button>
@@ -29,9 +32,15 @@ window.openAssistant = function(){
   function addBot(text) { log.appendChild(el(`<div style="background:var(--card-soft);padding:8px 12px;border-radius:8px;align-self:flex-start;">${text}</div>`)); log.scrollTop = log.scrollHeight; }
   function addUser(text) { log.appendChild(el(`<div style="background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;align-self:flex-end;">${text}</div>`)); log.scrollTop = log.scrollHeight; }
 
-  addBot("Привет! Я помогу найти тему или G-код.");
+  addBot("Привет! Я помогу найти тему или G-код. А еще я могу провести для тебя экскурсию по сайту!");
 
   panel.querySelector("#asClose").addEventListener("click", ()=>panel.remove());
+  
+  panel.querySelector("#asTourBtn").addEventListener("click", function() {
+    panel.remove();
+    startTour();
+  });
+
   panel.querySelector("#asForm").addEventListener("submit", (e)=>{
     e.preventDefault(); var val = input.value.trim(); if(!val) return;
     input.value = ""; addUser(val);
@@ -42,6 +51,18 @@ window.openAssistant = function(){
     }, 500);
   });
 };
+
+function searchCourse(query) {
+    var c = window.COURSE; if(!c) return [];
+    var q = query.toLowerCase(); var res = [];
+    c.sections.forEach(sec => {
+        (sec.topics || []).forEach(t => {
+            if (t.title.toLowerCase().includes(q) || t.code.toLowerCase().includes(q)) { res.push(t); }
+            else { (t.lectures || []).forEach(l => { if (l.title.toLowerCase().includes(q)) { if (!res.some(r => r.id === t.id)) res.push(t); } }); }
+        });
+    });
+    return res;
+}
 
 function initAssistantButton(){
   if (document.getElementById("asFab")) return;
@@ -56,3 +77,86 @@ window.initAssistantButton = initAssistantButton;
 window.addEventListener("DOMContentLoaded", () => {
   initAssistantButton();
 });
+
+/* ============================================================
+   ТУР ПО САЙТУ
+   ============================================================ */
+function startTour() {
+    var steps = [
+        { el: '#burgerBtn', title: "Навигация", text: "Здесь находится главное меню. Через него можно попасть в Журнал, Игры, Расписание и другие разделы." },
+        { el: '#mdkSelector', title: "Выбор предмета", text: "Используйте этот выпадающий список, чтобы переключаться между МДК. Вопросы, лекции и тесты обновятся автоматически." },
+        { el: '#app', title: "Учебный план", text: "Здесь отображаются все темы. Нажмите на любую тему, чтобы открыть лекции, тесты и практические задания." },
+        { el: '#xpCount', title: "Опыт и Уровень", text: "За просмотр лекций и прохождение тестов вы получаете XP. Чем больше XP, тем выше ваш уровень!" },
+        { el: '#themeToggle', title: "Смена темы", text: "Нажмите сюда, чтобы переключить сайт в светлую или темную тему." }
+    ];
+    var currentStep = 0;
+    var overlay = document.createElement("div");
+    overlay.style = "position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:99998; pointer-events:none;";
+    document.body.appendChild(overlay);
+    
+    function showStep() {
+        // Удаляем старые подсказки
+        var oldTip = document.getElementById("tourTip");
+        if (oldTip) oldTip.remove();
+        var oldHighlight = document.querySelector(".tour-highlight");
+        if (oldHighlight) oldHighlight.classList.remove("tour-highlight");
+
+        if (currentStep >= steps.length) {
+            overlay.remove();
+            if (window.showToast) window.showToast("Экскурсия завершена! Теперь вы знаете, как пользоваться порталом.", "ok");
+            return;
+        }
+
+        var step = steps[currentStep];
+        var target = document.querySelector(step.el);
+        
+        if (!target) { currentStep++; showStep(); return; }
+
+        // Подсветка элемента
+        target.classList.add("tour-highlight");
+        target.style.position = "relative";
+        target.style.zIndex = "99999";
+        
+        // Создаем подсказку
+        var rect = target.getBoundingClientRect();
+        var tip = document.createElement("div");
+        tip.id = "tourTip";
+        tip.style = `position:fixed; background:var(--card); color:var(--text); border:2px solid var(--gold); padding:15px; border-radius:12px; width:300px; max-width:90vw; z-index:100000; box-shadow:0 10px 30px rgba(0,0,0,0.5); font-size:14px;`;
+        
+        // Позиционирование
+        var top = rect.bottom + 15;
+        var left = rect.left;
+        if (top + 150 > window.innerHeight) { top = rect.top - 150; }
+        if (left + 300 > window.innerWidth) { left = window.innerWidth - 320; }
+        if (left < 10) left = 10;
+        
+        tip.style.top = top + "px";
+        tip.style.left = left + "px";
+        
+        tip.innerHTML = `
+            <h4 style="margin:0 0 10px 0; color:var(--gold);">${step.title}</h4>
+            <p style="margin:0 0 15px 0; line-height:1.4;">${step.text}</p>
+            <div style="display:flex; justify-content:space-between;">
+                <button class="btn ghost" id="tourSkip" style="padding:6px 12px; font-size:12px;">Пропустить</button>
+                <button class="btn" id="tourNext" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000;">Далее (${currentStep+1}/${steps.length})</button>
+            </div>
+        `;
+        document.body.appendChild(tip);
+        
+        tip.querySelector("#tourNext").onclick = function() {
+            target.style.position = "";
+            target.style.zIndex = "";
+            currentStep++;
+            showStep();
+        };
+        tip.querySelector("#tourSkip").onclick = function() {
+            target.style.position = "";
+            target.style.zIndex = "";
+            overlay.remove();
+            tip.remove();
+            target.classList.remove("tour-highlight");
+        };
+    }
+    
+    showStep();
+}
