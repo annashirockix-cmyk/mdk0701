@@ -1,5 +1,6 @@
 "use strict";
 
+// --- БАЗОВЫЕ ФУНКЦИИ ---
 window.$ = (id) => document.getElementById(id);
 window.escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.studentKey = (s) => { s = s || window.state.student; return s ? (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()) : null; };
@@ -13,6 +14,7 @@ window.showToast = function(msg, type) {
   setTimeout(() => { toast.classList.add("out"); setTimeout(() => toast.remove(), 300); }, 3000);
 };
 
+// --- СОСТОЯНИЕ ---
 window.state = { 
   activeCourseId: localStorage.getItem("mdk.active") || "07.01",
   student: null, xp: 0, results: {}
@@ -59,13 +61,18 @@ window.addXP = function(amount) {
     window.showToast("+" + amount + " XP", "ok");
 };
 
+// --- АВТОРИЗАЦИЯ ---
 window.doStudentLogin = function() {
   var n = document.getElementById("loginName").value.trim(), g = document.getElementById("loginGroup").value.trim();
   if (!n || !g) return window.showToast("Введите ФИО и Группу!", "err");
+  
   window.state.student = { name: n, group: g.toUpperCase() };
   try { localStorage.setItem("mdk.student", JSON.stringify(window.state.student)); } catch(e){}
+  
   document.getElementById("loginOverlay").hidden = true;
-  window.renderUserChip(); window.loadStudentData(); window.route();
+  window.renderUserChip(); 
+  window.loadStudentData(); 
+  window.route();
 };
 
 window.handleLogout = function() {
@@ -73,7 +80,8 @@ window.handleLogout = function() {
     window.state.student = null;
     try { localStorage.removeItem("mdk.student"); } catch(e){}
     document.getElementById("loginOverlay").hidden = false;
-    window.closeDrawer(); window.route();
+    window.closeDrawer(); 
+    window.route();
   }
 };
 
@@ -92,6 +100,7 @@ window.renderUserChip = function() {
     window.$("userChipAvatar").innerHTML = "👨‍🎓";
 };
 
+// --- РЕНДЕРИНГ СТРАНИЦ ---
 function renderHome() {
     var app = window.$("app"); app.innerHTML = "";
     var c = window.COURSE;
@@ -204,6 +213,7 @@ window.renderSimplePage = function(title, items, icon) {
     app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>${icon} ${title}</h1></section><div class="module">${list || 'Нет данных'}</div>`;
 };
 
+// --- РОУТЕР ---
 window.route = function() {
     window.closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = window.$("app");
@@ -234,10 +244,20 @@ window.route = function() {
     window.scrollTo(0, 0);
 };
 
+// --- ИНИЦИАЛИЗАЦИЯ ---
 window.addEventListener("DOMContentLoaded", () => {
     if (!window.state.student) window.$("loginOverlay").hidden = false;
     if (window.state.student) window.loadStudentData();
     
+    // ИСПРАВЛЕНИЕ: Обработчик кнопки "Войти"
+    var loginForm = document.getElementById("studentLoginForm");
+    if (loginForm) {
+        loginForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            window.doStudentLogin();
+        });
+    }
+
     if (window.$("themeToggle")) window.$("themeToggle").onclick = () => { var t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; window.applyTheme(t); };
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
     if (window.$("drawerClose")) window.$("drawerClose").onclick = window.closeDrawer; 
@@ -253,6 +273,7 @@ window.addEventListener("DOMContentLoaded", () => {
         item.onclick = (e) => { e.preventDefault(); location.hash = item.getAttribute("data-go"); window.closeDrawer(); };
     });
     
-    window.renderUserChip(); window.route();
+    window.renderUserChip(); 
+    window.route();
 });
 window.addEventListener("hashchange", window.route);
