@@ -1,9 +1,8 @@
 /* ============================================================
-   МДК — journal.js (v200.0 — Бумажный журнал + Отчет)
+   МДК — journal.js (v205.0 — Полный журнал с управлением)
    ============================================================ */
 "use strict";
 
-// Список дат для журнала (можно менять)
 const JOURNAL_DATES = [
     "05.11", "11.11", "12.11", "18.11", "19.11", "25.11", "26.11", 
     "02.12", "03.12", "09.12", "10.12", "16.12", "17.12"
@@ -15,7 +14,7 @@ window.renderJournalPage = function() {
   
   app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
   
-  var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
+  var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin");
   
   if (isTeacher) {
       app.appendChild(el('<div style="display:flex; gap:10px; margin-bottom:20px;">' +
@@ -32,14 +31,12 @@ window.renderJournalPage = function() {
       };
       document.getElementById("tabReportBtn").onclick = function() {
           this.className = "btn"; this.previousElementSibling.className = "btn ghost";
-          renderReportTable(contentWrap);
+          renderReportTable(contentWrap, false);
       };
       
-      // По умолчанию открываем Журнал оценок
       renderGradesTable(contentWrap);
       
   } else {
-      // Студенту показываем только Отчет
       var contentWrap = el('<div id="journalContent"></div>');
       app.appendChild(contentWrap);
       renderReportTable(contentWrap, true); // true = режим студента
@@ -79,16 +76,13 @@ function renderGradesTable(container) {
             var sKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
             var tr = el(`<tr></tr>`);
             
-            // № и ФИО
             tr.appendChild(el(`<td style="border:1px solid var(--border); padding:8px; font-weight:bold;">${index + 1}</td>`));
             tr.appendChild(el(`<td style="border:1px solid var(--border); padding:8px; text-align:left; font-weight:bold;">${s.name}<br><span style="font-size:11px;color:var(--muted);font-weight:normal;">гр. ${s.group}</span></td>`));
 
-            // Парсим текущие оценки
             var p = {};
             try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
             var manualGrades = p.manualGrades || {};
 
-            // Ячейки с датами
             JOURNAL_DATES.forEach(date => {
                 var grade = manualGrades[date] || "";
                 var input = el(`<input type="text" value="${grade}" maxlength="3" style="width:35px; height:35px; text-align:center; font-weight:bold; border:1px solid transparent; background:transparent; color:var(--text); border-radius:4px; font-size:16px;" placeholder="-">`);
@@ -105,7 +99,7 @@ function renderGradesTable(container) {
                     window.API.saveStudent(sKey, s.name, s.group, JSON.stringify(newPayload)).then(res => {
                         if(res.ok) {
                             setTimeout(() => input.style.background = "transparent", 500);
-                            p = newPayload; // обновляем локальную копию
+                            p = newPayload;
                         } else {
                             window.showToast("Ошибка сохранения", "err");
                         }
@@ -125,7 +119,7 @@ function renderGradesTable(container) {
     }).catch(() => { container.innerHTML = "Ошибка загрузки."; });
 }
 
-// --- РЕЖИМ 2: ОТЧЕТ ПО КУРСУ (Для всех) ---
+// --- РЕЖИМ 2: ОТЧЕТ ПО КУРСУ ---
 function renderReportTable(container, isStudent) {
     container.innerHTML = '<div class="skeleton" style="height:200px;"></div>';
     
@@ -164,13 +158,26 @@ function renderReportTable(container, isStudent) {
             var p = {};
             try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
             
-            // ФИО
-            tr.appendChild(el(`<td style="padding:12px; vertical-align:top;">
+            // Ячейка ФИО
+            var nameCell = el(`<td style="padding:12px; vertical-align:top;">
                 <div style="font-weight:bold; font-size:16px;">${s.name}</div>
-                <div style="font-size:12px;color:var(--muted);">гр. ${s.group}</div>
-            </td>`));
+                <div style="font-size:12px;color:var(--muted); margin-bottom:8px;">гр. ${s.group} · ${p.xp || 0} XP</div>
+            </td>`);
 
-            // Считаем средний балл (только за тесты и самостоятельные)
+            // Кнопки для учителя
+            if (!isStudent) {
+                var sKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
+                var actionsHtml = `<div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <button class="btn" style="padding:4px 8px; font-size:12px; background:var(--gold); color:#000;" onclick="window.grantXP('${sKey}', '${s.name}')">+ XP</button>
+                    <button class="btn ghost" style="padding:4px 8px; font-size:12px; border-color:var(--err); color:var(--err);" onclick="window.deductXP('${sKey}', '${s.name}')">- XP</button>
+                    <button class="btn ghost" style="padding:4px 8px; font-size:12px; border-color:#d97706; color:#d97706;" onclick="window.levelDown('${sKey}', '${s.name}', ${p.xp || 0})">📉 Ур.</button>
+                    <button class="btn ghost" style="padding:4px 8px; font-size:12px; border-color:var(--err); color:var(--err);" onclick="window.deleteStudent('${sKey}', '${s.name}')">🗑 Удалить</button>
+                </div>`;
+                nameCell.innerHTML += actionsHtml;
+            }
+            tr.appendChild(nameCell);
+
+            // Средний балл
             var sum = 0, count = 0;
             var worksHtml = "";
             

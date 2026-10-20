@@ -1,6 +1,3 @@
-/* ============================================================
-   МДК — shop.js (Магазин, Темы и Достижения)
-   ============================================================ */
 "use strict";
 
 // --- СПИСОК ДОСТИЖЕНИЙ ---
@@ -8,7 +5,7 @@ const ACHIEVEMENTS = [
     { id: "welcome", title: "Первый шаг", desc: "Войти в систему", icon: "🚪", check: (s) => !!s.student },
     { id: "reader", title: "Книжный червь", desc: "Изучить первую лекцию", icon: "📖", check: (s) => Object.keys(s.results).length > 0 },
     { id: "hacker", title: "Хакер", desc: "Пройти первый тест", icon: "💻", check: (s) => Object.keys(s.results).some(k => k.includes('_test')) },
-    { id: "gamer", title: "Геймер", desc: "Сыграть в мини-игру", icon: "🎮", check: (s) => s.xp >= 50 }, // Упрощенно, т.к. XP дается за игры
+    { id: "gamer", title: "Геймер", desc: "Сыграть в мини-игру", icon: "🎮", check: (s) => s.xp >= 50 },
     { id: "level_5", title: "Опытный", desc: "Достичь 5 уровня", icon: "⭐", check: (s) => window.getLevel(s.xp) >= 5 },
     { id: "rich", title: "Богач", desc: "Накопить 1000 XP", icon: "💰", check: (s) => s.xp >= 1000 }
 ];
@@ -22,7 +19,6 @@ const THEMES = [
     { id: "gold", title: "VIP", desc: "Золотой люкс", price: 1500, color: "#ffd700" }
 ];
 
-// --- ПРОВЕРКА И ВЫДАЧА ДОСТИЖЕНИЙ ---
 window.checkAchievements = function() {
     if (!state.student) return;
     if (!state.unlockedAchievements) state.unlockedAchievements = [];
@@ -43,14 +39,12 @@ window.checkAchievements = function() {
     }
 };
 
-// --- РЕНДЕР СТРАНИЦЫ ДОСТИЖЕНИЙ ---
 window.renderAchievementsPage = function() {
     var app = document.getElementById("app"); if (!app) return; app.innerHTML = "";
     document.getElementById("crumbs").textContent = "Достижения";
     app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
     app.appendChild(el('<section class="hero"><h1>🏆 Ваши достижения</h1></section>'));
-    
-    window.checkAchievements(); // Обновляем перед показом
+    window.checkAchievements();
     
     var grid = el('<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px;"></div>');
     var unlocked = state.unlockedAchievements || [];
@@ -70,7 +64,6 @@ window.renderAchievementsPage = function() {
     app.appendChild(grid);
 };
 
-// --- РЕНДЕР МАГАЗИНА ---
 window.renderShopPage = function() {
     var app = document.getElementById("app"); if (!app) return; app.innerHTML = "";
     document.getElementById("crumbs").textContent = "Магазин XP";
@@ -78,15 +71,14 @@ window.renderShopPage = function() {
     app.appendChild(el(`<section class="hero"><h1>🛒 Магазин</h1><p>Ваш баланс: <b style="color:var(--gold); font-size:20px;">${state.xp} XP</b></p></section>`));
     
     var grid = el('<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px;"></div>');
-    
     if (!state.purchasedThemes) state.purchasedThemes = ["default"];
     var activeTheme = localStorage.getItem("mdk.theme_active") || "default";
 
     THEMES.forEach(theme => {
         var isOwned = state.purchasedThemes.includes(theme.id);
         var isActive = activeTheme === theme.id;
-        
         var btnHtml = "";
+        
         if (isActive) {
             btnHtml = `<button class="btn ghost" disabled style="width:100%; border-color:var(--ok); color:var(--ok);">✅ Активна</button>`;
         } else if (isOwned) {
@@ -105,25 +97,16 @@ window.renderShopPage = function() {
     app.appendChild(grid);
 };
 
-// --- ЛОГИКА ПОКУПКИ И ПРИМЕНЕНИЯ ---
 window.buyTheme = function(id, price) {
-    if (state.xp < price) {
-        window.showToast("Недостаточно XP для покупки!", "err");
-        return;
-    }
+    if (state.xp < price) { window.showToast("Недостаточно XP!", "err"); return; }
     if (confirm(`Купить тему за ${price} XP?`)) {
         state.xp -= price;
         if (!state.purchasedThemes) state.purchasedThemes = [];
         state.purchasedThemes.push(id);
         
-        // Если это первая покупка, сразу применяем
-        if (state.purchasedThemes.length === 2) { // default + 1 новая
-            window.applyShopTheme(id);
-        } else {
-            window.saveStudentData();
-            window.updateXpDisplay();
-            window.renderShopPage();
-        }
+        if (state.purchasedThemes.length === 2) { window.applyShopTheme(id); }
+        else { window.saveStudentData(); window.updateXpDisplay(); window.renderShopPage(); }
+        
         window.showToast("Покупка успешна!", "ok");
     }
 };

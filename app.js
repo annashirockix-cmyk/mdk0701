@@ -1,7 +1,7 @@
 "use strict";
 
 // ============================================================
-// МДК Портал — app.js (Финальная версия v201.0)
+// МДК Портал — app.js (Финальная версия v202.0)
 // ============================================================
 
 // --- УТИЛИТЫ ---
@@ -70,6 +70,7 @@ window.updateXpDisplay = function() {
   }
 };
 
+// --- СОХРАНЕНИЕ ДАННЫХ СТУДЕНТА ---
 window.saveStudentData = function() {
   var k = window.studentKey(); if (!k) return;
   var ek = encodeURIComponent(k);
@@ -81,7 +82,12 @@ window.saveStudentData = function() {
   if (window.API) {
     window.API.saveStudent(
       k, window.state.student.name, window.state.student.group,
-      JSON.stringify({ xp: window.state.xp, results: window.state.results })
+      JSON.stringify({ 
+          xp: window.state.xp, 
+          results: window.state.results,
+          purchasedThemes: window.state.purchasedThemes || [],
+          unlockedAchievements: window.state.unlockedAchievements || []
+      })
     ).catch(function() {});
   }
 };
@@ -94,6 +100,21 @@ window.loadStudentData = function() {
     var r = localStorage.getItem("mdk.results." + ek);
     window.state.results = r ? JSON.parse(r) : {};
   } catch (e) {}
+  
+  if (window.API) {
+      window.API.getStudentData(k).then(res => {
+          if (res && res.ok && res.payload) {
+              try {
+                  var p = JSON.parse(res.payload);
+                  if (p.purchasedThemes) window.state.purchasedThemes = p.purchasedThemes;
+                  if (p.unlockedAchievements) window.state.unlockedAchievements = p.unlockedAchievements;
+                  if (p.xp) window.state.xp = p.xp;
+              } catch(e){}
+          }
+          window.updateXpDisplay();
+          if (window.checkAchievements) window.checkAchievements();
+      });
+  }
   window.updateXpDisplay();
 };
 
@@ -101,6 +122,7 @@ window.addXP = function(amount) {
   window.state.xp += amount;
   window.saveStudentData();
   window.showToast("+" + amount + " XP", "ok");
+  if (window.checkAchievements) window.checkAchievements();
 };
 
 // --- АВТОРИЗАЦИЯ ---
@@ -159,7 +181,6 @@ window.doTeacherLogin = function() {
     errBox.style.display = "block";
   }
 
-  // Жестко прописанные логины
   if (u === "admin" && p === "admin") {
     finishOk({ name: "Администратор", role: "admin" });
     return;
@@ -170,7 +191,6 @@ window.doTeacherLogin = function() {
     return;
   }
 
-  // Проверка через сервер (если нужно)
   if (!window.API) {
     finishErr("Сервер недоступен. Используйте admin/admin или teacher/teacher.");
     return;
@@ -201,7 +221,6 @@ window.handleLogout = function() {
   window.route();
 };
 
-// Исправлено: не перезагружаем страницу при смене курса
 window.switchCourse = function(id) {
   try { localStorage.setItem("mdk.active", id); } catch (e) {}
   window.state.activeCourseId = id;
@@ -231,6 +250,53 @@ window.renderUserChip = function() {
   window.$("userChipName").textContent = window.state.student.name;
   window.$("userChipGroup").textContent = "Гр. " + window.state.student.group;
   window.$("userChipAvatar").innerHTML = "👨‍🎓";
+};
+
+// --- УПРАВЛЕНИЕ СТУДЕНТАМИ (Для преподавателя) ---
+window.grantXP = function(key, name, amount) {
+  if (amount === undefined) amount = prompt(`Сколько XP начислить студенту ${name}?`, "50");
+  if (!amount || isNaN(amount)) return;
+  
+  window.API.grantXP(key, parseInt(amount)).then(() => {
+    window.showToast(`XP изменен на +${amount}`, "ok");
+    if (window.renderJournalPage) window.renderJournalPage();
+  }).catch(() => window.showToast("Ошибка сети", "err"));
+};
+
+window.deductXP = function(key, name) {
+  var amount = prompt(`Сколько XP списать у ${name}?`, "10");
+  if (!amount || isNaN(amount)) return;
+  window.grantXP(key, name, -Math.abs(parseInt(amount)));
+};
+
+window.levelDown = function(key, name, currentXp) {
+  var level = window.getLevel(currentXp);
+  if (level <= 1) return window.showToast("Уже 1 уровень!", "err");
+  var amountToDrop = currentXp - (Math.pow(level - 1, 2) * 100) + 1;
+  if (confirm(`Понизить уровень ${name} до ${level - 1}?\n(Спишется ${amountToDrop} XP)`)) {
+    window.grantXP(key, name, -amountToDrop);
+  }
+};
+
+window.deleteStudent = function(key, name) {
+  if (!confirm(`Вы уверены, что хотите УДАЛИТЬ студента ${name}?\nЭто действие необратимо.`)) return;
+  
+  if (window.API.deleteStudent) {
+      window.API.deleteStudent(key).then(res => {
+         if(res && res.ok) {
+             window.showToast("Студент удален", "ok");
+             if (window.renderJournalPage) window.renderJournalPage();
+         } else {
+             window.showToast("Ошибка удаления", "err");
+         }
+      }).catch(() => window.showToast("Ошибка сети", "err"));
+  } else {
+      // Если в API еще нет удаления, сделаем "мягкое" удаление (обнулим данные)
+      window.API.saveStudent(key, name, "deleted", "{}").then(() => {
+          window.showToast("Студент архивирован", "ok");
+          if (window.renderJournalPage) window.renderJournalPage();
+      });
+  }
 };
 
 // --- РЕНДЕРИНГ: ГЛАВНАЯ ---
@@ -683,6 +749,10 @@ window.route = function() {
       window.renderFinalPage(parts[1]);
     } else if (page === "arcade" && window.renderArcadePage) {
       window.renderArcadePage();
+    } else if (page === "shop" && window.renderShopPage) {
+      window.renderShopPage();
+    } else if (page === "achievements" && window.renderAchievementsPage) {
+      window.renderAchievementsPage();
     } else if (page === "rating" && window.renderRatingPage) {
       window.renderRatingPage();
     } else if (page === "journal" && window.renderJournalPage) {
@@ -742,6 +812,14 @@ window.addEventListener("DOMContentLoaded", function() {
       window.closeDrawer();
     };
   });
+
+  // Применяем сохраненную тему при загрузке
+  var savedTheme = localStorage.getItem("mdk.theme_active") || "default";
+  if (savedTheme !== "default") {
+      document.documentElement.setAttribute("data-theme", savedTheme);
+  } else {
+      document.documentElement.setAttribute("data-theme", localStorage.getItem("mdk.theme") || "dark");
+  }
 
   window.renderUserCard = window.renderUserChip;
   window.renderUserChip();
