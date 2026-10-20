@@ -18,8 +18,9 @@ window.MDK_DATA = window.MDK_DATA || {};
     return { code: code, title: title, goal: goal, task: task, variants: variants || [], isText: isText || false };
   }
   
-  function topic(id, code, title, lecture, practicals, selfWork, tests) {
-    return { id: id, code: code, title: title, lectures: [lecture], practicals: practicals, selfWork: selfWork, tests: tests };
+  // ИСПРАВЛЕНО: tests -> test (в единственном числе)
+  function topic(id, code, title, lecture, practicals, selfWork, test) {
+    return { id: id, code: code, title: title, lectures: [lecture], practicals: practicals, selfWork: selfWork, test: test };
   }
   
   function tq(q, options, correct) { return { q: q, options: options, correct: correct }; }

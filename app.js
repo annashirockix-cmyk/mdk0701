@@ -194,9 +194,12 @@ window.handleLogout = function() {
   window.route();
 };
 
+// Исправлено: не перезагружаем страницу при смене курса
 window.switchCourse = function(id) {
   try { localStorage.setItem("mdk.active", id); } catch (e) {}
-  location.reload();
+  window.state.activeCourseId = id;
+  window.COURSE = window.MDK_DATA[id] || null;
+  window.route();
 };
 
 window.closeDrawer = function() {
@@ -287,6 +290,8 @@ window.renderTopic = function(id, tab) {
   }
   if (!t) { renderHome(); return; }
 
+  if (!t.test) t.test = [];
+
   var hasLecture     = !!(t.lectures && t.lectures.length);
   var hasPractice    = !!(t.practicals && t.practicals.length);
   var hasSelfWork    = !!(t.selfWork && t.selfWork.length);
@@ -327,7 +332,6 @@ window.renderTopic = function(id, tab) {
 
   var panelHtml = "";
 
-  // -------- ЛЕКЦИЯ --------
   if (tab === "lecture" && hasLecture) {
     t.lectures.forEach(function(l) {
       panelHtml += '<h3>' + (l.code ? window.escapeHtml(l.code) + '. ' : '') +
@@ -339,7 +343,6 @@ window.renderTopic = function(id, tab) {
                  'Отметить как изученное (+50 XP)</button>';
   }
 
-  // -------- ПРАКТИКА (Посчитай и напиши ответ) --------
   if (tab === "practice" && hasPractice) {
     t.practicals.forEach(function(p, pIndex) {
       panelHtml += '<div style="margin-bottom:20px; padding:20px; border:1px solid var(--border); border-radius:8px;">' +
@@ -361,33 +364,34 @@ window.renderTopic = function(id, tab) {
     });
   }
 
-  // -------- САМОСТОЯТЕЛЬНАЯ (Сдать и получить оценку) --------
-  if (tab === "selfwork" && hasSelfWork) {
-    t.selfWork.forEach(function(s, sIndex) {
-      panelHtml += '<div style="margin-bottom:20px; padding:20px; border:1px solid var(--border); border-radius:8px;">' +
-        '<h4>' + window.escapeHtml(s.code) + '. ' + window.escapeHtml(s.title) + '</h4>' +
-        '<p><b>Цель:</b> ' + window.escapeHtml(s.goal || '') + '</p>' +
-        '<p><b>Задание:</b> ' + window.escapeHtml(s.task || '') + '</p>';
-      
-      if (s.questions && s.questions.length) {
-        panelHtml += '<p><b>Контрольные вопросы:</b></p><ol>' +
-          s.questions.map(function(q) { return '<li>' + window.escapeHtml(q) + '</li>'; }).join("") +
-          '</ol>';
-      }
-
-      panelHtml += '<div style="margin-top:15px;">' +
-        '<textarea id="selfWorkText_' + sIndex + '" class="self-input" style="width:100%; height:80px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); margin-bottom:10px;" placeholder="Введите ваш ответ (текст)..."></textarea>' +
-        '<button class="btn" onclick="window.submitSelfWork(\'' + t.id + '\', ' + sIndex + ')">Сдать работу и получить оценку</button>' +
-      '</div>' +
-      '<div id="selfWorkResult_' + sIndex + '" style="margin-top:10px; font-weight:bold; min-height:20px;"></div>' +
-      '</div>';
+  if (tab === "selfwork" && hasSelfWork && hasTest) {
+    panelHtml += '<div id="selfworkIntro">' +
+                 '<p style="color:var(--muted); margin-bottom:15px;">Самостоятельная работа проводится в виде теста. Вопросы аналогичны контрольной.</p>' +
+                 '<button class="btn" id="startSelfworkBtn" style="width:100%;margin-bottom:15px;" onclick="window.startTest(\'' + t.id + '\', true)">Начать самостоятельную</button>' +
+                 '</div>';
+    
+    panelHtml += '<div id="testContent" style="display:none;">';
+    panelHtml += '<div id="testTimer" style="font-size:24px; font-weight:bold; text-align:center; color:var(--accent); margin-bottom:15px;">10:00</div>';
+    
+    t.test.forEach(function(q, qi) {
+      panelHtml += '<div class="question"><div class="q-text">' + (qi + 1) + '. ' + window.escapeHtml(q.q) + '</div>';
+      q.options.forEach(function(opt, oi) {
+        panelHtml += '<label class="option">' +
+          '<input type="radio" name="q' + qi + '" value="' + oi + '">' +
+          '<span>' + window.escapeHtml(opt) + '</span></label>';
+      });
+      panelHtml += '</div>';
     });
+    panelHtml += '<button class="btn" id="finishTestBtn" style="width:100%;margin-top:20px;" onclick="window.finishTest(\'' + t.id + '\', true)">Завершить самостоятельную</button>';
+    panelHtml += '</div>';
+    panelHtml += '<div id="testResult" style="margin-top:20px;"></div>';
+  } else if (tab === "selfwork" && hasSelfWork && !hasTest) {
+      panelHtml += '<p style="color:var(--err);">Для самостоятельной работы не добавлены тестовые вопросы.</p>';
   }
 
-  // -------- КОНТРОЛЬНАЯ (Таймер, попытки, оценка) --------
   if (tab === "test" && hasTest) {
     var attemptsKey = 'attempts_' + t.id;
-    var attempts = parseInt(localStorage.getItem(attemptsKey) || '3', 10); // По умолчанию 3 попытки
+    var attempts = parseInt(localStorage.getItem(attemptsKey) || '3', 10);
     
     panelHtml += '<div id="testAttemptsInfo" style="margin-bottom:15px; font-weight:bold; color:var(--accent);">' +
                  'Доступно попыток: ' + attempts + '</div>';
@@ -396,7 +400,7 @@ window.renderTopic = function(id, tab) {
       panelHtml += '<div style="color:var(--err); font-weight:bold; margin-bottom:15px;">Попытки закончились.</div>' +
                    '<button class="btn ghost" onclick="window.requestAttempt(\'' + t.id + '\')">Запросить попытку</button>';
     } else {
-      panelHtml += '<button class="btn" id="startTestBtn" style="width:100%;margin-bottom:15px;" onclick="window.startTest(\'' + t.id + '\')">Начать тест</button>';
+      panelHtml += '<button class="btn" id="startTestBtn" style="width:100%;margin-bottom:15px;" onclick="window.startTest(\'' + t.id + '\', false)">Начать тест</button>';
       panelHtml += '<div id="testContent" style="display:none;">';
       panelHtml += '<div id="testTimer" style="font-size:24px; font-weight:bold; text-align:center; color:var(--accent); margin-bottom:15px;">10:00</div>';
       
@@ -409,13 +413,12 @@ window.renderTopic = function(id, tab) {
         });
         panelHtml += '</div>';
       });
-      panelHtml += '<button class="btn" id="finishTestBtn" style="width:100%;margin-top:20px;" onclick="window.finishTest(\'' + t.id + '\')">Завершить тест</button>';
-      panelHtml += '</div>'; // конец testContent
+      panelHtml += '<button class="btn" id="finishTestBtn" style="width:100%;margin-top:20px;" onclick="window.finishTest(\'' + t.id + '\', false)">Завершить тест</button>';
+      panelHtml += '</div>';
       panelHtml += '<div id="testResult" style="margin-top:20px;"></div>';
     }
   }
 
-  // -------- ПРЕЗЕНТАЦИЯ --------
   if (tab === "presentation" && hasPresentation) {
     t.presentations.forEach(function(p) {
       panelHtml += '<div style="margin-bottom:20px; padding:20px; border:1px solid var(--border); border-radius:8px;">' +
@@ -434,7 +437,6 @@ window.renderTopic = function(id, tab) {
 
   app.innerHTML = html + '<section class="panel module">' + panelHtml + '</section>';
 
-  // -------- ОБРАБОТЧИКИ (Глобальные) --------
   if (tab === "lecture") {
     var markBtn = document.getElementById("markDoneBtn");
     if (markBtn) {
@@ -445,8 +447,6 @@ window.renderTopic = function(id, tab) {
       };
     }
   }
-
-  // Таймер для теста будет запущен внутри window.startTest
 };
 
 // --- ЛОГИКА ПРАКТИКИ ---
@@ -455,7 +455,7 @@ window.checkPractice = function(index, expectedAnswer) {
   var resultDiv = document.getElementById("pracResult_" + index);
   if (!input || !resultDiv) return;
 
-  var val = input.value.trim().replace(',', '.'); // поддерживаем запятую
+  var val = input.value.trim().replace(',', '.');
   var expected = expectedAnswer.replace(',', '.');
 
   if (val === expected) {
@@ -469,50 +469,25 @@ window.checkPractice = function(index, expectedAnswer) {
   }
 };
 
-// --- ЛОГИКА САМОСТОЯТЕЛЬНОЙ ---
-window.submitSelfWork = function(topicId, index) {
-  var textarea = document.getElementById("selfWorkText_" + index);
-  var resultDiv = document.getElementById("selfWorkResult_" + index);
-  
-  if (!textarea || textarea.value.trim().length < 10) {
-    if (resultDiv) {
-      resultDiv.innerHTML = "❌ Напишите ответ (минимум 10 символов).";
-      resultDiv.style.color = "var(--err)";
-    }
-    return;
-  }
-
-  // Выставляем оценку 5 (или можно сделать рандомно 4-5)
-  var grade = 5;
-  var tid = topicId + "_selfwork_" + index;
-
-  window.state.results[tid] = { grade: grade, date: new Date().toISOString() };
-  window.saveStudentData();
-  window.addXP(50); // Даем XP за сдачу
-
-  if (resultDiv) {
-    resultDiv.innerHTML = "✅ Работа сдана! Оценка: <b>" + grade + "</b>. +50 XP";
-    resultDiv.style.color = "var(--ok)";
-  }
-  textarea.disabled = true;
-  textarea.style.opacity = 0.6;
-};
-
-// --- ЛОГИКА КОНТРОЛЬНОЙ (ТЕСТА) ---
+// --- ЛОГИКА ТЕСТА ---
 var activeTestTimer = null;
-var activeTestTime = 600; // 10 минут
+var activeTestTime = 600;
 
-window.startTest = function(topicId) {
+window.startTest = function(topicId, isSelfWork) {
   var content = document.getElementById("testContent");
-  var startBtn = document.getElementById("startTestBtn");
+  var startBtn = isSelfWork ? document.getElementById("startSelfworkBtn") : document.getElementById("startTestBtn");
   var timerEl = document.getElementById("testTimer");
   
   if (!content || !startBtn) return;
   
   startBtn.style.display = "none";
+  if (isSelfWork) {
+      var intro = document.getElementById("selfworkIntro");
+      if (intro) intro.style.display = "none";
+  }
   content.style.display = "block";
   
-  activeTestTime = 600; // сброс на 10 минут
+  activeTestTime = 600;
   
   if (activeTestTimer) clearInterval(activeTestTimer);
   
@@ -525,12 +500,12 @@ window.startTest = function(topicId) {
     }
     if (activeTestTime <= 0) {
       clearInterval(activeTestTimer);
-      window.finishTest(topicId); // время вышло
+      window.finishTest(topicId, isSelfWork);
     }
   }, 1000);
 };
 
-window.finishTest = function(topicId) {
+window.finishTest = function(topicId, isSelfWork) {
   if (activeTestTimer) clearInterval(activeTestTimer);
   
   var t = null;
@@ -553,19 +528,19 @@ window.finishTest = function(topicId) {
   var pct = Math.round((correct / t.test.length) * 100);
   var grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
   
-  // Сохраняем результат
-  window.state.results[topicId + "_test"] = { grade: grade, total: correct, max: t.test.length };
+  var resultKey = isSelfWork ? (topicId + "_selfwork") : (topicId + "_test");
+  window.state.results[resultKey] = { grade: grade, total: correct, max: t.test.length };
   window.addXP(grade * 20);
   window.saveStudentData();
 
-  // Уменьшаем попытки
-  var attemptsKey = 'attempts_' + topicId;
-  var attempts = parseInt(localStorage.getItem(attemptsKey) || '3', 10);
-  if (attempts > 0) {
-    localStorage.setItem(attemptsKey, attempts - 1);
+  if (!isSelfWork) {
+    var attemptsKey = 'attempts_' + topicId;
+    var attempts = parseInt(localStorage.getItem(attemptsKey) || '3', 10);
+    if (attempts > 0) {
+      localStorage.setItem(attemptsKey, attempts - 1);
+    }
   }
 
-  // Показываем результат
   var resultDiv = document.getElementById("testResult");
   var content = document.getElementById("testContent");
   
@@ -580,8 +555,8 @@ window.finishTest = function(topicId) {
   }
 
   var attemptsInfo = document.getElementById("testAttemptsInfo");
-  if (attemptsInfo) {
-    var left = parseInt(localStorage.getItem(attemptsKey) || '0', 10);
+  if (attemptsInfo && !isSelfWork) {
+    var left = parseInt(localStorage.getItem('attempts_' + topicId) || '0', 10);
     attemptsInfo.innerHTML = 'Доступно попыток: ' + left;
   }
 };
@@ -595,11 +570,9 @@ window.requestAttempt = function(topicId) {
     return;
   }
   
-  // В реальности тут должен быть запрос к преподавателю (API).
-  // Для демо: даем 1 попытку.
   localStorage.setItem(attemptsKey, 1);
   window.showToast("Вам выдана 1 дополнительная попытка!", "ok");
-  window.route(); // перерисовать страницу
+  window.route();
 };
 
 // --- РЕНДЕРИНГ: ПРОФИЛЬ ---
@@ -627,7 +600,7 @@ window.renderProfilePage = function() {
     '</div>';
 };
 
-// --- РЕНДЕРИНГ: ПРОСТАЯ СТРАНИЦА (Исправлено!) ---
+// --- РЕНДЕРИНГ: ПРОСТАЯ СТРАНИЦА ---
 window.renderSimplePage = function(title, items, icon) {
   var app = window.$("app");
   if (!app) return;
@@ -635,10 +608,25 @@ window.renderSimplePage = function(title, items, icon) {
   
   if (items && items.length > 0) {
     items.forEach(function(s) {
-      var text = (s && typeof s === "object") ? (s.title || "Без названия") : String(s || "");
-      if (!text) return;
-      list += '<div style="padding:10px 0; border-bottom:1px solid var(--border);"><b>' +
-              window.escapeHtml(text) + '</b></div>';
+      var itemTitle = (s && typeof s === "object") ? (s.title || "Без названия") : String(s || "");
+      if (!itemTitle) return;
+      
+      var desc = (s && s.description) ? '<p style="font-size:14px; color:var(--muted); margin-top:5px;">' + window.escapeHtml(s.description) + '</p>' : '';
+      var content = (s && s.content) ? '<div style="font-size:14px; margin-top:5px;">' + window.escapeHtml(s.content) + '</div>' : '';
+      
+      // Определяем тип кнопки
+      var btnText = "📥 Скачать / Открыть";
+      if (s.file && s.file.endsWith('.mp4')) {
+        btnText = "▶️ Смотреть видео";
+      }
+      
+      var fileBtn = (s && s.file) ? '<a href="./' + s.file + '" target="_blank" class="btn" style="margin-top:10px; display:inline-block; padding:8px 16px; font-size:14px;">' + btnText + '</a>' : '';
+      var urlBtn = (s && s.url) ? '<a href="' + s.url + '" target="_blank" class="btn" style="margin-top:10px; display:inline-block; padding:8px 16px; font-size:14px;">Перейти по ссылке</a>' : '';
+
+      list += '<div style="padding:15px 0; border-bottom:1px solid var(--border);">' +
+                '<b style="font-size:16px;">' + window.escapeHtml(itemTitle) + '</b>' +
+                desc + content + fileBtn + urlBtn +
+              '</div>';
     });
   } else {
     list = '<div style="color:var(--muted); text-align:center; padding:20px;">Материалы в разработке или отсутствуют.</div>';
@@ -672,14 +660,18 @@ window.route = function() {
     } else if (page === "profile") {
       window.renderProfilePage();
     } else if (page === "videos") {
-      window.renderSimplePage("Видео", window.COURSE ? window.COURSE.videos : [], "🎬");
+      // Берем из глобальных данных
+      window.renderSimplePage("Видео", window.GLOBAL_DATA ? window.GLOBAL_DATA.videos : [], "🎬");
     } else if (page === "passports") {
-      window.renderSimplePage("Паспорта", window.COURSE ? window.COURSE.passports : [], "📄");
+      // Берем из глобальных данных
+      window.renderSimplePage("Паспорта", window.GLOBAL_DATA ? window.GLOBAL_DATA.passports : [], "📄");
     } else if (page === "safety") {
-      window.renderSimplePage("Охрана труда", window.COURSE ? window.COURSE.safety : [], "🦺");
+      // Берем из глобальных данных
+      window.renderSimplePage("Охрана труда", window.GLOBAL_DATA ? window.GLOBAL_DATA.safety : [], "🦺");
     } else if (page === "formatting") {
-      var fmt = window.COURSE ? window.COURSE.formatting : null;
-      var items = (fmt && fmt.title) ? [{ title: fmt.title }] : [];
+      // Берем из глобальных данных
+      var fmt = window.GLOBAL_DATA ? window.GLOBAL_DATA.formatting : null;
+      var items = (fmt && fmt.title) ? [{ title: fmt.title, content: fmt.content }] : [];
       window.renderSimplePage("Оформление", items, "📝");
     } else if (page === "links" && window.renderLinksPage) {
       window.renderLinksPage();
