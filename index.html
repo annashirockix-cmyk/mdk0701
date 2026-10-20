@@ -7,7 +7,6 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
 <link rel="stylesheet" href="style.css">
 <script>
-  // Применяем сохраненную тему до загрузки страницы, чтобы не было "вспышки"
   try {
     var savedTheme = localStorage.getItem("mdk.theme_active") || "default";
     if (savedTheme !== "default") {
@@ -30,7 +29,6 @@
     </div>
     
     <div class="login-grid" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-      <!-- Вход студента -->
       <div class="login-card" style="flex: 1; min-width: 300px;">
         <h3>Вход студента</h3>
         <p class="login-hint">Укажите ФИО и группу.</p>
@@ -39,7 +37,6 @@
         <button type="button" id="btnLoginStudent" class="btn" style="width: 100%; margin-top: 10px;">Войти</button>
       </div>
 
-      <!-- Вход преподавателя -->
       <div class="login-card" style="flex: 1; min-width: 300px;">
         <h3>Вход преподавателя</h3>
         <p class="login-hint">Используйте <b>teacher / teacher</b> или <b>admin / admin</b></p>
@@ -126,7 +123,7 @@
 <script src="api.js"></script>
 <script src="app.js"></script>
 
-<!-- 3. Модули и страницы (Включая новые экзамены) -->
+<!-- 3. Модули и страницы -->
 <script src="exam_0201.js"></script>
 <script src="exam_0202.js"></script>
 <script src="exam_0401.js"></script>
