@@ -13,23 +13,38 @@
 <body>
 
 <!-- ОКНО ВХОДА -->
-<div class="login-overlay" id="loginOverlay" hidden>
-  <div class="login-card">
-    <div style="text-align: center; margin-bottom: 25px;">
-        <span class="brand-badge" style="font-size: 16px; padding: 8px 16px;">ПОРТАЛ МДК</span>
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-shell">
+    <div class="login-brand">
+      <span class="brand-badge">ПОРТАЛ МДК</span>
+      <h1>Оператор станков с программным управлением</h1>
+      <p>15.02.16 Технология машиностроения · ПМ.07 · профессия 16045</p>
     </div>
-    <form onsubmit="event.preventDefault(); window.doStudentLogin();">
-      <h3>🎓 Вход студента</h3>
-      <input id="loginName" type="text" placeholder="ФИО" required>
-      <input id="loginGroup" type="text" placeholder="Группа" required>
-      <button type="submit" class="btn" style="width:100%; margin-top:15px;">Войти</button>
-    </form>
+    <div class="login-grid">
+      <form class="login-card" id="studentLoginForm">
+        <h3>Вход студента</h3>
+        <p class="login-hint">Укажите ФИО и группу. Прогресс сохранится на этом устройстве.</p>
+        <label>ФИО
+          <input id="loginName" type="text" placeholder="Иванов Иван Иванович" required autocomplete="name">
+        </label>
+        <label>Группа
+          <input id="loginGroup" type="text" placeholder="ТМ-4" required autocomplete="organization">
+        </label>
+        <button type="submit" class="btn">Войти</button>
+      </form>
+    </div>
   </div>
 </div>
 
 <!-- ТОПБАР -->
 <header class="topbar">
-  <button class="burger-btn" id="burgerBtn"><span></span><span></span><span></span></button>
+  <button class="burger-btn" id="burgerBtn" aria-label="Меню"><span></span><span></span><span></span></button>
+  
+  <div style="display:flex; gap:5px; margin-right:10px;">
+      <button class="btn ghost" onclick="history.back()" style="padding:6px 10px;" title="Назад">←</button>
+      <button class="btn ghost" onclick="history.forward()" style="padding:6px 10px;" title="Вперёд">→</button>
+  </div>
+
   <a class="brand" href="#/"><span class="brand-badge">МДК Портал</span></a>
   
   <div style="margin-left: 15px;">
@@ -37,12 +52,14 @@
           <option value="07.01">МДК 07.01 (ЧПУ)</option>
           <option value="04.01">МДК 04.01 (Диагностика)</option>
           <option value="02.01">МДК 02.01 (Сборка)</option>
+          <option value="02.02">МДК 02.02 (Программирование сборки)</option>
       </select>
   </div>
 
   <div class="crumbs" id="crumbs" style="margin-left:auto;"></div>
   <div class="topbar-status"><span class="status-pill" id="xpCount">🌟 0 XP</span></div>
-  <button id="themeToggle" class="btn ghost" style="padding: 8px 12px; margin-left: 5px;">🎨</button>
+  <button id="themeToggle" class="btn ghost" style="padding: 8px 12px; margin-left: 5px;" title="Тема">🎨</button>
+  <button id="topbarLogout" class="btn ghost" style="padding:8px 12px;margin-left:5px;" title="Выйти">🚪</button>
 </header>
 
 <!-- БОКОВОЕ МЕНЮ -->
@@ -51,17 +68,30 @@
   <div class="drawer-head">
     <div class="drawer-user">
       <span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span>
-      <div style="margin-left:10px;"><div id="userChipName">Гость</div><div id="userChipGroup" style="font-size:12px;color:var(--muted)">Гость</div></div>
+      <div style="margin-left:10px;"><div id="userChipName">Гость</div><div id="userChipGroup" style="font-size:12px;color:var(--muted)">Группа</div></div>
     </div>
-    <button class="drawer-close" id="drawerClose">✕</button>
+    <button class="drawer-close" id="drawerClose" aria-label="Закрыть">✕</button>
   </div>
   <nav class="drawer-nav" style="flex:1; overflow-y:auto; padding: 10px 0;">
+    <div id="mdkNav"></div>
     <a class="drawer-item" data-go="#/">🏠 Главная</a>
     <a class="drawer-item" data-go="#/profile">👤 Личный кабинет</a>
+    
+    <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); font-weight: bold;">Материалы</div>
     <a class="drawer-item" data-go="#/videos">🎬 Видео</a>
     <a class="drawer-item" data-go="#/passports">📄 Паспорта</a>
     <a class="drawer-item" data-go="#/safety">🦺 Охрана труда</a>
     <a class="drawer-item" data-go="#/formatting">📝 Оформление</a>
+    <a class="drawer-item" data-go="#/links">📚 Полезные материалы</a>
+
+    <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); font-weight: bold;">Практика и контроль</div>
+    <a class="drawer-item" data-go="#/training">🎯 Тренировка</a>
+    <a class="drawer-item" data-go="#/final">📋 Итоговые экзамены</a>
+    <a class="drawer-item" data-go="#/arcade">🎮 Игровая комната</a>
+    <a class="drawer-item" data-go="#/rating">🏆 Доска почета</a>
+    <a class="drawer-item" data-go="#/journal">📒 Журнал</a>
+    <a class="drawer-item" data-go="#/schedule">📅 Расписание</a>
+
     <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px;" onclick="window.handleLogout()">🚪 Выйти</a>
   </nav>
 </aside>
@@ -69,13 +99,28 @@
 <main id="app" style="padding: 32px 24px 100px; max-width: 1100px; margin: 0 auto;"></main>
 
 <!-- НИЖНЯЯ ПАНЕЛЬ -->
-<div style="position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--border); display:flex; justify-content:space-around; padding:10px; z-index:900;">
+<div class="mobile-bottom-nav" style="position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--border); display:flex; justify-content:space-around; padding:10px; z-index:900;">
     <button class="btn ghost" onclick="history.back()" style="flex:1; margin:0 5px;">← Назад</button>
     <button class="btn" onclick="location.hash='#/'" style="flex:1; margin:0 5px;">🏠 Главная</button>
     <button class="btn ghost" onclick="history.forward()" style="flex:1; margin:0 5px;">Вперед →</button>
 </div>
 
+<!-- ВАЖНО: ПОДКЛЮЧЕНИЕ СКРИПТОВ (без нижнего подчеркивания) -->
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script src="programs.js"></script>
+<script src="exam.js"></script>
+<script src="extra.js"></script>
+<script src="minigames.js"></script>
+<script src="info.js"></script>
+<script src="links.js"></script>
+<script src="rating.js"></script>
+<script src="journal.js"></script>
+<script src="schedule.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  }
+</script>
 </body>
 </html>
