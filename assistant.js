@@ -21,7 +21,7 @@ window.openAssistant = function(){
       <button class="btn" id="asTourBtn" style="flex:1; font-size:12px; padding:8px; background:var(--gold); color:#000;">🗺️ Экскурсия по сайту</button>
     </div>
     <form id="asForm" style="display:flex;padding:10px;border-top:1px solid var(--border);">
-      <input type="text" id="asInput" placeholder="Спроси про G-код..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-right:8px;">
+      <input type="text" id="asInput" placeholder="Спроси про G-код, XP или Игры..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-right:8px;">
       <button type="submit" class="btn">➤</button>
     </form>
   `;
@@ -32,7 +32,7 @@ window.openAssistant = function(){
   function addBot(text) { log.appendChild(el(`<div style="background:var(--card-soft);padding:8px 12px;border-radius:8px;align-self:flex-start;">${text}</div>`)); log.scrollTop = log.scrollHeight; }
   function addUser(text) { log.appendChild(el(`<div style="background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;align-self:flex-end;">${text}</div>`)); log.scrollTop = log.scrollHeight; }
 
-  addBot("Привет! Я помогу найти тему или G-код. А еще я могу провести для тебя экскурсию по сайту!");
+  addBot("Привет! Я помогу найти тему или объясню, как пользоваться порталом. Спроси меня про <b>игры</b>, <b>XP</b>, <b>экзамены</b> или нажми на кнопку экскурсии!");
 
   panel.querySelector("#asClose").addEventListener("click", ()=>panel.remove());
   
@@ -45,9 +45,27 @@ window.openAssistant = function(){
     e.preventDefault(); var val = input.value.trim(); if(!val) return;
     input.value = ""; addUser(val);
     setTimeout(() => {
-      var results = searchCourse(val);
-      if (results.length) addBot(`Нашел: <a href="#/topic/${results[0].id}/lecture" style="color:var(--accent)" onclick="document.getElementById('assistantPanel').remove()">${results[0].title}</a>`);
-      else addBot("Не нашел ответа. Попробуйте переформулировать.");
+      var v = val.toLowerCase();
+      var reply = "Я не совсем понял вопрос. Попробуйте спросить про <b>игры</b>, <b>рейтинг</b>, <b>XP</b> или <b>экзамены</b>.";
+      
+      if (v.includes("игр") || v.includes("аркад") || v.includes("развлеч")) {
+          reply = "🎮 Игровая комната доступна в левом меню. Там есть Сапёр, Судоку, Паук и другие!";
+      } else if (v.includes("xp") || v.includes("опыт") || v.includes("балл")) {
+          reply = "⭐ XP дают за прохождение тестов, решение задач и победы в играх. Следи за полоской опыта в профиле!";
+      } else if (v.includes("профил")) {
+          reply = "👤 Твой профиль в левом меню. Там можно сменить аватар, поставить эффект и посмотреть достижения.";
+      } else if (v.includes("тест") || v.includes("мдк") || v.includes("вопрос")) {
+          reply = "📚 Тесты и вопросы по МДК находятся на главной странице или в разделе 'Тренировка'.";
+      } else if (v.includes("экзамен")) {
+          reply = "📋 Итоговые экзамены находятся в левом меню. 10 вопросов, 10 минут.";
+      } else if (v.includes("рейтинг") || v.includes("почет")) {
+          reply = "🏆 Доска почета показывает лучших студентов по XP. Проверь, на каком месте ты!";
+      } else {
+          var results = searchCourse(val);
+          if (results.length) reply = `Нашел: <a href="#/topic/${results[0].id}/lecture" style="color:var(--accent)" onclick="document.getElementById('assistantPanel').remove()">${results[0].title}</a>`;
+      }
+      
+      addBot(reply);
     }, 500);
   });
 };
@@ -74,9 +92,7 @@ function initAssistantButton(){
   document.body.appendChild(btn);
 }
 window.initAssistantButton = initAssistantButton;
-window.addEventListener("DOMContentLoaded", () => {
-  initAssistantButton();
-});
+window.addEventListener("DOMContentLoaded", () => { initAssistantButton(); });
 
 /* ============================================================
    ТУР ПО САЙТУ
@@ -95,7 +111,6 @@ function startTour() {
     document.body.appendChild(overlay);
     
     function showStep() {
-        // Удаляем старые подсказки
         var oldTip = document.getElementById("tourTip");
         if (oldTip) oldTip.remove();
         var oldHighlight = document.querySelector(".tour-highlight");
@@ -112,18 +127,15 @@ function startTour() {
         
         if (!target) { currentStep++; showStep(); return; }
 
-        // Подсветка элемента
         target.classList.add("tour-highlight");
         target.style.position = "relative";
         target.style.zIndex = "99999";
         
-        // Создаем подсказку
         var rect = target.getBoundingClientRect();
         var tip = document.createElement("div");
         tip.id = "tourTip";
         tip.style = `position:fixed; background:var(--card); color:var(--text); border:2px solid var(--gold); padding:15px; border-radius:12px; width:300px; max-width:90vw; z-index:100000; box-shadow:0 10px 30px rgba(0,0,0,0.5); font-size:14px;`;
         
-        // Позиционирование
         var top = rect.bottom + 15;
         var left = rect.left;
         if (top + 150 > window.innerHeight) { top = rect.top - 150; }
