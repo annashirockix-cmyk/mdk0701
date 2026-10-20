@@ -1,19 +1,18 @@
 /* ============================================================
-   МДК — journal.js (v300.0 — Полный год, только для учителя)
+   МДК — journal.js (v301.0 — С выводом ошибок)
    ============================================================ */
 "use strict";
 
-// Генерация всех дат с 01.09.2026 по 01.08.2027
 function getAcademicYearDates() {
     var dates = [];
-    var start = new Date(2026, 8, 1); // 1 сентября 2026 (месяцы с 0)
+    var start = new Date(2026, 8, 1); // 1 сентября 2026
     var end = new Date(2027, 7, 1);   // 1 августа 2027
     var current = new Date(start);
     
     while (current <= end) {
         var d = String(current.getDate()).padStart(2, '0');
         var m = String(current.getMonth() + 1).padStart(2, '0');
-        var y = String(current.getFullYear()).slice(-2); // 26 или 27
+        var y = String(current.getFullYear()).slice(-2);
         dates.push(d + '.' + m + '.' + y);
         current.setDate(current.getDate() + 1);
     }
@@ -30,14 +29,12 @@ window.renderJournalPage = function() {
   
   app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
 
-  // СТРОГАЯ ПРОВЕРКА: Студенты сюда не попадут
   var isTeacher = window.state.staff && (window.state.staff.role === "teacher" || window.state.staff.role === "admin");
   if (!isTeacher) {
       app.innerHTML += '<div class="module" style="text-align:center; color:var(--err); font-size:18px; padding:40px;">⛔ Доступ к журналу имеет только преподаватель.</div>';
       return;
   }
 
-  // Панель фильтров
   var topPanel = el(`<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
       <h2 style="margin:0; font-size:20px;">Журнал успеваемости (2026-2027)</h2>
       <div style="margin-left:auto; display:flex; gap:10px;">
@@ -45,10 +42,6 @@ window.renderJournalPage = function() {
               <option value="all">Все группы</option>
               <option value="ТМ 4-3">ТМ 4-3</option>
               <option value="ТМ 3-4">ТМ 3-4</option>
-              <option value="ТМ 2-5">ТМ 2-5</option>
-              <option value="ТМ 2-6">ТМ 2-6</option>
-              <option value="ЭО 2-2">ЭО 2-2</option>
-              <option value="ЭО 3-1">ЭО 3-1</option>
           </select>
           <button class="btn" id="btnRefreshJournal" style="padding:10px 20px;">🔄 Обновить</button>
       </div>
@@ -65,7 +58,7 @@ window.renderJournalPage = function() {
       window.API.getStudents().then(d => {
           contentWrap.innerHTML = "";
           if (!d || !d.ok || !d.students || !d.students.length) {
-              contentWrap.innerHTML = "<div class='module'>Студентов пока нет (или ошибка сети).</div>"; return;
+              contentWrap.innerHTML = "<div class='module'>Студентов пока нет (или база данных пуста).</div>"; return;
           }
 
           var students = d.students;
@@ -77,7 +70,6 @@ window.renderJournalPage = function() {
               contentWrap.innerHTML = "<div class='module'>В выбранной группе пока нет студентов.</div>"; return;
           }
 
-          // Строим таблицу с горизонтальной прокруткой и закрепленной первой колонкой
           var tableWrap = el(`<div class="module" style="overflow-x:auto; padding: 10px; max-width: 100%;">
               <table class="journal-table" style="border-collapse:collapse; text-align:center; font-size:13px; min-width:max-content;">
                   <thead>
@@ -96,7 +88,6 @@ window.renderJournalPage = function() {
               var sKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
               var tr = el(`<tr></tr>`);
               
-              // Закрепленная колонка с ФИО
               tr.appendChild(el(`<td style="border:1px solid var(--border); padding:8px; text-align:left; font-weight:bold; position:sticky; left:0; background:var(--card); z-index:1; box-shadow: 2px 0 5px rgba(0,0,0,0.1);">
                   ${s.name}<br><span style="font-size:11px;color:var(--accent);font-weight:normal;">гр. ${s.group}</span>
               </td>`));
@@ -139,7 +130,15 @@ window.renderJournalPage = function() {
           });
 
           contentWrap.appendChild(tableWrap);
-      }).catch(() => { contentWrap.innerHTML = "Ошибка загрузки данных."; });
+      }).catch((err) => { 
+          // ВЫВОДИМ РЕАЛЬНУЮ ОШИБКУ НА ЭКРАН
+          var errorMsg = err && err.message ? err.message : "Неизвестная ошибка сети";
+          contentWrap.innerHTML = `<div class="module" style="color:var(--err); padding:20px;">
+              <b>Ошибка загрузки данных:</b><br>
+              ${errorMsg}<br><br>
+              <i>Проверьте консоль (F12) и настройки Google Apps Script.</i>
+          </div>`; 
+      });
   }
 
   document.getElementById("journalGroupFilter").onchange = renderTable;
