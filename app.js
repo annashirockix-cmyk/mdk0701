@@ -272,7 +272,7 @@ function renderHome() {
   app.innerHTML = html;
 }
 
-// --- РЕНДЕРИНГ: ТЕМА (5 вкладок) ---
+// --- РЕНДЕРИНГ: ТЕМА ---
 window.renderTopic = function(id, tab) {
   tab = tab || "lecture";
   var c = window.COURSE;
@@ -287,7 +287,6 @@ window.renderTopic = function(id, tab) {
   }
   if (!t) { renderHome(); return; }
 
-  // какие вкладки реально есть
   var hasLecture     = !!(t.lectures && t.lectures.length);
   var hasPractice    = !!(t.practicals && t.practicals.length);
   var hasSelfWork    = !!(t.selfWork && t.selfWork.length);
@@ -340,53 +339,80 @@ window.renderTopic = function(id, tab) {
                  'Отметить как изученное (+50 XP)</button>';
   }
 
-  // -------- ПРАКТИКА --------
+  // -------- ПРАКТИКА (Посчитай и напиши ответ) --------
   if (tab === "practice" && hasPractice) {
-    t.practicals.forEach(function(p) {
+    t.practicals.forEach(function(p, pIndex) {
       panelHtml += '<div style="margin-bottom:20px; padding:20px; border:1px solid var(--border); border-radius:8px;">' +
         '<h4>' + window.escapeHtml(p.code) + '. ' + window.escapeHtml(p.title) + '</h4>' +
         '<p><b>Цель:</b> ' + window.escapeHtml(p.goal || '') + '</p>' +
         '<p><b>Задание:</b> ' + window.escapeHtml(p.task || '') + '</p>';
-      if (p.variants && p.variants.length) {
-        panelHtml += '<p><b>Варианты:</b></p><ul>' +
-          p.variants.map(function(v) { return '<li>' + window.escapeHtml(v) + '</li>'; }).join("") +
-          '</ul>';
+      
+      if (p.commonVariant) {
+        panelHtml += '<div style="background:var(--card-soft); padding:10px; border-radius:6px; margin-bottom:10px; font-size:14px;">' +
+                     '<b>Условие:</b> ' + window.escapeHtml(p.commonVariant) + '</div>';
       }
-      panelHtml += '</div>';
+      
+      panelHtml += '<div style="display:flex; gap:10px; align-items:center; margin-top:15px;">' +
+        '<input type="text" id="pracInput_' + pIndex + '" class="self-input" style="flex:1; margin:0; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text);" placeholder="Введите ответ (число)...">' +
+        '<button class="btn" onclick="window.checkPractice(' + pIndex + ', \'' + window.escapeHtml(p.expectedAnswer || '') + '\')">Проверить</button>' +
+      '</div>' +
+      '<div id="pracResult_' + pIndex + '" style="margin-top:10px; font-weight:bold; min-height:20px;"></div>' +
+      '</div>';
     });
   }
 
-  // -------- САМОСТОЯТЕЛЬНАЯ --------
+  // -------- САМОСТОЯТЕЛЬНАЯ (Сдать и получить оценку) --------
   if (tab === "selfwork" && hasSelfWork) {
-    t.selfWork.forEach(function(s) {
+    t.selfWork.forEach(function(s, sIndex) {
       panelHtml += '<div style="margin-bottom:20px; padding:20px; border:1px solid var(--border); border-radius:8px;">' +
         '<h4>' + window.escapeHtml(s.code) + '. ' + window.escapeHtml(s.title) + '</h4>' +
         '<p><b>Цель:</b> ' + window.escapeHtml(s.goal || '') + '</p>' +
         '<p><b>Задание:</b> ' + window.escapeHtml(s.task || '') + '</p>';
+      
       if (s.questions && s.questions.length) {
         panelHtml += '<p><b>Контрольные вопросы:</b></p><ol>' +
           s.questions.map(function(q) { return '<li>' + window.escapeHtml(q) + '</li>'; }).join("") +
           '</ol>';
       }
-      panelHtml += '</div>';
+
+      panelHtml += '<div style="margin-top:15px;">' +
+        '<textarea id="selfWorkText_' + sIndex + '" class="self-input" style="width:100%; height:80px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); margin-bottom:10px;" placeholder="Введите ваш ответ (текст)..."></textarea>' +
+        '<button class="btn" onclick="window.submitSelfWork(\'' + t.id + '\', ' + sIndex + ')">Сдать работу и получить оценку</button>' +
+      '</div>' +
+      '<div id="selfWorkResult_' + sIndex + '" style="margin-top:10px; font-weight:bold; min-height:20px;"></div>' +
+      '</div>';
     });
-    panelHtml += '<button class="btn" id="markSelfWorkBtn" style="width:100%;margin-top:10px;">' +
-                 'Сдать самостоятельную (+100 XP)</button>';
   }
 
-  // -------- КОНТРОЛЬНАЯ (тест) --------
+  // -------- КОНТРОЛЬНАЯ (Таймер, попытки, оценка) --------
   if (tab === "test" && hasTest) {
-    t.test.forEach(function(q, qi) {
-      panelHtml += '<div class="question"><div class="q-text">' + (qi + 1) + '. ' +
-                   window.escapeHtml(q.q) + '</div>';
-      q.options.forEach(function(opt, oi) {
-        panelHtml += '<label class="option">' +
-          '<input type="radio" name="q' + qi + '" value="' + oi + '">' +
-          '<span>' + window.escapeHtml(opt) + '</span></label>';
+    var attemptsKey = 'attempts_' + t.id;
+    var attempts = parseInt(localStorage.getItem(attemptsKey) || '3', 10); // По умолчанию 3 попытки
+    
+    panelHtml += '<div id="testAttemptsInfo" style="margin-bottom:15px; font-weight:bold; color:var(--accent);">' +
+                 'Доступно попыток: ' + attempts + '</div>';
+    
+    if (attempts <= 0) {
+      panelHtml += '<div style="color:var(--err); font-weight:bold; margin-bottom:15px;">Попытки закончились.</div>' +
+                   '<button class="btn ghost" onclick="window.requestAttempt(\'' + t.id + '\')">Запросить попытку</button>';
+    } else {
+      panelHtml += '<button class="btn" id="startTestBtn" style="width:100%;margin-bottom:15px;" onclick="window.startTest(\'' + t.id + '\')">Начать тест</button>';
+      panelHtml += '<div id="testContent" style="display:none;">';
+      panelHtml += '<div id="testTimer" style="font-size:24px; font-weight:bold; text-align:center; color:var(--accent); margin-bottom:15px;">10:00</div>';
+      
+      t.test.forEach(function(q, qi) {
+        panelHtml += '<div class="question"><div class="q-text">' + (qi + 1) + '. ' + window.escapeHtml(q.q) + '</div>';
+        q.options.forEach(function(opt, oi) {
+          panelHtml += '<label class="option">' +
+            '<input type="radio" name="q' + qi + '" value="' + oi + '">' +
+            '<span>' + window.escapeHtml(opt) + '</span></label>';
+        });
+        panelHtml += '</div>';
       });
-      panelHtml += '</div>';
-    });
-    panelHtml += '<button class="btn" id="finishTestBtn" style="width:100%;margin-top:10px;">Завершить</button>';
+      panelHtml += '<button class="btn" id="finishTestBtn" style="width:100%;margin-top:20px;" onclick="window.finishTest(\'' + t.id + '\')">Завершить тест</button>';
+      panelHtml += '</div>'; // конец testContent
+      panelHtml += '<div id="testResult" style="margin-top:20px;"></div>';
+    }
   }
 
   // -------- ПРЕЗЕНТАЦИЯ --------
@@ -404,13 +430,11 @@ window.renderTopic = function(id, tab) {
         '📥 Открыть / скачать презентацию</a>' +
       '</div>';
     });
-    panelHtml += '<p style="color:var(--muted); font-size:13px;">' +
-      'Файлы презентаций находятся в папке <code>presentations/</code> рядом с сайтом.</p>';
   }
 
   app.innerHTML = html + '<section class="panel module">' + panelHtml + '</section>';
 
-  // -------- ОБРАБОТЧИКИ --------
+  // -------- ОБРАБОТЧИКИ (Глобальные) --------
   if (tab === "lecture") {
     var markBtn = document.getElementById("markDoneBtn");
     if (markBtn) {
@@ -422,36 +446,160 @@ window.renderTopic = function(id, tab) {
     }
   }
 
-  if (tab === "selfwork") {
-    var markSelfBtn = document.getElementById("markSelfWorkBtn");
-    if (markSelfBtn) {
-      markSelfBtn.onclick = function() {
-        window.addXP(100);
-        markSelfBtn.textContent = "✅ Сдано";
-        markSelfBtn.disabled = true;
-      };
+  // Таймер для теста будет запущен внутри window.startTest
+};
+
+// --- ЛОГИКА ПРАКТИКИ ---
+window.checkPractice = function(index, expectedAnswer) {
+  var input = document.getElementById("pracInput_" + index);
+  var resultDiv = document.getElementById("pracResult_" + index);
+  if (!input || !resultDiv) return;
+
+  var val = input.value.trim().replace(',', '.'); // поддерживаем запятую
+  var expected = expectedAnswer.replace(',', '.');
+
+  if (val === expected) {
+    resultDiv.innerHTML = "✅ Верно! +20 XP";
+    resultDiv.style.color = "var(--ok)";
+    window.addXP(20);
+    input.disabled = true;
+  } else {
+    resultDiv.innerHTML = "❌ Неверно. Попробуйте еще раз.";
+    resultDiv.style.color = "var(--err)";
+  }
+};
+
+// --- ЛОГИКА САМОСТОЯТЕЛЬНОЙ ---
+window.submitSelfWork = function(topicId, index) {
+  var textarea = document.getElementById("selfWorkText_" + index);
+  var resultDiv = document.getElementById("selfWorkResult_" + index);
+  
+  if (!textarea || textarea.value.trim().length < 10) {
+    if (resultDiv) {
+      resultDiv.innerHTML = "❌ Напишите ответ (минимум 10 символов).";
+      resultDiv.style.color = "var(--err)";
     }
+    return;
   }
 
-  if (tab === "test") {
-    var finishBtn = document.getElementById("finishTestBtn");
-    if (finishBtn) {
-      finishBtn.onclick = function() {
-        var correct = 0;
-        t.test.forEach(function(q, qi) {
-          var ch = document.querySelector('input[name="q' + qi + '"]:checked');
-          if (ch && Number(ch.value) === q.correct) correct++;
-        });
-        finishBtn.disabled = true;
-        finishBtn.textContent = "Завершено";
-        var grade = Math.max(2, Math.round((correct / t.test.length) * 5));
-        window.state.results[id] = { grade: grade };
-        window.addXP(100);
-        window.showToast("Оценка: " + grade, "ok");
-        window.saveStudentData();
-      };
+  // Выставляем оценку 5 (или можно сделать рандомно 4-5)
+  var grade = 5;
+  var tid = topicId + "_selfwork_" + index;
+
+  window.state.results[tid] = { grade: grade, date: new Date().toISOString() };
+  window.saveStudentData();
+  window.addXP(50); // Даем XP за сдачу
+
+  if (resultDiv) {
+    resultDiv.innerHTML = "✅ Работа сдана! Оценка: <b>" + grade + "</b>. +50 XP";
+    resultDiv.style.color = "var(--ok)";
+  }
+  textarea.disabled = true;
+  textarea.style.opacity = 0.6;
+};
+
+// --- ЛОГИКА КОНТРОЛЬНОЙ (ТЕСТА) ---
+var activeTestTimer = null;
+var activeTestTime = 600; // 10 минут
+
+window.startTest = function(topicId) {
+  var content = document.getElementById("testContent");
+  var startBtn = document.getElementById("startTestBtn");
+  var timerEl = document.getElementById("testTimer");
+  
+  if (!content || !startBtn) return;
+  
+  startBtn.style.display = "none";
+  content.style.display = "block";
+  
+  activeTestTime = 600; // сброс на 10 минут
+  
+  if (activeTestTimer) clearInterval(activeTestTimer);
+  
+  activeTestTimer = setInterval(function() {
+    activeTestTime--;
+    var m = Math.floor(activeTestTime / 60);
+    var s = activeTestTime % 60;
+    if (timerEl) {
+      timerEl.textContent = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+    }
+    if (activeTestTime <= 0) {
+      clearInterval(activeTestTimer);
+      window.finishTest(topicId); // время вышло
+    }
+  }, 1000);
+};
+
+window.finishTest = function(topicId) {
+  if (activeTestTimer) clearInterval(activeTestTimer);
+  
+  var t = null;
+  if (window.COURSE && window.COURSE.sections) {
+    for (var i = 0; i < window.COURSE.sections.length && !t; i++) {
+      var topics = window.COURSE.sections[i].topics || [];
+      for (var j = 0; j < topics.length; j++) {
+        if (topics[j].id === topicId) { t = topics[j]; break; }
+      }
     }
   }
+  if (!t || !t.test) return;
+
+  var correct = 0;
+  t.test.forEach(function(q, qi) {
+    var ch = document.querySelector('input[name="q' + qi + '"]:checked');
+    if (ch && Number(ch.value) === q.correct) correct++;
+  });
+
+  var pct = Math.round((correct / t.test.length) * 100);
+  var grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
+  
+  // Сохраняем результат
+  window.state.results[topicId + "_test"] = { grade: grade, total: correct, max: t.test.length };
+  window.addXP(grade * 20);
+  window.saveStudentData();
+
+  // Уменьшаем попытки
+  var attemptsKey = 'attempts_' + topicId;
+  var attempts = parseInt(localStorage.getItem(attemptsKey) || '3', 10);
+  if (attempts > 0) {
+    localStorage.setItem(attemptsKey, attempts - 1);
+  }
+
+  // Показываем результат
+  var resultDiv = document.getElementById("testResult");
+  var content = document.getElementById("testContent");
+  
+  if (content) content.style.display = "none";
+  if (resultDiv) {
+    resultDiv.innerHTML = '<div style="text-align:center; padding:20px;">' +
+      '<h2 style="color:' + (grade >= 3 ? "var(--ok)" : "var(--err)") + '; font-size:48px; margin:0;">' + grade + '</h2>' +
+      '<p>Верных: <b>' + correct + '</b> из <b>' + t.test.length + '</b> (' + pct + '%)</p>' +
+      '<p style="color:var(--muted);">Вы получили ' + (grade * 20) + ' XP</p>' +
+      '<button class="btn" onclick="location.reload()">Обновить страницу</button>' +
+    '</div>';
+  }
+
+  var attemptsInfo = document.getElementById("testAttemptsInfo");
+  if (attemptsInfo) {
+    var left = parseInt(localStorage.getItem(attemptsKey) || '0', 10);
+    attemptsInfo.innerHTML = 'Доступно попыток: ' + left;
+  }
+};
+
+window.requestAttempt = function(topicId) {
+  var attemptsKey = 'attempts_' + topicId;
+  var attempts = parseInt(localStorage.getItem(attemptsKey) || '0', 10);
+  
+  if (attempts > 0) {
+    window.showToast("У вас еще есть попытки.", "info");
+    return;
+  }
+  
+  // В реальности тут должен быть запрос к преподавателю (API).
+  // Для демо: даем 1 попытку.
+  localStorage.setItem(attemptsKey, 1);
+  window.showToast("Вам выдана 1 дополнительная попытка!", "ok");
+  window.route(); // перерисовать страницу
 };
 
 // --- РЕНДЕРИНГ: ПРОФИЛЬ ---
@@ -479,7 +627,7 @@ window.renderProfilePage = function() {
     '</div>';
 };
 
-// --- РЕНДЕРИНГ: ПРОСТАЯ СТРАНИЦА (видео, паспорта, ОТ, оформление) ---
+// --- РЕНДЕРИНГ: ПРОСТАЯ СТРАНИЦА ---
 window.renderSimplePage = function(title, items, icon) {
   var app = window.$("app");
   if (!app) return;
@@ -518,13 +666,13 @@ window.route = function() {
     } else if (page === "profile") {
       window.renderProfilePage();
     } else if (page === "videos") {
-      window.renderSimplePage("Видео", window.COURSE.videos, "🎬");
+      window.renderSimplePage("Видео", window.COURSE ? window.COURSE.videos : [], "🎬");
     } else if (page === "passports") {
-      window.renderSimplePage("Паспорта", window.COURSE.passports, "📄");
+      window.renderSimplePage("Паспорта", window.COURSE ? window.COURSE.passports : [], "📄");
     } else if (page === "safety") {
-      window.renderSimplePage("Охрана труда", window.COURSE.safety, "🦺");
+      window.renderSimplePage("Охрана труда", window.COURSE ? window.COURSE.safety : [], "🦺");
     } else if (page === "formatting") {
-      var fmt = window.COURSE.formatting;
+      var fmt = window.COURSE ? window.COURSE.formatting : null;
       var items = (fmt && fmt.title) ? [{ title: fmt.title }] : [];
       window.renderSimplePage("Оформление", items, "📝");
     } else if (page === "links" && window.renderLinksPage) {
