@@ -1,6 +1,5 @@
 "use strict";
 
-// Обновленная ссылка на развернутое веб-приложение Google Apps Script
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Ev3stuvLl36nxjmXU0q2zi4UsS5ViXwEj1x6q_JjlCccMJld36o6y1H__CvJn5KB/exec";
 
 async function fetchAPI(action, params = {}, method = "GET") {
@@ -14,7 +13,7 @@ async function fetchAPI(action, params = {}, method = "GET") {
     }
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // Увеличили до 30 секунд
     
     try {
         const options = { signal: controller.signal, cache: "no-store" };
@@ -41,5 +40,7 @@ window.API = {
     saveStudent: (key, name, group, payload) => fetchAPI("save", { key, name, group, payload }, "POST"),
     grantXP: (key, amount) => fetchAPI("grantXP", { key, amount }, "POST"),
     getChat: (group) => fetchAPI("chatload", { group }),
-    sendChat: (group, key, name, text) => fetchAPI("chatsave", { group, key, name, text }, "POST")
+    sendChat: (group, key, name, text) => fetchAPI("chatsave", { group, key, name, text }, "POST"),
+    getSchedule: () => fetchAPI("getschedule"),
+    saveSchedule: (data) => fetchAPI("saveschedule", { data: JSON.stringify(data) }, "POST")
 };
