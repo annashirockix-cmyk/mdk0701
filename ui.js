@@ -1,5 +1,5 @@
 /* ============================================================
-   ui.js — Интерфейс и Роутинг (v195.0 — BUG FIX)
+   ui.js — Интерфейс и Роутинг (v196.0 — FULL LECTURES & BUG FIX)
    ============================================================ */
 "use strict";
 
@@ -141,7 +141,7 @@ window.renderTopic = function(id, tab){
   }
 };
 
-/* ---------------- ПРОФИЛЬ (С ИСПРАВЛЕНИЕМ) ---------------- */
+/* ---------------- ПРОФИЛЬ И ПОРТФОЛИО ---------------- */
 window.renderProfilePage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
@@ -171,7 +171,6 @@ window.renderProfilePage = function() {
     app.appendChild(window.el(card));
 };
 
-/* ---------------- ПОРТФОЛИО (ИСПРАВЛЕНА ОШИБКА) ---------------- */
 window.renderPortfolioPage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
