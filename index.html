@@ -24,20 +24,20 @@
     <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
       
       <!-- Форма студента -->
-      <form class="login-card" id="studentLoginForm" style="flex: 1; min-width: 300px;">
+      <div class="login-card" id="studentLoginForm" style="flex: 1; min-width: 300px;">
         <h3>Вход студента</h3>
         <p class="login-hint">Укажите ФИО и группу. Прогресс сохранится на этом устройстве.</p>
         <label>ФИО
-          <input id="loginName" type="text" placeholder="Иванов Иван Иванович" required autocomplete="name">
+          <input id="loginName" type="text" placeholder="Иванов Иван Иванович" autocomplete="name">
         </label>
         <label>Группа
-          <input id="loginGroup" type="text" placeholder="ТМ-4" required autocomplete="organization">
+          <input id="loginGroup" type="text" placeholder="ТМ-4" autocomplete="organization">
         </label>
-        <button type="submit" class="btn" style="width: 100%; margin-top: 10px;">Войти</button>
-      </form>
+        <button type="button" onclick="window.doStudentLogin()" class="btn" style="width: 100%; margin-top: 10px;">Войти</button>
+      </div>
 
       <!-- Форма преподавателя -->
-      <form class="login-card" id="teacherLoginForm" style="flex: 1; min-width: 300px;">
+      <div class="login-card" id="teacherLoginForm" style="flex: 1; min-width: 300px;">
         <h3>Вход преподавателя</h3>
         <p class="login-hint">Логин и пароль из листа Logins. Резерв: admin / admin.</p>
         <label>Логин
@@ -46,9 +46,9 @@
         <label>Пароль
           <input id="teacherPass" type="password" placeholder="admin" autocomplete="current-password">
         </label>
-        <button type="submit" class="btn ghost" style="width: 100%; margin-top: 10px;">Войти в журнал</button>
+        <button type="button" id="teacherLoginBtn" onclick="window.doTeacherLogin()" class="btn ghost" style="width: 100%; margin-top: 10px;">Войти в журнал</button>
         <p class="login-error" id="teacherLoginError" style="display:none; color:var(--err); margin-top:10px; font-size:13px;"></p>
-      </form>
+      </div>
 
     </div>
   </div>
@@ -123,7 +123,7 @@
     <button class="btn ghost" onclick="history.forward()" style="flex:1; margin:0 5px;">Вперед →</button>
 </div>
 
-<!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ (СТРОГИЙ ПОРЯДОК) -->
+<!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
 <script src="data.js"></script>
 <script src="programs.js"></script>
 <script src="api.js"></script>
@@ -136,10 +136,5 @@
 <script src="rating.js"></script>
 <script src="journal.js"></script>
 <script src="schedule.js"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(function(){});
-  }
-</script>
 </body>
 </html>

@@ -78,7 +78,9 @@ window.addXP = function(amount) {
 
 // --- АВТОРИЗАЦИЯ ---
 window.doStudentLogin = function() {
-  var n = document.getElementById("loginName").value.trim(), g = document.getElementById("loginGroup").value.trim();
+  var n = document.getElementById("loginName").value.trim();
+  var g = document.getElementById("loginGroup").value.trim();
+  
   if (!n || !g) return window.showToast("Введите ФИО и Группу!", "err");
   
   window.state.student = { name: n, group: g.toUpperCase() };
@@ -98,6 +100,7 @@ window.doTeacherLogin = function() {
     var u = document.getElementById("teacherUser").value.trim();
     var p = document.getElementById("teacherPass").value.trim();
     var errBox = document.getElementById("teacherLoginError");
+    var btn = document.getElementById("teacherLoginBtn");
     
     if (!u || !p) {
         errBox.textContent = "Введите логин и пароль!";
@@ -106,8 +109,13 @@ window.doTeacherLogin = function() {
     }
 
     errBox.style.display = "none";
+    btn.textContent = "Проверка (ждем ответ от Google)...";
+    btn.disabled = true;
 
     window.API.login(u, p).then(function(res) {
+        btn.textContent = "Войти в журнал";
+        btn.disabled = false;
+        
         if (res && res.ok) {
             window.state.staff = { name: res.name, role: res.role };
             window.state.student = null;
@@ -126,7 +134,9 @@ window.doTeacherLogin = function() {
             errBox.style.display = "block";
         }
     }).catch(function(err) {
-        errBox.textContent = "Ошибка сети. Проверьте подключение к API.";
+        btn.textContent = "Войти в журнал";
+        btn.disabled = false;
+        errBox.textContent = "Ошибка сети. Проверьте интернет или Google Скрипт.";
         errBox.style.display = "block";
     });
 };
@@ -322,22 +332,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!window.state.student && !window.state.staff) window.$("loginOverlay").hidden = false;
     if (window.state.student) window.loadStudentData();
     if (window.state.staff) window.updateXpDisplay();
-    
-    var loginForm = document.getElementById("studentLoginForm");
-    if (loginForm) {
-        loginForm.addEventListener("submit", function(e) {
-            e.preventDefault();
-            window.doStudentLogin();
-        });
-    }
-
-    var teacherForm = document.getElementById("teacherLoginForm");
-    if (teacherForm) {
-        teacherForm.addEventListener("submit", function(e) {
-            e.preventDefault();
-            window.doTeacherLogin();
-        });
-    }
 
     if (window.$("themeToggle")) window.$("themeToggle").onclick = () => { var t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; window.applyTheme(t); };
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
