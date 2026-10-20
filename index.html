@@ -4,22 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Учебный портал МДК</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<link rel="stylesheet" href="style.css?v=196">
-
+<link rel="stylesheet" href="style.css?v=200">
 <script>
-  (function(){
-    try { document.documentElement.setAttribute("data-theme", localStorage.getItem("mdk.theme") || "light"); } catch(e) {}
-  })();
+  (function(){ try { document.documentElement.setAttribute("data-theme", localStorage.getItem("mdk.theme") || "light"); } catch(e) {} })();
 </script>
 </head>
 <body>
 
-<!-- ОКНО ВХОДА -->
 <div class="login-overlay" id="loginOverlay" hidden>
   <div class="login-card">
     <div style="text-align: center; margin-bottom: 25px;">
@@ -31,76 +22,41 @@
       <input id="loginGroup" type="text" placeholder="Группа" required>
       <button type="submit" class="btn" style="width:100%; margin-top:15px;">Войти</button>
     </form>
-    <div style="text-align:center; margin:20px 0; color:var(--muted); font-size:12px; font-weight:bold;">─── ИЛИ ───</div>
-    <form onsubmit="event.preventDefault(); window.doTeacherLogin();">
-      <h3>👨‍🏫 Вход сотрудника</h3>
-      <input id="loginStaffName" type="text" placeholder="Логин" required>
-      <input id="loginStaffPass" type="password" placeholder="Пароль" required>
-      <button type="submit" class="btn ghost" style="width:100%; margin-top:15px;">Войти</button>
-    </form>
   </div>
 </div>
 
-<!-- ТОПБАР -->
 <header class="topbar">
   <button class="burger-btn" id="burgerBtn"><span></span><span></span><span></span></button>
   
   <div style="display:flex; gap:5px; margin-right:10px;">
-      <button class="btn ghost" onclick="history.back()" title="Назад" style="padding:6px 10px;">←</button>
-      <button class="btn ghost" onclick="history.forward()" title="Вперед" style="padding:6px 10px;">→</button>
+      <button class="btn ghost" onclick="history.back()" style="padding:6px 10px;">←</button>
+      <button class="btn ghost" onclick="history.forward()" style="padding:6px 10px;">→</button>
   </div>
 
-  <a class="brand" href="#/"><span class="brand-badge" id="brandBadge">МДК</span></a>
-  
-  <div style="margin-left: 15px;">
-      <select id="mdkSelector" style="padding: 8px; font-weight: bold; background: var(--card-soft); border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; cursor: pointer; outline: none;">
-          <option value="02.01">МДК 02.01 (Сборка)</option>
-          <option value="04.01">МДК 04.01 (Диагностика)</option>
-          <option value="07.01">МДК 07.01 (ЧПУ)</option>
-      </select>
-  </div>
-
+  <a class="brand" href="#/"><span class="brand-badge">МДК 07.01</span></a>
   <div class="crumbs" id="crumbs" style="margin-left:auto;"></div>
   <div class="topbar-status"><span class="status-pill" id="xpCount">🌟 0 XP</span></div>
   <button id="themeToggle" class="btn ghost" style="padding: 8px 12px; margin-left: 5px;">🎨</button>
 </header>
 
-<!-- DRAWER -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
 <aside class="drawer" id="drawer">
   <div class="drawer-head">
     <div class="drawer-user">
       <span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span>
-      <div style="margin-left:10px;"><div id="userChipName">Гость</div><div id="userChipGroup" style="font-size:12px;color:var(--muted)">Роль: Гость</div></div>
+      <div style="margin-left:10px;"><div id="userChipName">Гость</div><div id="userChipGroup" style="font-size:12px;color:var(--muted)">Группа</div></div>
     </div>
     <button class="drawer-close" id="drawerClose">✕</button>
   </div>
   <nav class="drawer-nav" style="flex:1; overflow-y:auto; padding: 10px 0;">
     <a class="drawer-item" data-go="#/">🏠 Главная</a>
     <a class="drawer-item" data-go="#/profile">👤 Личный кабинет</a>
-    <a class="drawer-item" data-go="#/portfolio">📄 Резюме</a>
-    <a class="drawer-item" data-go="#/final">📝 Итоговый экзамен</a>
-
-    <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold;">Материалы</div>
-    <a class="drawer-item" data-go="#/schedule">📅 Расписание</a>
+    
+    <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); font-weight: bold;">Материалы</div>
     <a class="drawer-item" data-go="#/videos">🎬 Видео</a>
     <a class="drawer-item" data-go="#/passports">📄 Паспорта</a>
     <a class="drawer-item" data-go="#/safety">🦺 Охрана труда</a>
     <a class="drawer-item" data-go="#/formatting">📝 Оформление</a>
-    <a class="drawer-item" data-go="#/links">🔗 Полезные ссылки</a>
-
-    <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold;">🎮 Игровой сектор</div>
-    <a class="drawer-item" data-go="#/arcade">🕹️ Игровая комната</a>
-    <a class="drawer-item" data-go="#/gcode-test">🛠️ Тест G-кода</a>
-    <a class="drawer-item" data-go="#/event">💀 Смертельная вечеринка</a>
-    <a class="drawer-item" data-go="#/3d-machine">🖥️ 3D Станок</a>
-    <a class="drawer-item" data-go="#/rating">🏆 Доска почета</a>
-    <a class="drawer-item" data-go="#/journal">📔 Журнал</a>
-    <a class="drawer-item" data-go="#/chat">💬 Чат группы</a>
-
-    <div style="padding: 15px 20px 5px; font-size: 10px; color: #ffd700; text-transform: uppercase; font-weight: bold;">VIP Сектор</div>
-    <a class="drawer-item" data-go="#/subscription" style="color: #ffd700; font-weight: bold;">👑 VIP Подписка</a>
-    <a class="drawer-item" data-go="#/vip-cheats" id="navVipCheats" style="display:none; color:var(--err);">🕵️ Чит-лист</a>
 
     <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px;" onclick="window.handleLogout()">🚪 Выйти</a>
   </nav>
@@ -108,31 +64,15 @@
 
 <main id="app" style="padding: 32px 24px 100px; max-width: 1100px; margin: 0 auto;"></main>
 
-<!-- НИЖНЯЯ ПАНЕЛЬ -->
 <div style="position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--border); display:flex; justify-content:space-around; padding:10px; z-index:900;">
     <button class="btn ghost" onclick="history.back()" style="flex:1; margin:0 5px;">← Назад</button>
     <button class="btn" onclick="location.hash='#/'" style="flex:1; margin:0 5px;">🏠 Главная</button>
     <button class="btn ghost" onclick="history.forward()" style="flex:1; margin:0 5px;">Вперед →</button>
 </div>
 
-<!-- СКРИПТЫ -->
-<script src="data.js?v=196"></script>
-<script src="logic.js?v=196"></script>
-<script src="api.js?v=196"></script>
-<script src="ui.js?v=196"></script>
-<script src="minigames.js?v=196"></script>
-<script src="final.js?v=196"></script>
-<script src="journal.js?v=196"></script>
-<script src="rating.js?v=196"></script>
-<script src="extra.js?v=196"></script>
-<script src="links.js?v=196"></script>
-<script src="assistant.js?v=196"></script>
-<script src="easter-eggs.js?v=196"></script>
-
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function() { navigator.serviceWorker.register("sw.js").catch(console.warn); });
-  }
-</script>
+<script src="data.js?v=200"></script>
+<script src="api.js?v=200"></script>
+<script src="logic.js?v=200"></script>
+<script src="ui.js?v=200"></script>
 </body>
 </html>

@@ -1,48 +1,25 @@
 "use strict";
 
 window.state = { 
-  activeCourseId: "07.01",
-  student: null, staff: null, results: {}, xp: 0, 
-  shop: [], isPremium: false, premiumUntil: null, avatar: null
-};
-
-try {
-    var savedCourse = localStorage.getItem("mdk.active");
-    if (savedCourse && window.MDK_DATA && window.MDK_DATA[savedCourse]) {
-        window.state.activeCourseId = savedCourse;
-    }
-} catch (e) { console.warn("LocalStorage blocked"); }
-
-window.COURSE = window.MDK_DATA[window.state.activeCourseId];
-
-window.switchCourse = function(id) {
-    try { localStorage.setItem("mdk.active", id); } catch(e){}
-    location.reload();
+  student: null, xp: 0, results: {}, selfResults: {}, progress: {}
 };
 
 try { 
     var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); 
     if (_s && _s.name) window.state.student = _s; 
 } catch (e){}
-try { 
-    var _st = JSON.parse(sessionStorage.getItem("mdk.staff") || "null"); 
-    if (_st && _st.role) window.state.staff = _st; 
-} catch (e){}
 
 window.getLevel = function(xp) { return !xp || xp <= 0 ? 1 : Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100); };
-window.getLevelTitle = function(level) { return level >= 10 ? "Мастер" : "Новичок"; };
 
 window.loadStudentData = function() {
     var k = window.studentKey(); if (!k) return;
     var ek = encodeURIComponent(k);
     try {
         state.xp = parseInt(localStorage.getItem("mdk.xp." + ek) || "0", 10);
-        state.shop = JSON.parse(localStorage.getItem("mdk.shop." + ek) || "[]");
-        state.isPremium = localStorage.getItem("mdk.premium." + ek) === "true";
-        state.premiumUntil = parseInt(localStorage.getItem("mdk.premiumUntil." + ek) || "0", 10);
+        state.results = JSON.parse(localStorage.getItem("mdk.results." + ek) || "{}");
+        state.selfResults = JSON.parse(localStorage.getItem("mdk.selfResults." + ek) || "{}");
     } catch(e) {}
     window.updateXpDisplay();
-    window.renderUserChip();
 };
 
 window.saveStudentData = function() {
@@ -50,20 +27,16 @@ window.saveStudentData = function() {
     var ek = encodeURIComponent(k);
     try {
         localStorage.setItem("mdk.xp." + ek, state.xp);
-        localStorage.setItem("mdk.shop." + ek, JSON.stringify(state.shop));
-        localStorage.setItem("mdk.premium." + ek, state.isPremium);
-        localStorage.setItem("mdk.premiumUntil." + ek, state.premiumUntil);
+        localStorage.setItem("mdk.results." + ek, JSON.stringify(state.results));
+        localStorage.setItem("mdk.selfResults." + ek, JSON.stringify(state.selfResults));
     } catch (e) {}
     window.updateXpDisplay();
 };
 
 window.addXP = function(amount) {
-    var mult = 1 + Math.floor(getLevel(state.xp) / 10) * 0.1;
-    if (state.isPremium) mult *= 2;
-    var finalAmount = Math.round(amount * mult);
-    state.xp += finalAmount;
+    state.xp += amount;
     window.saveStudentData();
-    window.showToast("+" + finalAmount + " XP", "ok");
+    window.showToast("+" + amount + " XP", "ok");
 };
 
 window.doStudentLogin = function() {
@@ -76,21 +49,13 @@ window.doStudentLogin = function() {
 };
 
 window.doTeacherLogin = function() {
-  var u = document.getElementById("loginStaffName").value.trim(), p = document.getElementById("loginStaffPass").value.trim();
-  if(u === "admin" && p === "admin") {
-      state.staff = { role: "admin", name: "Преподаватель" };
-      try { sessionStorage.setItem("mdk.staff", JSON.stringify(state.staff)); } catch(e){}
-      document.getElementById("loginOverlay").hidden = true;
-      window.renderUserChip(); window.route();
-  } else {
-      window.showToast("Неверный логин. (Для теста: admin / admin)", "err");
-  }
+  alert("Вход для преподавателей в разработке. Используйте вход студента.");
 };
 
 window.handleLogout = function() {
   if (confirm("Выйти?")) {
-    state.student = null; state.staff = null;
-    try { localStorage.removeItem("mdk.student"); sessionStorage.removeItem("mdk.staff"); } catch(e){}
+    state.student = null;
+    try { localStorage.removeItem("mdk.student"); } catch(e){}
     document.getElementById("loginOverlay").hidden = false;
     window.closeDrawer(); window.route();
   }
