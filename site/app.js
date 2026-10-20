@@ -1,6 +1,5 @@
 "use strict";
 
-// --- БАЗОВЫЕ ФУНКЦИИ ---
 window.$ = (id) => document.getElementById(id);
 window.escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 window.studentKey = (s) => { s = s || window.state.student; return s ? (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()) : null; };
@@ -14,13 +13,11 @@ window.showToast = function(msg, type) {
   setTimeout(() => { toast.classList.add("out"); setTimeout(() => toast.remove(), 300); }, 3000);
 };
 
-// --- СОСТОЯНИЕ ---
 window.state = { 
   activeCourseId: localStorage.getItem("mdk.active") || "07.01",
   student: null, xp: 0, results: {}
 };
 
-// Защита от несуществующего курса
 if (!window.MDK_DATA[window.state.activeCourseId]) {
     window.state.activeCourseId = "07.01";
     localStorage.setItem("mdk.active", "07.01");
@@ -30,6 +27,7 @@ window.COURSE = window.MDK_DATA[window.state.activeCourseId];
 try { var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); if (_s && _s.name) window.state.student = _s; } catch (e){}
 
 window.getLevel = function(xp) { return !xp || xp <= 0 ? 1 : Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100); };
+window.getLevelTitle = function(lvl) { return "Уровень " + lvl; };
 
 window.updateXpDisplay = function() { if (window.$("xpCount")) window.$("xpCount").textContent = "🌟 " + window.state.xp + " XP · Lv." + window.getLevel(window.state.xp); };
 
@@ -38,8 +36,10 @@ window.saveStudentData = function() {
     var ek = encodeURIComponent(k);
     try {
         localStorage.setItem("mdk.xp." + ek, window.state.xp);
+        localStorage.setItem("mdk.results." + ek, JSON.stringify(window.state.results || {}));
     } catch(e){}
     window.updateXpDisplay();
+    if (window.API) window.API.saveStudent(k, window.state.student.name, window.state.student.group, JSON.stringify({ xp: window.state.xp, results: window.state.results })).catch(()=>{});
 };
 
 window.loadStudentData = function() {
@@ -47,6 +47,8 @@ window.loadStudentData = function() {
     var ek = encodeURIComponent(k);
     try {
         window.state.xp = parseInt(localStorage.getItem("mdk.xp." + ek) || "0", 10);
+        var r = localStorage.getItem("mdk.results." + ek);
+        window.state.results = r ? JSON.parse(r) : {};
     } catch(e) {}
     window.updateXpDisplay();
 };
@@ -67,7 +69,7 @@ window.doStudentLogin = function() {
 };
 
 window.handleLogout = function() {
-  if (confirm("Выйти?")) {
+  if (confirm("Выйти из аккаунта?")) {
     window.state.student = null;
     try { localStorage.removeItem("mdk.student"); } catch(e){}
     document.getElementById("loginOverlay").hidden = false;
@@ -90,7 +92,6 @@ window.renderUserChip = function() {
     window.$("userChipAvatar").innerHTML = "👨‍🎓";
 };
 
-/* ---------------- РЕНДЕРИНГ ГЛАВНОЙ ---------------- */
 function renderHome() {
     var app = window.$("app"); app.innerHTML = "";
     var c = window.COURSE;
@@ -110,10 +111,15 @@ function renderHome() {
     } else {
         html += "<p>Темы для этого предмета пока не добавлены.</p>";
     }
+
+    html += '<div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;">'
+         + '<a class="btn ghost" href="#/training" style="flex:1;text-align:center;min-width:140px;">🎯 Тренировка</a>'
+         + '<a class="btn" href="#/final" style="flex:1;text-align:center;min-width:140px;">📋 Экзамены</a>'
+         + '</div>';
+
     app.innerHTML = html;
 }
 
-/* ---------------- РЕНДЕРИНГ ТЕМЫ ---------------- */
 window.renderTopic = function(id, tab){
   tab = tab || "lecture"; 
   var c = window.COURSE; var t = null;
@@ -127,7 +133,7 @@ window.renderTopic = function(id, tab){
   if(!t) return renderHome();
 
   var app = window.$("app"); 
-  var html = `<a class="backlink" href="#/">← К программе</a><section class="topic-head"><h1>${t.title}</h1></section>`;
+  var html = `<a class="backlink" href="#/" style="color:var(--accent);">← К программе</a><section class="topic-head"><h1>${t.title}</h1></section>`;
   
   html += '<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">';
   [["lecture","01 Лекция"],["practice","02 Практика"],["test","03 Тест"]].forEach(item => { 
@@ -147,8 +153,11 @@ window.renderTopic = function(id, tab){
       panelHtml += `<div style="margin-bottom:20px; padding:20px; border:1px solid var(--border); border-radius:8px;">
           <h4>${p.code}. ${p.title}</h4>
           <p><b>Цель:</b> ${p.goal || ''}</p>
-          <p><b>Задание:</b> ${p.task || ''}</p>
-      </div>`;
+          <p><b>Задание:</b> ${p.task || ''}</p>`;
+      if (p.variants && p.variants.length) {
+        panelHtml += "<p><b>Варианты:</b></p><ul>" + p.variants.map(function(v){ return "<li>"+v+"</li>"; }).join("") + "</ul>";
+      }
+      panelHtml += `</div>`;
     });
   }
 
@@ -163,7 +172,6 @@ window.renderTopic = function(id, tab){
 
   app.innerHTML = html + `<section class="panel module">${panelHtml}</section>`;
 
-  // Обработчики
   if (tab === "lecture") {
       var markBtn = document.getElementById("markDoneBtn");
       if (markBtn) markBtn.onclick = function() { window.addXP(50); markBtn.textContent = "✅ Изучено"; markBtn.disabled = true; }; 
@@ -177,24 +185,25 @@ window.renderTopic = function(id, tab){
         var grade = Math.max(2, Math.round((correct / t.test.length) * 5)); 
         window.state.results[id] = { grade: grade }; window.addXP(100);
         window.showToast("Оценка: " + grade, "ok"); 
+        window.saveStudentData();
       };
   }
 };
 
-/* ---------------- ОСТАЛЬНЫЕ СТРАНИЦЫ ---------------- */
 window.renderProfilePage = function() {
     var app = window.$("app");
-    app.innerHTML = `<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>Личный кабинет</h1></section>
-    <div class="module"><p><b>ФИО:</b> ${window.state.student ? window.state.student.name : 'Гость'}</p><p><b>XP:</b> ${window.state.xp}</p></div>`;
+    app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>Личный кабинет</h1></section>
+    <div class="module"><p><b>ФИО:</b> ${window.state.student ? window.state.student.name : 'Гость'}</p>
+    <p><b>Группа:</b> ${window.state.student ? window.state.student.group : '—'}</p>
+    <p><b>XP:</b> ${window.state.xp} (Уровень ${window.getLevel(window.state.xp)})</p></div>`;
 };
 
 window.renderSimplePage = function(title, items, icon) {
     var app = window.$("app"); var list = "";
     (items || []).forEach(s => { list += `<div style="padding:10px 0; border-bottom:1px solid var(--border);"><b>${s.title || s}</b></div>`; });
-    app.innerHTML = `<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>${icon} ${title}</h1></section><div class="module">${list || 'Нет данных'}</div>`;
+    app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>${icon} ${title}</h1></section><div class="module">${list || 'Нет данных'}</div>`;
 };
 
-/* ---------------- РОУТЕР ---------------- */
 window.route = function() {
     window.closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = window.$("app");
@@ -213,6 +222,13 @@ window.route = function() {
         else if (parts[0] === "passports") window.renderSimplePage("Паспорта", window.COURSE.passports, "📄");
         else if (parts[0] === "safety") window.renderSimplePage("Охрана труда", window.COURSE.safety, "🦺");
         else if (parts[0] === "formatting") window.renderSimplePage("Оформление", window.COURSE.formatting ? [window.COURSE.formatting.title] : [], "📝");
+        else if (parts[0] === "links" && window.renderLinksPage) window.renderLinksPage();
+        else if (parts[0] === "training" && window.renderTrainingPage) window.renderTrainingPage(parts[1]);
+        else if (parts[0] === "final" && window.renderFinalPage) window.renderFinalPage(parts[1]);
+        else if (parts[0] === "arcade" && window.renderArcadePage) window.renderArcadePage();
+        else if (parts[0] === "rating" && window.renderRatingPage) window.renderRatingPage();
+        else if (parts[0] === "journal" && window.renderJournalPage) window.renderJournalPage();
+        else if (parts[0] === "schedule" && window.renderSchedulePage) window.renderSchedulePage();
         else renderHome();
     } catch (err) { app.innerHTML = '<div class="module">Ошибка: ' + window.escapeHtml(err.message) + '</div>'; }
     window.scrollTo(0, 0);
@@ -226,6 +242,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
     if (window.$("drawerClose")) window.$("drawerClose").onclick = window.closeDrawer; 
     if (window.$("drawerOverlay")) window.$("drawerOverlay").onclick = window.closeDrawer;
+    if (window.$("topbarLogout")) window.$("topbarLogout").onclick = window.handleLogout;
     
     if (window.$("mdkSelector")) {
         window.$("mdkSelector").value = window.state.activeCourseId;
