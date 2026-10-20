@@ -13,7 +13,8 @@ async function fetchAPI(action, params = {}, method = "GET") {
     }
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // Увеличили до 30 секунд
+    // Увеличили таймаут до 60 секунд, чтобы Google Apps Script успел ответить
+    const timeoutId = setTimeout(() => controller.abort(), 60000); 
     
     try {
         const options = { signal: controller.signal, cache: "no-store" };
@@ -29,6 +30,7 @@ async function fetchAPI(action, params = {}, method = "GET") {
         return await response.json();
     } catch (err) {
         clearTimeout(timeoutId);
+        console.error("Ошибка API:", err);
         throw err;
     }
 }

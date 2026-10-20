@@ -1,7 +1,7 @@
 "use strict";
 
 // ============================================================
-// МДК Портал — app.js (Финальная версия v202.0)
+// МДК Портал — app.js (Финальная версия v203.0)
 // ============================================================
 
 // --- УТИЛИТЫ ---
@@ -185,7 +185,6 @@ window.doTeacherLogin = function() {
     finishOk({ name: "Администратор", role: "admin" });
     return;
   }
-  
   if (u === "teacher" && p === "teacher") {
     finishOk({ name: "Анна Анатольевна", role: "teacher" });
     return;
@@ -197,11 +196,8 @@ window.doTeacherLogin = function() {
   }
 
   window.API.login(u, p).then(function(res) {
-    if (res && res.ok) {
-      finishOk({ name: res.name || u, role: res.role || "teacher" });
-    } else {
-      finishErr((res && res.error) || "Неверный логин или пароль");
-    }
+    if (res && res.ok) finishOk({ name: res.name || u, role: res.role || "teacher" });
+    else finishErr((res && res.error) || "Неверный логин или пароль");
   }).catch(function() {
     finishErr("Ошибка сети. Используйте admin/admin или teacher/teacher.");
   });
@@ -252,7 +248,7 @@ window.renderUserChip = function() {
   window.$("userChipAvatar").innerHTML = "👨‍🎓";
 };
 
-// --- УПРАВЛЕНИЕ СТУДЕНТАМИ (Для преподавателя) ---
+// --- УПРАВЛЕНИЕ СТУДЕНТАМИ ---
 window.grantXP = function(key, name, amount) {
   if (amount === undefined) amount = prompt(`Сколько XP начислить студенту ${name}?`, "50");
   if (!amount || isNaN(amount)) return;
@@ -291,7 +287,6 @@ window.deleteStudent = function(key, name) {
          }
       }).catch(() => window.showToast("Ошибка сети", "err"));
   } else {
-      // Если в API еще нет удаления, сделаем "мягкое" удаление (обнулим данные)
       window.API.saveStudent(key, name, "deleted", "{}").then(() => {
           window.showToast("Студент архивирован", "ok");
           if (window.renderJournalPage) window.renderJournalPage();
@@ -362,7 +357,6 @@ window.renderTopic = function(id, tab) {
     }
   }
   if (!t) { renderHome(); return; }
-
   if (!t.test) t.test = [];
 
   var hasLecture     = !!(t.lectures && t.lectures.length);
@@ -409,11 +403,9 @@ window.renderTopic = function(id, tab) {
     t.lectures.forEach(function(l) {
       panelHtml += '<h3>' + (l.code ? window.escapeHtml(l.code) + '. ' : '') +
                    window.escapeHtml(l.title) + '</h3>' +
-                   '<div class="lecture-content" style="margin-bottom:20px;">' +
-                   (l.content || "") + '</div>';
+                   '<div class="lecture-content" style="margin-bottom:20px;">' + (l.content || "") + '</div>';
     });
-    panelHtml += '<button class="btn" id="markDoneBtn" style="width:100%;margin-top:20px;">' +
-                 'Отметить как изученное (+50 XP)</button>';
+    panelHtml += '<button class="btn" id="markDoneBtn" style="width:100%;margin-top:20px;">Отметить как изученное (+50 XP)</button>';
   }
 
   if (tab === "practice" && hasPractice) {
@@ -449,9 +441,7 @@ window.renderTopic = function(id, tab) {
     t.test.forEach(function(q, qi) {
       panelHtml += '<div class="question"><div class="q-text">' + (qi + 1) + '. ' + window.escapeHtml(q.q) + '</div>';
       q.options.forEach(function(opt, oi) {
-        panelHtml += '<label class="option">' +
-          '<input type="radio" name="q' + qi + '" value="' + oi + '">' +
-          '<span>' + window.escapeHtml(opt) + '</span></label>';
+        panelHtml += '<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + window.escapeHtml(opt) + '</span></label>';
       });
       panelHtml += '</div>';
     });
@@ -466,8 +456,7 @@ window.renderTopic = function(id, tab) {
     var attemptsKey = 'attempts_' + t.id;
     var attempts = parseInt(localStorage.getItem(attemptsKey) || '3', 10);
     
-    panelHtml += '<div id="testAttemptsInfo" style="margin-bottom:15px; font-weight:bold; color:var(--accent);">' +
-                 'Доступно попыток: ' + attempts + '</div>';
+    panelHtml += '<div id="testAttemptsInfo" style="margin-bottom:15px; font-weight:bold; color:var(--accent);">Доступно попыток: ' + attempts + '</div>';
     
     if (attempts <= 0) {
       panelHtml += '<div style="color:var(--err); font-weight:bold; margin-bottom:15px;">Попытки закончились.</div>' +
@@ -480,9 +469,7 @@ window.renderTopic = function(id, tab) {
       t.test.forEach(function(q, qi) {
         panelHtml += '<div class="question"><div class="q-text">' + (qi + 1) + '. ' + window.escapeHtml(q.q) + '</div>';
         q.options.forEach(function(opt, oi) {
-          panelHtml += '<label class="option">' +
-            '<input type="radio" name="q' + qi + '" value="' + oi + '">' +
-            '<span>' + window.escapeHtml(opt) + '</span></label>';
+          panelHtml += '<label class="option"><input type="radio" name="q' + qi + '" value="' + oi + '"><span>' + window.escapeHtml(opt) + '</span></label>';
         });
         panelHtml += '</div>';
       });
@@ -497,13 +484,8 @@ window.renderTopic = function(id, tab) {
       panelHtml += '<div style="margin-bottom:20px; padding:20px; border:1px solid var(--border); border-radius:8px;">' +
         '<h4>' + window.escapeHtml(p.code) + '. ' + window.escapeHtml(p.title) + '</h4>' +
         '<p>' + window.escapeHtml(p.description || '') + '</p>' +
-        '<p style="color:var(--muted); font-size:13px;">' +
-          '<b>Файл:</b> <code>' + window.escapeHtml(p.file || '') + '</code>' +
-          (p.slides ? ' · <b>Слайдов:</b> ' + p.slides : '') +
-        '</p>' +
-        '<a class="btn" href="./presentations/' + encodeURIComponent(p.file) + '" ' +
-        'target="_blank" rel="noopener" download style="display:inline-block; margin-top:8px;">' +
-        '📥 Открыть / скачать презентацию</a>' +
+        '<p style="color:var(--muted); font-size:13px;"><b>Файл:</b> <code>' + window.escapeHtml(p.file || '') + '</code>' + (p.slides ? ' · <b>Слайдов:</b> ' + p.slides : '') + '</p>' +
+        '<a class="btn" href="./presentations/' + encodeURIComponent(p.file) + '" target="_blank" rel="noopener" download style="display:inline-block; margin-top:8px;">📥 Открыть / скачать презентацию</a>' +
       '</div>';
     });
   }
@@ -561,7 +543,6 @@ window.startTest = function(topicId, isSelfWork) {
   content.style.display = "block";
   
   activeTestTime = 600;
-  
   if (activeTestTimer) clearInterval(activeTestTimer);
   
   activeTestTimer = setInterval(function() {
@@ -688,9 +669,7 @@ window.renderSimplePage = function(title, items, icon) {
       var content = (s && s.content) ? '<div style="font-size:14px; margin-top:5px;">' + window.escapeHtml(s.content) + '</div>' : '';
       
       var btnText = "📥 Скачать / Открыть";
-      if (s.file && s.file.endsWith('.mp4')) {
-        btnText = "▶️ Смотреть видео";
-      }
+      if (s.file && s.file.endsWith('.mp4')) btnText = "▶️ Смотреть видео";
       
       var fileBtn = (s && s.file) ? '<a href="./' + s.file + '" target="_blank" class="btn" style="margin-top:10px; display:inline-block; padding:8px 16px; font-size:14px;">' + btnText + '</a>' : '';
       var urlBtn = (s && s.url) ? '<a href="' + s.url + '" target="_blank" class="btn" style="margin-top:10px; display:inline-block; padding:8px 16px; font-size:14px;">Перейти по ссылке</a>' : '';
@@ -743,10 +722,21 @@ window.route = function() {
       window.renderSimplePage("Оформление", items, "📝");
     } else if (page === "links" && window.renderLinksPage) {
       window.renderLinksPage();
-    } else if (page === "training" && window.renderTrainingPage) {
-      window.renderTrainingPage(parts[1]);
-    } else if (page === "final" && window.renderFinalPage) {
-      window.renderFinalPage(parts[1]);
+    
+    // ИНТЕГРАЦИЯ НОВЫХ ЭКЗАМЕНОВ И ТРЕНИРОВОК
+    } else if (page === "training") {
+      if (window.state.activeCourseId === "02.01" && window.renderTraining_0201) window.renderTraining_0201(parts[1]);
+      else if (window.state.activeCourseId === "02.02" && window.renderTraining_0202) window.renderTraining_0202(parts[1]);
+      else if (window.state.activeCourseId === "04.01" && window.renderTraining_0401) window.renderTraining_0401(parts[1]);
+      else if (window.state.activeCourseId === "07.01" && window.renderTraining_0701) window.renderTraining_0701(parts[1]);
+      else if (window.renderTrainingPage) window.renderTrainingPage(parts[1]);
+    } else if (page === "final") {
+      if (window.state.activeCourseId === "02.01" && window.renderFinal_0201) window.renderFinal_0201(parts[1]);
+      else if (window.state.activeCourseId === "02.02" && window.renderFinal_0202) window.renderFinal_0202(parts[1]);
+      else if (window.state.activeCourseId === "04.01" && window.renderFinal_0401) window.renderFinal_0401(parts[1]);
+      else if (window.state.activeCourseId === "07.01" && window.renderFinal_0701) window.renderFinal_0701(parts[1]);
+      else if (window.renderFinalPage) window.renderFinalPage(parts[1]);
+
     } else if (page === "arcade" && window.renderArcadePage) {
       window.renderArcadePage();
     } else if (page === "shop" && window.renderShopPage) {
@@ -813,7 +803,6 @@ window.addEventListener("DOMContentLoaded", function() {
     };
   });
 
-  // Применяем сохраненную тему при загрузке
   var savedTheme = localStorage.getItem("mdk.theme_active") || "default";
   if (savedTheme !== "default") {
       document.documentElement.setAttribute("data-theme", savedTheme);

@@ -20,9 +20,7 @@
 </head>
 <body>
 
-<!-- ============================================================
-     ОКНО ВХОДА (LOGIN OVERLAY)
-     ============================================================ -->
+<!-- ОКНО ВХОДА -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-shell" style="display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin: 0 auto;">
     <div class="login-brand" style="text-align: center; margin-bottom: 10px;">
@@ -32,17 +30,12 @@
     </div>
     
     <div class="login-grid" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-      
       <!-- Вход студента -->
       <div class="login-card" style="flex: 1; min-width: 300px;">
         <h3>Вход студента</h3>
         <p class="login-hint">Укажите ФИО и группу.</p>
-        <label>ФИО 
-          <input id="loginName" type="text" placeholder="Иванов Иван">
-        </label>
-        <label>Группа 
-          <input id="loginGroup" type="text" placeholder="ТМ-4">
-        </label>
+        <label>ФИО <input id="loginName" type="text" placeholder="Иванов Иван"></label>
+        <label>Группа <input id="loginGroup" type="text" placeholder="ТМ-4"></label>
         <button type="button" id="btnLoginStudent" class="btn" style="width: 100%; margin-top: 10px;">Войти</button>
       </div>
 
@@ -50,28 +43,18 @@
       <div class="login-card" style="flex: 1; min-width: 300px;">
         <h3>Вход преподавателя</h3>
         <p class="login-hint">Используйте <b>teacher / teacher</b> или <b>admin / admin</b></p>
-        <label>Логин 
-          <input id="teacherUser" type="text" placeholder="teacher">
-        </label>
-        <label>Пароль 
-          <input id="teacherPass" type="password" placeholder="teacher">
-        </label>
+        <label>Логин <input id="teacherUser" type="text" placeholder="teacher"></label>
+        <label>Пароль <input id="teacherPass" type="password" placeholder="teacher"></label>
         <button type="button" id="btnLoginTeacher" class="btn ghost" style="width: 100%; margin-top: 10px;">Войти в журнал</button>
         <p class="login-error" id="teacherLoginError" style="display:none; color:var(--err); margin-top:10px; font-size:13px;"></p>
       </div>
-      
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-     ШАПКА (TOPBAR)
-     ============================================================ -->
+<!-- ШАПКА -->
 <header class="topbar">
-  <button class="burger-btn" id="burgerBtn" aria-label="Меню">
-    <span></span><span></span><span></span>
-  </button>
-  
+  <button class="burger-btn" id="burgerBtn" aria-label="Меню"><span></span><span></span><span></span></button>
   <a class="brand" href="#/"><span class="brand-badge">МДК Портал</span></a>
   
   <div style="margin-left: 15px;">
@@ -93,11 +76,8 @@
   <button id="topbarLogout" class="btn ghost" style="padding:8px 12px; margin-left:5px;" onclick="window.handleLogout()" title="Выйти">🚪</button>
 </header>
 
-<!-- ============================================================
-     БОКОВОЕ МЕНЮ (DRAWER)
-     ============================================================ -->
+<!-- БОКОВОЕ МЕНЮ -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
-
 <aside class="drawer" id="drawer">
   <div class="drawer-head">
     <div class="drawer-user" style="display:flex; align-items:center;">
@@ -131,14 +111,10 @@
   </nav>
 </aside>
 
-<!-- ============================================================
-     ОСНОВНОЙ КОНТЕНТ
-     ============================================================ -->
+<!-- ОСНОВНОЙ КОНТЕНТ -->
 <main id="app"></main>
 
-<!-- ============================================================
-     ПОДКЛЮЧЕНИЕ СКРИПТОВ
-     ============================================================ -->
+<!-- СКРИПТЫ -->
 <!-- 1. Данные -->
 <script src="data-global.js"></script>
 <script src="data-0701.js"></script>
@@ -150,11 +126,14 @@
 <script src="api.js"></script>
 <script src="app.js"></script>
 
-<!-- 3. Модули и страницы -->
-<script src="exam.js"></script>
+<!-- 3. Модули и страницы (Включая новые экзамены) -->
+<script src="exam_0201.js"></script>
+<script src="exam_0202.js"></script>
+<script src="exam_0401.js"></script>
+<script src="exam_0701.js"></script>
 <script src="extra.js"></script>
 <script src="minigames.js"></script>
-<script src="shop.js"></script> <!-- НОВЫЙ ФАЙЛ ДЛЯ МАГАЗИНА И ДОСТИЖЕНИЙ -->
+<script src="shop.js"></script>
 <script src="info.js"></script>
 <script src="links.js"></script>
 <script src="rating.js"></script>
