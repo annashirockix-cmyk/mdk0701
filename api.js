@@ -6,11 +6,14 @@ async function fetchAPI(action, params = {}, method = "GET") {
     const url = new URL(APPS_SCRIPT_URL);
     url.searchParams.append("action", action);
     for (const key in params) { if (params[key] !== undefined && params[key] !== null) url.searchParams.append(key, params[key]); }
+    
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // Ждем максимум 8 секунд
+
     try {
-        const options = { signal: controller.signal, cache: "no-store" };
+        const options = { cache: "no-store", signal: controller.signal };
         if (method === "POST") { options.method = "POST"; options.body = url.searchParams; }
+        
         const response = await fetch(url.toString(), options);
         clearTimeout(timeoutId);
         if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
@@ -24,5 +27,6 @@ async function fetchAPI(action, params = {}, method = "GET") {
 window.API = {
     login: (user, pass) => fetchAPI("login", { username: user, password: pass }),
     getStudents: () => fetchAPI("getstudents"),
-    saveStudent: (key, name, group, payload) => fetchAPI("save", { key, name, group, payload }, "POST")
+    saveStudent: (key, name, group, payload) => fetchAPI("save", { key, name, group, payload }, "POST"),
+    grantXP: (key, amount) => fetchAPI("grantxp", { key, amount }, "POST")
 };

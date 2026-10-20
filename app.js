@@ -17,17 +17,16 @@ window.showToast = function(msg, type) {
 // --- СОСТОЯНИЕ ---
 window.state = { 
   activeCourseId: localStorage.getItem("mdk.active") || "07.01",
-  student: null, 
-  staff: null, 
-  xp: 0, results: {}
+  student: null, staff: null, xp: 0, results: {}
 };
 
+// Инициализация курса
 if (!window.MDK_DATA[window.state.activeCourseId]) {
     window.state.activeCourseId = "07.01";
-    localStorage.setItem("mdk.active", "07.01");
 }
-window.COURSE = window.MDK_DATA[window.state.activeCourseId];
+window.COURSE = window.MDK_DATA[window.state.activeCourseId] || window.MDK_DATA["07.01"];
 
+// Восстановление сессий
 try { 
     var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); 
     if (_s && _s.name) window.state.student = _s; 
@@ -56,7 +55,6 @@ window.saveStudentData = function() {
         localStorage.setItem("mdk.results." + ek, JSON.stringify(window.state.results || {}));
     } catch(e){}
     window.updateXpDisplay();
-    if (window.API) window.API.saveStudent(k, window.state.student.name, window.state.student.group, JSON.stringify({ xp: window.state.xp, results: window.state.results })).catch(()=>{});
 };
 
 window.loadStudentData = function() {
@@ -81,7 +79,10 @@ window.doStudentLogin = function() {
   var n = document.getElementById("loginName").value.trim();
   var g = document.getElementById("loginGroup").value.trim();
   
-  if (!n || !g) return window.showToast("Введите ФИО и Группу!", "err");
+  if (!n || !g) {
+      alert("Пожалуйста, введите ФИО и Группу!");
+      return;
+  }
   
   window.state.student = { name: n, group: g.toUpperCase() };
   window.state.staff = null;
@@ -100,7 +101,7 @@ window.doTeacherLogin = function() {
     var u = document.getElementById("teacherUser").value.trim();
     var p = document.getElementById("teacherPass").value.trim();
     var errBox = document.getElementById("teacherLoginError");
-    var btn = document.getElementById("teacherLoginBtn");
+    var btn = document.getElementById("btnLoginTeacher");
     
     if (!u || !p) {
         errBox.textContent = "Введите логин и пароль!";
@@ -109,9 +110,21 @@ window.doTeacherLogin = function() {
     }
 
     errBox.style.display = "none";
-    btn.textContent = "Проверка (ждем ответ от Google)...";
+    btn.textContent = "Проверка...";
     btn.disabled = true;
 
+    // Проверка резервного входа
+    if (u === "admin" && p === "admin") {
+        window.state.staff = { name: "Администратор", role: "admin" };
+        window.state.student = null;
+        try { localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff)); localStorage.removeItem("mdk.student"); } catch(e){}
+        document.getElementById("loginOverlay").hidden = true;
+        btn.textContent = "Войти в журнал"; btn.disabled = false;
+        window.renderUserChip(); window.updateXpDisplay(); window.route();
+        return;
+    }
+
+    // Если не admin/admin, отправляем запрос к Google
     window.API.login(u, p).then(function(res) {
         btn.textContent = "Войти в журнал";
         btn.disabled = false;
@@ -119,16 +132,11 @@ window.doTeacherLogin = function() {
         if (res && res.ok) {
             window.state.staff = { name: res.name, role: res.role };
             window.state.student = null;
-            try { 
-                localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff));
-                localStorage.removeItem("mdk.student");
-            } catch(e){}
+            try { localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff)); localStorage.removeItem("mdk.student"); } catch(e){}
             
             document.getElementById("loginOverlay").hidden = true;
             window.showToast("Добро пожаловать, " + res.name, "ok");
-            window.renderUserChip();
-            window.updateXpDisplay();
-            window.route();
+            window.renderUserChip(); window.updateXpDisplay(); window.route();
         } else {
             errBox.textContent = res.error || "Неверный логин или пароль";
             errBox.style.display = "block";
@@ -136,7 +144,7 @@ window.doTeacherLogin = function() {
     }).catch(function(err) {
         btn.textContent = "Войти в журнал";
         btn.disabled = false;
-        errBox.textContent = "Ошибка сети. Проверьте интернет или Google Скрипт.";
+        errBox.textContent = "Ошибка сети. Используйте резервный вход admin/admin.";
         errBox.style.display = "block";
     });
 };
@@ -145,13 +153,9 @@ window.handleLogout = function() {
   if (confirm("Выйти из аккаунта?")) {
     window.state.student = null;
     window.state.staff = null;
-    try { 
-        localStorage.removeItem("mdk.student"); 
-        localStorage.removeItem("mdk.staff");
-    } catch(e){}
+    try { localStorage.removeItem("mdk.student"); localStorage.removeItem("mdk.staff"); } catch(e){}
     document.getElementById("loginOverlay").hidden = false;
-    window.closeDrawer(); 
-    window.route();
+    window.closeDrawer(); window.route();
   }
 };
 
@@ -176,15 +180,15 @@ window.renderUserChip = function() {
     window.$("userChipAvatar").innerHTML = "👨‍🎓";
 };
 
-// --- РЕНДЕРИНГ СТРАНИЦ ---
+// --- РЕНДЕР ---
 function renderHome() {
     var app = window.$("app"); app.innerHTML = "";
     var c = window.COURSE;
     if (!c) return app.innerHTML = "<div class='module'>Ошибка: Данные курса не загружены.</div>";
 
     var html = `<section class="hero"><h1>${c.title}</h1><p>${c.module}</p></section>`;
-    
     html += '<div class="steps-title">Учебный план</div>';
+    
     if (c.sections && c.sections.length > 0) {
         c.sections.forEach(sec => {
             html += `<div style="font-weight:bold; margin:20px 0 10px; color:var(--accent); text-transform:uppercase; font-size:12px;">${sec.title}</div>`;
@@ -327,12 +331,17 @@ window.route = function() {
     window.scrollTo(0, 0);
 };
 
-// --- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ---
+// --- СТАРТ ---
 window.addEventListener("DOMContentLoaded", () => {
     if (!window.state.student && !window.state.staff) window.$("loginOverlay").hidden = false;
     if (window.state.student) window.loadStudentData();
     if (window.state.staff) window.updateXpDisplay();
+    
+    // Привязка кнопок входа
+    if (window.$("btnLoginStudent")) window.$("btnLoginStudent").onclick = window.doStudentLogin;
+    if (window.$("btnLoginTeacher")) window.$("btnLoginTeacher").onclick = window.doTeacherLogin;
 
+    // Прочие кнопки
     if (window.$("themeToggle")) window.$("themeToggle").onclick = () => { var t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; window.applyTheme(t); };
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
     if (window.$("drawerClose")) window.$("drawerClose").onclick = window.closeDrawer; 
