@@ -1,203 +1,129 @@
-/* ============================================================
-   МДК — journal.js (Журнал успеваемости)
-   ============================================================ */
 "use strict";
 
-window.renderJournalPage = function() {
-  var app = document.getElementById("app"); if (!app) return; app.innerHTML = ""; document.getElementById("crumbs").textContent = "Журнал";
-  
-  app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
-  app.appendChild(el('<section class="hero"><h1>Журнал успеваемости</h1></section>'));
-  
-  var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin" || state.staff.role === "curator");
-  
-  if (isTeacher) {
-      var quickPanel = el(`<section class="module" style="background:var(--accent-soft); border-color:var(--accent); margin-bottom:24px;">
-          <h3 style="margin-top:0; color:var(--accent);">🎁 Быстрая выдача XP</h3>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <select id="quickStudentSelect" class="self-input" style="flex:1; min-width:200px; margin:0;"></select>
-              <input id="quickXPAmount" type="number" class="self-input" style="width:100px; margin:0;" placeholder="XP" value="50" min="1">
-              <button class="btn" id="quickGrantBtn" style="background:var(--gold); color:#000;">Выдать</button>
-          </div>
-      </section>`);
-      app.appendChild(quickPanel);
-  }
-
-  if (isTeacher) {
-    var topPanel = el('<div style="margin-bottom:16px; display:flex; justify-content:flex-end;"><button class="btn" id="reportBtn" style="background:var(--accent); color:#fff;">📧 Отправить отчет</button></div>');
-    app.appendChild(topPanel);
-    topPanel.querySelector("#reportBtn").onclick = function() {
-      var email = prompt("Введите email для отчета:", "anna.shirockix@gmail.com"); if (!email) return;
-      var p = new URLSearchParams(); p.append("action", "journalreport"); p.append("group", state.staff.group || "ТМ-3"); p.append("email", email);
-      window.showToast("Отчет отправляется...", "info");
-      fetch(APPS_SCRIPT_URL, { method: "POST", body: p }).then(r=>r.json()).then(res=>{
-         if(res.ok) window.showToast("Отчет отправлен!", "ok"); else window.showToast("Ошибка отправки.", "err");
-      });
-    };
-  }
-
-  var tableWrap = el('<section class="module"><div class="skeleton" style="height:200px;"></div></section>'); app.appendChild(tableWrap);
-
-  window.API.getStudents().then(d => {
-    tableWrap.innerHTML = "";
-    if (!d || !d.ok || !d.students || !d.students.length) { tableWrap.innerHTML = "Студентов пока нет."; return; }
+window.renderArcadePage = function() {
+    var app = document.getElementById("app"); 
+    if (!app) return; 
+    app.innerHTML = "";
     
-    if (isTeacher) {
-        var sel = document.getElementById("quickStudentSelect");
-        d.students.forEach(s => {
-            sel.appendChild(el(`<option value="${(s.name + "|" + s.group).toLowerCase()}">${s.name} (${s.group})</option>`));
+    document.getElementById("crumbs").textContent = "Игровая комната";
+    
+    app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
+    app.appendChild(el('<section class="hero"><h1>🎮 Игровая комната</h1><p>Проверь свои знания ЧПУ и получи бонусные XP!</p></section>'));
+
+    var gameBox = el(`<div class="module" style="text-align:center; padding: 40px 20px;">
+        <h2 id="gameQuestion" style="margin-bottom: 30px; font-size: 24px;">Загрузка...</h2>
+        <div id="gameOptions" style="display:flex; flex-direction:column; gap:10px; max-width:400px; margin:0 auto;"></div>
+        <div id="gameResult" style="margin-top:20px; font-weight:bold; font-size:18px; min-height:30px;"></div>
+    </div>`);
+    app.appendChild(gameBox);
+
+    // База вопросов для игры
+    var questions = [
+        { q: "Какая команда задаёт ускоренное перемещение (холостой ход)?", a: "G00", opts: ["G00", "G01", "G02", "G03"] },
+        { q: "Какая команда отвечает за линейную интерполяцию (рабочую подачу)?", a: "G01", opts: ["G00", "G01", "G04", "G28"] },
+        { q: "Какой код включает шпиндель по часовой стрелке?", a: "M03", opts: ["M03", "M04", "M05", "M08"] },
+        { q: "Что означает команда G90?", a: "Абсолютная система координат", opts: ["Относительная система координат", "Абсолютная система координат", "Круговая интерполяция", "Возврат в ноль"] },
+        { q: "Какой адрес используется для задания скорости подачи?", a: "F", opts: ["S", "T", "F", "N"] },
+        { q: "Что делает команда M30?", a: "Конец программы", opts: ["Пауза", "Смена инструмента", "Конец программы", "Включение СОЖ"] }
+    ];
+
+    var currentQ = null;
+    var score = 0;
+    var totalQuestions = 5;
+    var currentIdx = 0;
+    var usedIndices = [];
+
+    function startGame() {
+        score = 0;
+        currentIdx = 0;
+        usedIndices = [];
+        document.getElementById("gameResult").innerHTML = "";
+        nextQuestion();
+    }
+
+    function nextQuestion() {
+        if (currentIdx >= totalQuestions) {
+            finishGame();
+            return;
+        }
+
+        // Выбираем случайный вопрос
+        var idx = Math.floor(Math.random() * questions.length);
+        while(usedIndices.includes(idx)) {
+            idx = Math.floor(Math.random() * questions.length);
+        }
+        usedIndices.push(idx);
+        currentQ = questions[idx];
+
+        document.getElementById("gameQuestion").textContent = (currentIdx + 1) + "/" + totalQuestions + ". " + currentQ.q;
+        var optsBox = document.getElementById("gameOptions");
+        optsBox.innerHTML = "";
+
+        // Перемешиваем варианты
+        var shuffledOpts = [...currentQ.opts].sort(() => Math.random() - 0.5);
+
+        shuffledOpts.forEach(opt => {
+            var btn = document.createElement("button");
+            btn.className = "btn ghost";
+            btn.style.padding = "12px";
+            btn.style.fontSize = "16px";
+            btn.textContent = opt;
+            btn.onclick = function() { checkAnswer(opt, btn); };
+            optsBox.appendChild(btn);
         });
-        
-        document.getElementById("quickGrantBtn").onclick = function() {
-            var sKey = sel.value;
-            var sName = sel.options[sel.selectedIndex].text.split(' (')[0];
-            var amount = parseInt(document.getElementById("quickXPAmount").value) || 50;
-            if (!sKey) return;
-            if (confirm(`Выдать ${amount} XP студенту ${sName}?`)) {
-                window.grantXP(sKey, sName, amount);
-            }
-        };
     }
 
-    var displayStudents = d.students;
-    if (!state.staff && state.student) {
-      displayStudents = d.students.filter(function(s) {
-        return s.name.trim().toLowerCase() === state.student.name.trim().toLowerCase() && 
-               s.group.trim().toUpperCase() === state.student.group.trim().toUpperCase();
-      });
-    }
-    if (!displayStudents.length) { tableWrap.innerHTML = "<p class='sub'>Ваших данных пока нет.</p>"; return; }
-    
-    var tableContainer = el('<div class="journal-container" style="overflow-x:auto;"></div>');
-    var table = el('<table class="journal-table" style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"></table>');
-    
-    table.appendChild(el('<thead><tr>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:20%;">Студент</th>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:10%; text-align:center;">Средний балл</th>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:35%;">Сданные темы и работы</th>'
-        + '<th style="border-bottom:2px solid var(--border); padding:12px; width:35%;">Практические</th>'
-        + '</tr></thead>'));
-        
-    var tbody = el('<tbody></tbody>');
-    
-    displayStudents.forEach(s => {
-      var tr = el('<tr style="border-bottom:1px solid var(--border);"></tr>');
-      var currentStudentKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
-      
-      var nameCellHtml = `<div style="font-weight:bold; font-size:16px;">${s.name}</div>
-                          <div style="font-size:12px;color:var(--muted);font-weight:normal;margin-bottom:8px;">гр. ${s.group}</div>`;
-      if (isTeacher) {
-          nameCellHtml += `<button class="btn" style="padding:6px 12px; font-size:12px; background:var(--gold); color:#000; font-weight:bold;" onclick="window.grantXP('${currentStudentKey}', '${s.name}')">🎁 Выдать XP</button>`;
-      }
-      tr.appendChild(el(`<td style="padding:12px; vertical-align:top;">${nameCellHtml}</td>`));
-      
-      var tdWorks = el('<td style="padding:12px; vertical-align:top;"></td>');
-      var tdPracticals = el('<td style="padding:12px; vertical-align:top;"></td>');
-      
-      var worksHtml = "", pracHtml = "", hasWorks = false, sum = 0, count = 0;
-      
-      try {
-        var p = JSON.parse(s.payload || "{}");
-        
-        if (p.results) {
-          Object.keys(p.results).forEach(k => {
-             var tName = k === "__final_exam__" ? "Итоговый экзамен" : k;
-             var topic = findTopic(k);
-             if (topic) tName = topic.topic.code + ' - ' + topic.topic.title;
-             
-             worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Тест)</span></div>`;
-             sum += p.results[k].grade || 0; count++;
-             hasWorks = true;
-          });
-        }
-        
-        if (p.selfResults) {
-          Object.keys(p.selfResults).forEach(k => { 
-            var topic = findTopic(k);
-            var tName = topic ? topic.topic.code + ' - ' + topic.topic.title : k;
-            worksHtml += `<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border);"><b>${tName}</b> <span style="font-size:11px;color:var(--muted);">(Сам. работа)</span></div>`;
-            sum += p.selfResults[k].grade || 0; count++;
-            hasWorks = true;
-          });
-        }
+    function checkAnswer(answer, btnElement) {
+        var optsBox = document.getElementById("gameOptions");
+        Array.from(optsBox.children).forEach(b => b.disabled = true); // Блокируем кнопки
 
-        if (p.practicalsDone) {
-            Object.keys(p.practicalsDone).forEach(topicId => {
-                Object.keys(p.practicalsDone[topicId]).forEach(pCode => {
-                    var isDone = p.practicalsDone[topicId][pCode];
-                    if (!isDone) return;
-                    
-                    var topic = findTopic(topicId);
-                    var tName = topic ? topic.topic.code : topicId;
-                    var grade = (p.practicalGrades && p.practicalGrades[topicId] && p.practicalGrades[topicId][pCode]) || "";
-                    
-                    pracHtml += `<div style="margin-bottom:8px; padding:8px; background:var(--card-soft); border-radius:8px; border:1px solid var(--border);">
-                        <div style="font-size:12px; margin-bottom:4px;"><b>${tName}</b> - ${pCode}</div>`;
-                    
-                    if (isTeacher) {
-                        pracHtml += `<select onchange="window.approvePractical('${currentStudentKey}', '${topicId}', '${pCode}', this.value)" style="padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:bold;">
-                            <option value="">— Оценка —</option>
-                            <option value="5" ${grade == "5" ? "selected" : ""}>5</option>
-                            <option value="4" ${grade == "4" ? "selected" : ""}>4</option>
-                            <option value="3" ${grade == "3" ? "selected" : ""}>3</option>
-                            <option value="2" ${grade == "2" ? "selected" : ""}>2</option>
-                        </select>`;
-                    } else {
-                        pracHtml += `<span style="font-size:14px; font-weight:bold; color:var(--accent);">${grade ? "Оценка: " + grade : "На проверке"}</span>`;
-                    }
-                    pracHtml += `</div>`;
-                });
+        var resDiv = document.getElementById("gameResult");
+
+        if (answer === currentQ.a) {
+            btnElement.style.background = "var(--ok)";
+            btnElement.style.color = "#fff";
+            btnElement.style.borderColor = "var(--ok)";
+            resDiv.innerHTML = "✅ Верно! +10 XP";
+            resDiv.style.color = "var(--ok)";
+            score++;
+            if (window.addXP) window.addXP(10); // Начисляем XP через app.js
+        } else {
+            btnElement.style.background = "var(--err)";
+            btnElement.style.color = "#fff";
+            btnElement.style.borderColor = "var(--err)";
+            resDiv.innerHTML = "❌ Ошибка. Правильно: " + currentQ.a;
+            resDiv.style.color = "var(--err)";
+            
+            // Подсвечиваем правильный
+            Array.from(optsBox.children).forEach(b => {
+                if (b.textContent === currentQ.a) {
+                    b.style.borderColor = "var(--ok)";
+                    b.style.color = "var(--ok)";
+                }
             });
         }
-      } catch(e) { console.error(e); }
-      
-      var avg = count > 0 ? (sum / count).toFixed(2) : "—";
-      tr.appendChild(el(`<td style="padding:12px; vertical-align:top; text-align:center; font-size:18px; font-weight:bold; color:var(--accent);">${avg}</td>`));
-      
-      if (hasWorks) tdWorks.innerHTML = worksHtml;
-      else tdWorks.innerHTML = '<i style="color:var(--muted);">Нет сданных тестов</i>';
-      
-      if (pracHtml) tdPracticals.innerHTML = pracHtml;
-      else tdPracticals.innerHTML = '<i style="color:var(--muted);">Нет заявок</i>';
-      
-      tr.appendChild(tdWorks);
-      tr.appendChild(tdPracticals);
-      tbody.appendChild(tr);
-    });
-    
-    table.appendChild(tbody);
-    tableContainer.appendChild(table);
-    tableWrap.appendChild(tableContainer);
-  }).catch(() => { tableWrap.innerHTML = "Ошибка загрузки."; });
-};
 
-// Вспомогательная функция поиска темы для красивого названия
-function findTopic(id) {
-    if (!window.COURSE || !window.COURSE.sections) return null;
-    for (var i = 0; i < window.COURSE.sections.length; i++) {
-        var topics = window.COURSE.sections[i].topics || [];
-        for (var j = 0; j < topics.length; j++) {
-            if (topics[j].id === id) return { topic: topics[j], section: window.COURSE.sections[i] };
-        }
+        currentIdx++;
+        setTimeout(nextQuestion, 1500);
     }
-    return null;
-}
 
-// Сохранение оценки за практическую
-window.approvePractical = function(studentKey, topicId, pracCode, grade) {
-    window.API.getStudentData(studentKey).then(res => {
-        if (!res.ok) return window.showToast("Ошибка загрузки данных", "err");
-        var p = {};
-        try { p = JSON.parse(res.payload || "{}"); } catch(e) {}
+    function finishGame() {
+        document.getElementById("gameQuestion").textContent = "🏁 Игра завершена!";
+        document.getElementById("gameOptions").innerHTML = "";
+        var resDiv = document.getElementById("gameResult");
+        resDiv.innerHTML = `Ваш результат: <b>${score} из ${totalQuestions}</b>.<br>Вы заработали ${score * 10} XP!`;
+        resDiv.style.color = "var(--accent)";
+
+        var playAgainBtn = document.createElement("button");
+        playAgainBtn.className = "btn";
+        playAgainBtn.style.marginTop = "20px";
+        playAgainBtn.textContent = "Играть снова";
+        playAgainBtn.onclick = startGame;
+        document.getElementById("gameOptions").appendChild(playAgainBtn);
         
-        if (!p.practicalGrades) p.practicalGrades = {};
-        if (!p.practicalGrades[topicId]) p.practicalGrades[topicId] = {};
-        
-        p.practicalGrades[topicId][pracCode] = grade;
-        
-        window.API.saveStudent(studentKey, "", "", JSON.stringify(p)).then(r => {
-            if (r.ok) window.showToast("Оценка сохранена!", "ok");
-            else window.showToast("Ошибка сохранения", "err");
-        });
-    });
+        if (window.checkAchievements) window.checkAchievements();
+    }
+
+    // Запуск игры
+    startGame();
 };
