@@ -20,13 +20,11 @@ window.state = {
   student: null, staff: null, xp: 0, results: {}
 };
 
-// Инициализация курса
 if (!window.MDK_DATA[window.state.activeCourseId]) {
     window.state.activeCourseId = "07.01";
 }
 window.COURSE = window.MDK_DATA[window.state.activeCourseId] || window.MDK_DATA["07.01"];
 
-// Восстановление сессий
 try { 
     var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); 
     if (_s && _s.name) window.state.student = _s; 
@@ -55,6 +53,7 @@ window.saveStudentData = function() {
         localStorage.setItem("mdk.results." + ek, JSON.stringify(window.state.results || {}));
     } catch(e){}
     window.updateXpDisplay();
+    if (window.API) window.API.saveStudent(k, window.state.student.name, window.state.student.group, JSON.stringify({ xp: window.state.xp, results: window.state.results })).catch(()=>{});
 };
 
 window.loadStudentData = function() {
@@ -91,7 +90,9 @@ window.doStudentLogin = function() {
       localStorage.removeItem("mdk.staff");
   } catch(e){}
   
-  document.getElementById("loginOverlay").hidden = true;
+  // ИСПРАВЛЕНИЕ: Принудительно скрываем окно через CSS
+  document.getElementById("loginOverlay").style.display = "none";
+  
   window.renderUserChip(); 
   window.loadStudentData(); 
   window.route();
@@ -113,18 +114,20 @@ window.doTeacherLogin = function() {
     btn.textContent = "Проверка...";
     btn.disabled = true;
 
-    // Проверка резервного входа
+    // Резервный вход admin/admin
     if (u === "admin" && p === "admin") {
         window.state.staff = { name: "Администратор", role: "admin" };
         window.state.student = null;
         try { localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff)); localStorage.removeItem("mdk.student"); } catch(e){}
-        document.getElementById("loginOverlay").hidden = true;
+        
+        // ИСПРАВЛЕНИЕ: Принудительно скрываем окно через CSS
+        document.getElementById("loginOverlay").style.display = "none";
+        
         btn.textContent = "Войти в журнал"; btn.disabled = false;
         window.renderUserChip(); window.updateXpDisplay(); window.route();
         return;
     }
 
-    // Если не admin/admin, отправляем запрос к Google
     window.API.login(u, p).then(function(res) {
         btn.textContent = "Войти в журнал";
         btn.disabled = false;
@@ -134,7 +137,9 @@ window.doTeacherLogin = function() {
             window.state.student = null;
             try { localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff)); localStorage.removeItem("mdk.student"); } catch(e){}
             
-            document.getElementById("loginOverlay").hidden = true;
+            // ИСПРАВЛЕНИЕ: Принудительно скрываем окно через CSS
+            document.getElementById("loginOverlay").style.display = "none";
+            
             window.showToast("Добро пожаловать, " + res.name, "ok");
             window.renderUserChip(); window.updateXpDisplay(); window.route();
         } else {
@@ -154,7 +159,10 @@ window.handleLogout = function() {
     window.state.student = null;
     window.state.staff = null;
     try { localStorage.removeItem("mdk.student"); localStorage.removeItem("mdk.staff"); } catch(e){}
-    document.getElementById("loginOverlay").hidden = false;
+    
+    // При выходе показываем окно обратно
+    document.getElementById("loginOverlay").style.display = "flex";
+    
     window.closeDrawer(); window.route();
   }
 };
@@ -180,7 +188,7 @@ window.renderUserChip = function() {
     window.$("userChipAvatar").innerHTML = "👨‍🎓";
 };
 
-// --- РЕНДЕР ---
+// --- РЕНДЕРИНГ ---
 function renderHome() {
     var app = window.$("app"); app.innerHTML = "";
     var c = window.COURSE;
@@ -307,7 +315,7 @@ window.route = function() {
     if (!app) return;
     
     if (!window.state.student && !window.state.staff) { 
-        if(window.$("loginOverlay")) window.$("loginOverlay").hidden = false;
+        if(window.$("loginOverlay")) window.$("loginOverlay").style.display = "flex";
         app.innerHTML = "<div class='module' style='text-align:center;'><h2>Войдите в систему</h2></div>"; 
         return; 
     }
@@ -333,15 +341,18 @@ window.route = function() {
 
 // --- СТАРТ ---
 window.addEventListener("DOMContentLoaded", () => {
-    if (!window.state.student && !window.state.staff) window.$("loginOverlay").hidden = false;
+    if (!window.state.student && !window.state.staff) {
+        window.$("loginOverlay").style.display = "flex";
+    } else {
+        window.$("loginOverlay").style.display = "none";
+    }
+    
     if (window.state.student) window.loadStudentData();
     if (window.state.staff) window.updateXpDisplay();
     
-    // Привязка кнопок входа
     if (window.$("btnLoginStudent")) window.$("btnLoginStudent").onclick = window.doStudentLogin;
     if (window.$("btnLoginTeacher")) window.$("btnLoginTeacher").onclick = window.doTeacherLogin;
 
-    // Прочие кнопки
     if (window.$("themeToggle")) window.$("themeToggle").onclick = () => { var t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; window.applyTheme(t); };
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
     if (window.$("drawerClose")) window.$("drawerClose").onclick = window.closeDrawer; 
