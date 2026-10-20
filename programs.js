@@ -1,4 +1,3 @@
-/* Предметы по рабочим программам ПМ.02, ПМ.04 и ПМ.07 */
 "use strict";
 
 (function () {
@@ -155,65 +154,14 @@
     ]
   };
 
-  function attachShared(course) {
-    var base = window.COURSE;
-    course.videos = base.videos;
-    course.passports = base.passports;
-    course.safety = base.safety;
-    course.practiceFormatting = base.practiceFormatting;
-    return course;
+  var base = window.MDK_DATA["07.01"];
+  if (base) {
+      [mdk0201, mdk0202, mdk0401].forEach(function(course) {
+          course.videos = base.videos || [];
+          course.passports = base.passports || [];
+          course.safety = base.safety || [];
+          course.practiceFormatting = base.practiceFormatting || {};
+          window.MDK_DATA[course.id] = course;
+      });
   }
-
-  window.COURSE.id = window.COURSE.id || "07.01";
-  if (!window.COURSE.shortName) window.COURSE.shortName = "МДК 07.01";
-
-  window.PROGRAMS = [window.COURSE, attachShared(mdk0201), attachShared(mdk0202), attachShared(mdk0401)];
-  window.MDK_DATA = {};
-  window.PROGRAMS.forEach(function (p) { window.MDK_DATA[p.id] = p; });
-
-  window.applyProgram = function (id) {
-    var found = window.PROGRAMS.filter(function (p) { return p.id === id; })[0] || window.PROGRAMS[0];
-    window.COURSE = found;
-    try { localStorage.setItem("mdk.id", found.id); } catch (e) {}
-    var badge = document.querySelector(".brand-badge");
-    if (badge) badge.textContent = found.shortName;
-    document.querySelectorAll("[data-mdk]").forEach(function (el) {
-      el.classList.toggle("active", el.getAttribute("data-mdk") === found.id);
-    });
-    return found;
-  };
-
-  window.switchMdk = function (id) {
-    window.applyProgram(id);
-    location.hash = "#/";
-  };
-
-  window.renderMdkSwitcher = function () {
-    var wrap = document.createElement("div");
-    wrap.className = "mdk-switch";
-    window.PROGRAMS.forEach(function (p) {
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "mdk-chip" + (window.COURSE && window.COURSE.id === p.id ? " active" : "");
-      btn.innerHTML = "<b>" + p.shortName + "</b><small>" + p.title + "</small>";
-      btn.onclick = function () { window.switchMdk(p.id); };
-      wrap.appendChild(btn);
-    });
-    return wrap;
-  };
-
-  function paintDrawer() {
-    var box = document.getElementById("mdkNav");
-    if (!box) return;
-    box.innerHTML = "<div class=\"drawer-label\">Предметы</div>" + window.PROGRAMS.map(function (p) {
-      return "<a class=\"drawer-item\" data-go=\"#/\" data-mdk=\"" + p.id + "\" onclick=\"window.applyProgram('" + p.id + "')\">" + p.shortName + "</a>";
-    }).join("");
-  }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    paintDrawer();
-    var saved = null;
-    try { saved = localStorage.getItem("mdk.id"); } catch (e) {}
-    window.applyProgram(saved || "07.01");
-  });
 })();

@@ -18,7 +18,7 @@ window.showToast = function(msg, type) {
 window.state = { 
   activeCourseId: localStorage.getItem("mdk.active") || "07.01",
   student: null, 
-  staff: null, // Для преподавателя
+  staff: null, 
   xp: 0, results: {}
 };
 
@@ -28,7 +28,6 @@ if (!window.MDK_DATA[window.state.activeCourseId]) {
 }
 window.COURSE = window.MDK_DATA[window.state.activeCourseId];
 
-// Восстанавливаем сессии при загрузке
 try { 
     var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); 
     if (_s && _s.name) window.state.student = _s; 
@@ -320,14 +319,10 @@ window.route = function() {
 
 // --- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ---
 window.addEventListener("DOMContentLoaded", () => {
-    // Показываем окно входа, если никто не авторизован
     if (!window.state.student && !window.state.staff) window.$("loginOverlay").hidden = false;
-    
-    // Загружаем данные
     if (window.state.student) window.loadStudentData();
     if (window.state.staff) window.updateXpDisplay();
     
-    // Привязка формы студента
     var loginForm = document.getElementById("studentLoginForm");
     if (loginForm) {
         loginForm.addEventListener("submit", function(e) {
@@ -336,7 +331,6 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Привязка формы преподавателя
     var teacherForm = document.getElementById("teacherLoginForm");
     if (teacherForm) {
         teacherForm.addEventListener("submit", function(e) {
@@ -345,20 +339,17 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Всякие кнопки управления
     if (window.$("themeToggle")) window.$("themeToggle").onclick = () => { var t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; window.applyTheme(t); };
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
     if (window.$("drawerClose")) window.$("drawerClose").onclick = window.closeDrawer; 
     if (window.$("drawerOverlay")) window.$("drawerOverlay").onclick = window.closeDrawer;
     if (window.$("topbarLogout")) window.$("topbarLogout").onclick = window.handleLogout;
     
-    // Селектор МДК
     if (window.$("mdkSelector")) {
         window.$("mdkSelector").value = window.state.activeCourseId;
         window.$("mdkSelector").onchange = function(e) { window.switchCourse(e.target.value); };
     }
     
-    // Меню навигации
     document.querySelectorAll("[data-go]").forEach(item => {
         item.onclick = (e) => { e.preventDefault(); location.hash = item.getAttribute("data-go"); window.closeDrawer(); };
     });
