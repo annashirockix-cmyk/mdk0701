@@ -1,6 +1,3 @@
-/* ============================================================
-   logic.js — Логика приложения (v192.0)
-   ============================================================ */
 "use strict";
 
 window.state = { 
@@ -9,7 +6,6 @@ window.state = {
   shop: [], isPremium: false, premiumUntil: null, avatar: null
 };
 
-// Безопасная загрузка курса
 try {
     var savedCourse = localStorage.getItem("mdk.active");
     if (savedCourse && window.MDK_DATA && window.MDK_DATA[savedCourse]) {
@@ -24,7 +20,6 @@ window.switchCourse = function(id) {
     location.reload();
 };
 
-// Безопасная загрузка юзера
 try { 
     var _s = JSON.parse(localStorage.getItem("mdk.student") || "null"); 
     if (_s && _s.name) window.state.student = _s; 

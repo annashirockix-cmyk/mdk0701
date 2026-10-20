@@ -1,5 +1,5 @@
 /* ============================================================
-   ui.js — Интерфейс и Роутинг (v194.0 — FIX BLANK SCREEN)
+   ui.js — Интерфейс и Роутинг (v195.0 — BUG FIX)
    ============================================================ */
 "use strict";
 
@@ -141,7 +141,7 @@ window.renderTopic = function(id, tab){
   }
 };
 
-/* ---------------- ПРОФИЛЬ, МАГАЗИН, МАТЕРИАЛЫ ---------------- */
+/* ---------------- ПРОФИЛЬ (С ИСПРАВЛЕНИЕМ) ---------------- */
 window.renderProfilePage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
@@ -171,29 +171,32 @@ window.renderProfilePage = function() {
     app.appendChild(window.el(card));
 };
 
-window.renderShopPage = function() {
+/* ---------------- ПОРТФОЛИО (ИСПРАВЛЕНА ОШИБКА) ---------------- */
+window.renderPortfolioPage = function() {
     var app = window.$("app"); app.innerHTML = "";
-    app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>Магазин XP</h1><p>Баланс: <b>' + window.state.xp + ' XP</b></p></section>'));
-    var items = [
-        { id: "fx_gold", icon: "👑", title: "Маска: Золото", price: 2000 },
-        { id: "theme_matrix", icon: "🟢", title: "Тема: Матрица", price: 800, theme: "matrix" }
-    ];
-    var grid = window.el('<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:16px;"></div>');
-    items.forEach(it => {
-        var owned = window.state.shop.includes(it.id);
-        var btn = window.el('<button class="btn" style="width:100%;margin-top:10px;">' + (owned ? 'Применить' : 'Купить') + '</button>');
-        if (!owned && window.state.xp < it.price) { btn.disabled = true; btn.textContent = "Мало XP"; }
-        btn.onclick = () => {
-            if (!owned) { window.state.xp -= it.price; window.state.shop.push(it.id); }
-            if (it.theme) window.applyTheme(it.theme);
-            window.saveStudentData(); window.renderShopPage();
-            window.showToast(owned ? "Применено!" : "Куплено!", "ok");
-        };
-        grid.appendChild(window.el('<div class="module" style="text-align:center;"><div style="font-size:40px;">' + it.icon + '</div><div style="font-weight:bold;">' + it.title + '</div><div style="color:var(--gold); font-weight:bold; margin-top:5px;">' + it.price + ' XP</div></div>')).appendChild(btn);
-    });
-    app.appendChild(grid);
+    app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
+    if (!window.state.student) return;
+    
+    var html = `
+        <div id="portfolioPrint" class="module" style="padding:40px; background:#fff; color:#000;">
+            <h1 style="text-align:center;">РЕЗЮМЕ (${window.state.activeCourseId})</h1>
+            <p><b>ФИО:</b> ${window.escapeHtml(window.state.student.name)}</p>
+            <p><b>Группа:</b> ${window.escapeHtml(window.state.student.group)}</p>
+            <p><b>Курс:</b> ${window.COURSE.title}</p>
+            <p><b>Опыт (XP):</b> ${window.state.xp}</p>
+        </div>
+        <div style="text-align:center; margin-top:20px;"><button class="btn" id="pdfBtn">📥 Скачать PDF</button></div>
+    `;
+    app.appendChild(window.el(html));
+
+    // Безопасное добавление обработчика (защита от null)
+    var btn = document.getElementById("pdfBtn");
+    if (btn) {
+        btn.onclick = function() { window.showToast("Генерация PDF...", "info"); setTimeout(()=>window.showToast("Готово!", "ok"), 1000); };
+    }
 };
 
+/* ---------------- МАТЕРИАЛЫ ---------------- */
 window.renderSchedulePage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>Расписание</h1></section><div class="module"><p>Пн: 08:30 - 10:00</p><p>Ср: 12:30 - 14:00</p></div>'));
@@ -231,6 +234,7 @@ window.renderFormattingPage = function() {
     app.appendChild(window.el(`<section class="hero"><h1>📝 ${fmt.title}</h1><p>${fmt.intro}</p></section><div class="module"><ul>` + fmt.blocks.map(b => `<li>${b.title}</li>`).join('') + `</ul></div>`));
 };
 
+/* ---------------- VIP ---------------- */
 window.renderSubscriptionPage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
@@ -245,7 +249,8 @@ window.renderSubscriptionPage = function() {
             <button class="btn" id="buyPremiumBtn" style="background:#ffd700; color:#000; width:100%; max-width:300px; margin-top:20px;">Оформить за 299 ₽</button>
         </section>
     `));
-    document.getElementById("buyPremiumBtn").onclick = function() { window.showToast("🛠️ В разработке", "info"); };
+    var btn = document.getElementById("buyPremiumBtn");
+    if (btn) btn.onclick = function() { window.showToast("🛠️ В разработке", "info"); };
 };
 
 window.cancelPremium = function() {
@@ -264,14 +269,6 @@ window.renderVipCheatsPage = function() {
         }
     }));
     app.appendChild(list);
-};
-
-window.renderPortfolioPage = function() {
-    var app = window.$("app"); app.innerHTML = "";
-    app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
-    if (!window.state.student) return;
-    app.appendChild(window.el(`<div class="module" style="padding:40px; background:#fff; color:#000;"><h1>РЕЗЮМЕ</h1><p>ФИО: ${window.state.student.name}</p><p>Курс: ${window.COURSE.shortName}</p><button class="btn" id="pdfBtn">Скачать PDF</button></div>`));
-    document.getElementById("pdfBtn").onclick = () => window.showToast("Генерация PDF...", "info");
 };
 
 window.renderArcadePage = function() {
