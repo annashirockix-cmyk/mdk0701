@@ -1,5 +1,5 @@
 /* ============================================================
-   ui.js — Интерфейс и Роутинг (v192.0 — MONOLITH)
+   ui.js — Интерфейс и Роутинг (v193.0 — FULL)
    ============================================================ */
 "use strict";
 
@@ -89,7 +89,7 @@ function renderHome() {
     });
 }
 
-/* ---------------- ТЕМЫ ---------------- */
+/* ---------------- ТЕМЫ (Лекции) ---------------- */
 window.renderTopic = function(id, tab){
   tab = tab || "lecture"; 
   var c = window.COURSE; var t = null;
@@ -141,7 +141,7 @@ window.renderTopic = function(id, tab){
   }
 };
 
-/* ---------------- ПРОФИЛЬ И МАГАЗИН ---------------- */
+/* ---------------- ПРОФИЛЬ, МАГАЗИН, МАТЕРИАЛЫ ---------------- */
 window.renderProfilePage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
@@ -196,7 +196,6 @@ window.renderShopPage = function() {
     app.appendChild(grid);
 };
 
-/* ---------------- МАТЕРИАЛЫ ---------------- */
 window.renderSchedulePage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>Расписание</h1></section><div class="module"><p>Пн: 08:30 - 10:00</p><p>Ср: 12:30 - 14:00</p></div>'));
@@ -232,14 +231,6 @@ window.renderFormattingPage = function() {
     var fmt = window.COURSE.formatting;
     if(!fmt) return app.appendChild(window.el('<div class="module">Нет данных.</div>'));
     app.appendChild(window.el(`<section class="hero"><h1>📝 ${fmt.title}</h1><p>${fmt.intro}</p></section><div class="module"><ul>` + fmt.blocks.map(b => `<li>${b.title}</li>`).join('') + `</ul></div>`));
-};
-
-window.renderPortfolioPage = function() {
-    var app = window.$("app"); app.innerHTML = "";
-    app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
-    if (!window.state.student) return;
-    app.appendChild(window.el(`<div class="module" style="padding:40px; background:#fff; color:#000;"><h1>РЕЗЮМЕ</h1><p>ФИО: ${window.state.student.name}</p><p>Курс: ${window.COURSE.shortName}</p><button class="btn" id="pdfBtn">Скачать PDF</button></div>`));
-    document.getElementById("pdfBtn").onclick = () => window.showToast("Генерация PDF...", "info");
 };
 
 /* ---------------- VIP ---------------- */
@@ -278,7 +269,15 @@ window.renderVipCheatsPage = function() {
     app.appendChild(list);
 };
 
-/* ---------------- ИГРЫ (Встроенные, чтобы не ломалось) ---------------- */
+window.renderPortfolioPage = function() {
+    var app = window.$("app"); app.innerHTML = "";
+    app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a>'));
+    if (!window.state.student) return;
+    app.appendChild(window.el(`<div class="module" style="padding:40px; background:#fff; color:#000;"><h1>РЕЗЮМЕ</h1><p>ФИО: ${window.state.student.name}</p><p>Курс: ${window.COURSE.shortName}</p><button class="btn" id="pdfBtn">Скачать PDF</button></div>`));
+    document.getElementById("pdfBtn").onclick = () => window.showToast("Генерация PDF...", "info");
+};
+
+/* ---------------- ИГРЫ И АРКАДА ---------------- */
 window.renderArcadePage = function() {
     var app = window.$("app"); app.innerHTML = "";
     app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🕹️ Игровая комната</h1></section>'));
@@ -294,19 +293,7 @@ window.renderArcadePage = function() {
     app.appendChild(grid);
 };
 
-window.renderCasinoPage = function() {
-    var app = window.$("app"); app.innerHTML = "";
-    app.appendChild(window.el('<a class="backlink" href="#/">← На главную</a><section class="hero"><h1>🎰 Казино</h1></section><div class="module"><p>Игра на XP временно недоступна.</p></div>'));
-};
-window.renderRoulettePage = window.renderCasinoPage;
-window.renderSudokuPage = window.renderCasinoPage;
-window.renderMinesweeperPage = window.renderCasinoPage;
-window.renderTicTacToePage = window.renderCasinoPage;
-window.renderGCodeTestPage = window.renderCasinoPage;
-window.renderJournalPage = window.renderCasinoPage;
-window.renderRatingPage = window.renderCasinoPage;
-
-/* ---------------- РОУТЕР ---------------- */
+/* ---------------- РОУТЕР (ПОДКЛЮЧАЕТ ВСЕ ФАЙЛЫ) ---------------- */
 window.route = function() {
     window.closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = window.$("app");
@@ -326,19 +313,24 @@ window.route = function() {
         else if (parts[0] === "safety") window.renderSafetyPage();
         else if (parts[0] === "formatting") window.renderFormattingPage();
         
-        // Игры
+        // Игровой сектор
         else if (parts[0] === "arcade") window.renderArcadePage();
         else if (parts[0] === "casino") window.renderCasinoPage();
         else if (parts[0] === "roulette") window.renderRoulettePage();
         else if (parts[0] === "sudoku") window.renderSudokuPage();
         else if (parts[0] === "minesweeper") window.renderMinesweeperPage();
+        else if (parts[0] === "spider") window.renderSpiderPage();
         else if (parts[0] === "tictactoe") window.renderTicTacToePage();
         else if (parts[0] === "gcode-test") window.renderGCodeTestPage();
+        else if (parts[0] === "event") window.renderDeadlyPartyPage();
+        else if (parts[0] === "3d-machine") window.render3DMachinePage();
         
-        // Остальное
+        // Остальные страницы
         else if (parts[0] === "journal") window.renderJournalPage();
         else if (parts[0] === "rating") window.renderRatingPage();
         else if (parts[0] === "final") window.renderFinalExamPage();
+        else if (parts[0] === "chat") window.renderChatPage();
+        else if (parts[0] === "links") window.renderLinksPage();
         
         else renderHome();
     } catch (err) { app.innerHTML = '<div class="module">Ошибка: ' + window.escapeHtml(err.message) + '</div>'; }

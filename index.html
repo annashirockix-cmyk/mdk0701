@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<link rel="stylesheet" href="style.css?v=192">
+<link rel="stylesheet" href="style.css?v=193">
 
 <script>
   (function(){
@@ -87,12 +87,16 @@
     <a class="drawer-item" data-go="#/passports">📄 Паспорта</a>
     <a class="drawer-item" data-go="#/safety">🦺 Охрана труда</a>
     <a class="drawer-item" data-go="#/formatting">📝 Оформление</a>
+    <a class="drawer-item" data-go="#/links">🔗 Полезные ссылки</a>
 
     <div style="padding: 15px 20px 5px; font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold;">🎮 Игровой сектор</div>
     <a class="drawer-item" data-go="#/arcade">🕹️ Игровая комната</a>
     <a class="drawer-item" data-go="#/gcode-test">🛠️ Тест G-кода</a>
+    <a class="drawer-item" data-go="#/event">💀 Смертельная вечеринка</a>
+    <a class="drawer-item" data-go="#/3d-machine">🖥️ 3D Станок</a>
     <a class="drawer-item" data-go="#/rating">🏆 Доска почета</a>
     <a class="drawer-item" data-go="#/journal">📔 Журнал</a>
+    <a class="drawer-item" data-go="#/chat">💬 Чат группы</a>
 
     <div style="padding: 15px 20px 5px; font-size: 10px; color: #ffd700; text-transform: uppercase; font-weight: bold;">VIP Сектор</div>
     <a class="drawer-item" data-go="#/subscription" style="color: #ffd700; font-weight: bold;">👑 VIP Подписка</a>
@@ -111,12 +115,28 @@
     <button class="btn ghost" onclick="history.forward()" style="flex:1; margin:0 5px;">Вперед →</button>
 </div>
 
-<!-- СКРИПТЫ -->
-<script src="data.js?v=192"></script>
-<script src="logic.js?v=192"></script>
-<!-- ui.js теперь содержит ВСЕ страницы и игры -->
-<script src="ui.js?v=192"></script>
-<script src="api.js?v=192"></script>
+<!-- СКРИПТЫ (Порядок критически важен!) -->
+<!-- 1. Данные -->
+<script src="data.js?v=193"></script>
+<script src="data-extra.js?v=193"></script>
+<script src="info.js?v=193"></script>
+
+<!-- 2. Логика и API -->
+<script src="logic.js?v=193"></script>
+<script src="api.js?v=193"></script>
+
+<!-- 3. Интерфейс и роутер -->
+<script src="ui.js?v=193"></script>
+
+<!-- 4. Модули (Игры, экзамены, журналы и т.д.) -->
+<script src="minigames.js?v=193"></script>
+<script src="final.js?v=193"></script>
+<script src="journal.js?v=193"></script>
+<script src="rating.js?v=193"></script>
+<script src="extra.js?v=193"></script>
+<script src="links.js?v=193"></script>
+<script src="assistant.js?v=193"></script>
+<script src="easter-eggs.js?v=193"></script>
 
 <script>
   if ("serviceWorker" in navigator) {
