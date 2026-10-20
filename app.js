@@ -1,8 +1,13 @@
 "use strict";
 
-// --- БАЗОВЫЕ ФУНКЦИИ ---
+// --- УТИЛИТЫ (исправление ошибки el is not defined) ---
 window.$ = (id) => document.getElementById(id);
 window.escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+window.el = (html) => {
+    var div = document.createElement("div");
+    div.innerHTML = html.trim();
+    return div.firstChild;
+};
 window.studentKey = (s) => { s = s || window.state.student; return s ? (s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase()) : null; };
 
 window.showToast = function(msg, type) {
@@ -77,25 +82,14 @@ window.addXP = function(amount) {
 window.doStudentLogin = function() {
   var n = document.getElementById("loginName").value.trim();
   var g = document.getElementById("loginGroup").value.trim();
-  
-  if (!n || !g) {
-      alert("Пожалуйста, введите ФИО и Группу!");
-      return;
-  }
+  if (!n || !g) { alert("Введите ФИО и Группу!"); return; }
   
   window.state.student = { name: n, group: g.toUpperCase() };
   window.state.staff = null;
-  try { 
-      localStorage.setItem("mdk.student", JSON.stringify(window.state.student)); 
-      localStorage.removeItem("mdk.staff");
-  } catch(e){}
+  try { localStorage.setItem("mdk.student", JSON.stringify(window.state.student)); localStorage.removeItem("mdk.staff"); } catch(e){}
   
-  // ИСПРАВЛЕНИЕ: Принудительно скрываем окно через CSS
   document.getElementById("loginOverlay").style.display = "none";
-  
-  window.renderUserChip(); 
-  window.loadStudentData(); 
-  window.route();
+  window.renderUserChip(); window.loadStudentData(); window.route();
 };
 
 window.doTeacherLogin = function() {
@@ -104,74 +98,44 @@ window.doTeacherLogin = function() {
     var errBox = document.getElementById("teacherLoginError");
     var btn = document.getElementById("btnLoginTeacher");
     
-    if (!u || !p) {
-        errBox.textContent = "Введите логин и пароль!";
-        errBox.style.display = "block";
-        return;
-    }
-
+    if (!u || !p) { errBox.textContent = "Введите логин и пароль!"; errBox.style.display = "block"; return; }
     errBox.style.display = "none";
-    btn.textContent = "Проверка...";
-    btn.disabled = true;
+    btn.textContent = "Проверка..."; btn.disabled = true;
 
-    // Резервный вход admin/admin
     if (u === "admin" && p === "admin") {
-        window.state.staff = { name: "Администратор", role: "admin" };
-        window.state.student = null;
+        window.state.staff = { name: "Администратор", role: "admin" }; window.state.student = null;
         try { localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff)); localStorage.removeItem("mdk.student"); } catch(e){}
-        
-        // ИСПРАВЛЕНИЕ: Принудительно скрываем окно через CSS
         document.getElementById("loginOverlay").style.display = "none";
-        
         btn.textContent = "Войти в журнал"; btn.disabled = false;
-        window.renderUserChip(); window.updateXpDisplay(); window.route();
-        return;
+        window.renderUserChip(); window.updateXpDisplay(); window.route(); return;
     }
 
     window.API.login(u, p).then(function(res) {
-        btn.textContent = "Войти в журнал";
-        btn.disabled = false;
-        
+        btn.textContent = "Войти в журнал"; btn.disabled = false;
         if (res && res.ok) {
-            window.state.staff = { name: res.name, role: res.role };
-            window.state.student = null;
+            window.state.staff = { name: res.name, role: res.role }; window.state.student = null;
             try { localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff)); localStorage.removeItem("mdk.student"); } catch(e){}
-            
-            // ИСПРАВЛЕНИЕ: Принудительно скрываем окно через CSS
             document.getElementById("loginOverlay").style.display = "none";
-            
-            window.showToast("Добро пожаловать, " + res.name, "ok");
             window.renderUserChip(); window.updateXpDisplay(); window.route();
         } else {
-            errBox.textContent = res.error || "Неверный логин или пароль";
-            errBox.style.display = "block";
+            errBox.textContent = res.error || "Неверный логин или пароль"; errBox.style.display = "block";
         }
     }).catch(function(err) {
-        btn.textContent = "Войти в журнал";
-        btn.disabled = false;
-        errBox.textContent = "Ошибка сети. Используйте резервный вход admin/admin.";
-        errBox.style.display = "block";
+        btn.textContent = "Войти в журнал"; btn.disabled = false;
+        errBox.textContent = "Ошибка сети. Используйте admin/admin."; errBox.style.display = "block";
     });
 };
 
 window.handleLogout = function() {
   if (confirm("Выйти из аккаунта?")) {
-    window.state.student = null;
-    window.state.staff = null;
+    window.state.student = null; window.state.staff = null;
     try { localStorage.removeItem("mdk.student"); localStorage.removeItem("mdk.staff"); } catch(e){}
-    
-    // При выходе показываем окно обратно
     document.getElementById("loginOverlay").style.display = "flex";
-    
     window.closeDrawer(); window.route();
   }
 };
 
-window.switchCourse = function(id) {
-    try { localStorage.setItem("mdk.active", id); } catch(e){}
-    location.reload();
-};
-
+window.switchCourse = function(id) { try { localStorage.setItem("mdk.active", id); } catch(e){} location.reload(); };
 window.closeDrawer = () => { if(window.$("drawer")) window.$("drawer").classList.remove("open"); if(window.$("drawerOverlay")) window.$("drawerOverlay").classList.remove("open"); };
 window.applyTheme = (theme) => { document.documentElement.setAttribute("data-theme", theme); try { localStorage.setItem("mdk.theme", theme); } catch(e){} };
 
@@ -179,8 +143,7 @@ window.renderUserChip = function() {
     if (window.state.staff) {
         window.$("userChipName").textContent = window.state.staff.name;
         window.$("userChipGroup").textContent = "Преподаватель";
-        window.$("userChipAvatar").innerHTML = "👨‍🏫";
-        return;
+        window.$("userChipAvatar").innerHTML = "👨‍🏫"; return;
     }
     if (!window.state.student) return;
     window.$("userChipName").textContent = window.state.student.name;
@@ -208,12 +171,7 @@ function renderHome() {
     } else {
         html += "<p>Темы для этого предмета пока не добавлены.</p>";
     }
-
-    html += '<div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;">'
-         + '<a class="btn ghost" href="#/training" style="flex:1;text-align:center;min-width:140px;">🎯 Тренировка</a>'
-         + '<a class="btn" href="#/final" style="flex:1;text-align:center;min-width:140px;">📋 Экзамены</a>'
-         + '</div>';
-
+    html += '<div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;"><a class="btn ghost" href="#/training" style="flex:1;text-align:center;min-width:140px;">🎯 Тренировка</a><a class="btn" href="#/final" style="flex:1;text-align:center;min-width:140px;">📋 Экзамены</a></div>';
     app.innerHTML = html;
 }
 
@@ -231,7 +189,6 @@ window.renderTopic = function(id, tab){
 
   var app = window.$("app"); 
   var html = `<a class="backlink" href="#/" style="color:var(--accent);">← К программе</a><section class="topic-head"><h1>${t.title}</h1></section>`;
-  
   html += '<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">';
   [["lecture","01 Лекция"],["practice","02 Практика"],["test","03 Тест"]].forEach(item => { 
       html += `<button class="tab ${item[0] === tab ? 'active' : ''}" onclick="location.hash='#/topic/${id}/${item[0]}'">${item[1]}</button>`; 
@@ -239,7 +196,6 @@ window.renderTopic = function(id, tab){
   html += '</div>'; 
   
   var panelHtml = "";
-
   if (tab === "lecture" && t.lectures) {
     t.lectures.forEach(l => { panelHtml += `<h3>${l.code}. ${l.title}</h3><div class="lecture-content" style="margin-bottom:20px;">${l.content}</div>`; });
     panelHtml += `<button class="btn" id="markDoneBtn" style="width:100%;margin-top:20px;">Отметить как изученное (+50 XP)</button>`;
@@ -281,8 +237,7 @@ window.renderTopic = function(id, tab){
         finishBtn.disabled = true; finishBtn.textContent = "Завершено";
         var grade = Math.max(2, Math.round((correct / t.test.length) * 5)); 
         window.state.results[id] = { grade: grade }; window.addXP(100);
-        window.showToast("Оценка: " + grade, "ok"); 
-        window.saveStudentData();
+        window.showToast("Оценка: " + grade, "ok"); window.saveStudentData();
       };
   }
 };
@@ -291,9 +246,8 @@ window.renderProfilePage = function() {
     var app = window.$("app");
     if (window.state.staff) {
         app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>Профиль преподавателя</h1></section>
-        <div class="module"><p><b>Имя:</b> ${window.state.staff.name}</p>
-        <p><b>Роль:</b> ${window.state.staff.role === 'admin' ? 'Администратор' : 'Преподаватель'}</p>
-        <p><a href="#/journal" class="btn" style="margin-top:10px;">📒 Перейти в журнал успеваемости</a></p></div>`;
+        <div class="module"><p><b>Имя:</b> ${window.state.staff.name}</p><p><b>Роль:</b> ${window.state.staff.role === 'admin' ? 'Администратор' : 'Преподаватель'}</p>
+        <p><a href="#/journal" class="btn" style="margin-top:10px;">📒 Перейти в журнал</a></p></div>`;
         return;
     }
     app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>Личный кабинет</h1></section>
@@ -308,7 +262,6 @@ window.renderSimplePage = function(title, items, icon) {
     app.innerHTML = `<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a><section class="hero"><h1>${icon} ${title}</h1></section><div class="module">${list || 'Нет данных'}</div>`;
 };
 
-// --- РОУТЕР ---
 window.route = function() {
     window.closeDrawer();
     var hash = location.hash.replace(/^#/, "") || "/", parts = hash.split("/").filter(Boolean), app = window.$("app");
@@ -339,14 +292,8 @@ window.route = function() {
     window.scrollTo(0, 0);
 };
 
-// --- СТАРТ ---
 window.addEventListener("DOMContentLoaded", () => {
-    if (!window.state.student && !window.state.staff) {
-        window.$("loginOverlay").style.display = "flex";
-    } else {
-        window.$("loginOverlay").style.display = "none";
-    }
-    
+    if (!window.state.student && !window.state.staff) window.$("loginOverlay").style.display = "flex";
     if (window.state.student) window.loadStudentData();
     if (window.state.staff) window.updateXpDisplay();
     
@@ -357,7 +304,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (window.$("burgerBtn")) window.$("burgerBtn").onclick = () => { window.$("drawer").classList.toggle("open"); window.$("drawerOverlay").classList.toggle("open"); };
     if (window.$("drawerClose")) window.$("drawerClose").onclick = window.closeDrawer; 
     if (window.$("drawerOverlay")) window.$("drawerOverlay").onclick = window.closeDrawer;
-    if (window.$("topbarLogout")) window.$("topbarLogout").onclick = window.handleLogout;
     
     if (window.$("mdkSelector")) {
         window.$("mdkSelector").value = window.state.activeCourseId;
@@ -368,7 +314,6 @@ window.addEventListener("DOMContentLoaded", () => {
         item.onclick = (e) => { e.preventDefault(); location.hash = item.getAttribute("data-go"); window.closeDrawer(); };
     });
     
-    window.renderUserChip(); 
-    window.route();
+    window.renderUserChip(); window.route();
 });
 window.addEventListener("hashchange", window.route);
