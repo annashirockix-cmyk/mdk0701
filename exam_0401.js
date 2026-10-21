@@ -12,10 +12,11 @@ window.renderTraining_0401 = function(mdkId) {
     grid.appendChild(card); app.appendChild(grid); return;
   }
 
-  var baseQuestions = [];
+   var baseQuestions = [];
   if (window.MDK_DATA && window.MDK_DATA['04.01']) {
       window.MDK_DATA['04.01'].sections.forEach(s => s.topics.forEach(t => {
           if (t.test) baseQuestions = baseQuestions.concat(t.test);
+          else if (t.tests) baseQuestions = baseQuestions.concat(t.tests); // Добавлена поддержка старого формата
       }));
   }
 
