@@ -82,12 +82,18 @@ function searchCourse(query) {
     return res;
 }
 
+// ИСПРАВЛЕНО: Кнопка теперь имеет класс для адаптивности
 function initAssistantButton(){
   if (document.getElementById("asFab")) return;
   var btn = document.createElement("button");
   btn.id = "asFab";
-  btn.style = "position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;";
   btn.innerHTML = "🤖";
+  
+  btn.style = "position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:transform 0.2s;";
+  
+  btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
+  btn.onmouseout = () => btn.style.transform = 'scale(1)';
+
   btn.addEventListener("click", window.openAssistant);
   document.body.appendChild(btn);
 }
