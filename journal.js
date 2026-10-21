@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК — journal.js (v302.0 — Безопасное создание DOM)
+   МДК — journal.js (v305.0 — Экспорт в Excel)
    ============================================================ */
 "use strict";
 
@@ -20,6 +20,7 @@ function getAcademicYearDates() {
 }
 
 var ACADEMIC_DATES = getAcademicYearDates();
+var CURRENT_STUDENTS_CACHE = []; // Для экспорта
 
 window.renderJournalPage = function() {
   var app = document.getElementById("app"); 
@@ -35,16 +36,28 @@ window.renderJournalPage = function() {
       return;
   }
 
-  // Панель управления
+  // Панель быстрого ввода
+  var quickForm = el(`<div class="module no-print" style="padding:15px; margin-bottom:20px; background:var(--card-soft); border:1px solid var(--accent); border-radius:12px;">
+      <h3 style="margin-top:0; color:var(--accent); font-size:18px;">⚡ Быстрый ввод оценки</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <select id="qgStudent" class="self-input" style="margin:0; max-width:300px; flex:1;"></select>
+          <input type="text" id="qgDate" class="self-input" style="margin:0; width:120px;" placeholder="ДД.ММ.ГГ">
+          <input type="text" id="qgGrade" class="self-input" style="margin:0; width:80px;" placeholder="Оценка (5)">
+          <button class="btn" id="btnQuickAdd" style="padding:12px 20px;">Добавить</button>
+      </div>
+  </div>`);
+  app.appendChild(quickForm);
+
+  // Фильтр и обновление
   var topPanel = el(`<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
-      <h2 style="margin:0; font-size:20px;">Журнал успеваемости (2026-2027)</h2>
       <div style="margin-left:auto; display:flex; gap:10px;">
-          <select id="journalGroupFilter" class="self-input" style="width:auto; margin:0; padding:10px; font-weight:bold; background:var(--card-soft); color:var(--accent); border:1px solid var(--accent);">
+          <button class="btn no-print" id="btnExportExcel" style="padding:10px 20px; background:var(--ok); color:#000;">📊 Экспорт в Excel</button>
+          <select id="journalGroupFilter" class="self-input no-print" style="width:auto; margin:0; padding:10px; font-weight:bold; background:var(--card-soft); color:var(--accent); border:1px solid var(--accent);">
               <option value="all">Все группы</option>
               <option value="ТМ 4-3">ТМ 4-3</option>
               <option value="ТМ 3-4">ТМ 3-4</option>
           </select>
-          <button class="btn" id="btnRefreshJournal" style="padding:10px 20px;">🔄 Обновить</button>
+          <button class="btn no-print" id="btnRefreshJournal" style="padding:10px 20px;">🔄 Обновить</button>
       </div>
   </div>`);
   app.appendChild(topPanel);
@@ -59,19 +72,29 @@ window.renderJournalPage = function() {
       window.API.getStudents().then(d => {
           contentWrap.innerHTML = "";
           if (!d || !d.ok || !d.students || !d.students.length) {
-              contentWrap.innerHTML = "<div class='module'>Студентов пока нет (или база данных пуста).</div>"; return;
+              contentWrap.innerHTML = "<div class='module'>Студентов пока нет.</div>"; return;
           }
 
           var students = d.students;
           if (filterGroup !== "all") {
               students = students.filter(s => s.group === filterGroup);
           }
+          CURRENT_STUDENTS_CACHE = students;
+
+          // Заполняем выпадающий список
+          var qgSelect = document.getElementById("qgStudent");
+          if (qgSelect) {
+              qgSelect.innerHTML = '<option value="">-- Выберите студента --</option>';
+              students.forEach(s => {
+                  var key = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
+                  qgSelect.innerHTML += `<option value="${key}">${s.name} (${s.group})</option>`;
+              });
+          }
 
           if (students.length === 0) {
               contentWrap.innerHTML = "<div class='module'>В выбранной группе пока нет студентов.</div>"; return;
           }
 
-          // Безопасное создание таблицы
           var tableWrap = document.createElement("div");
           tableWrap.className = "module";
           tableWrap.style = "overflow-x:auto; padding: 10px; max-width: 100%;";
@@ -88,6 +111,16 @@ window.renderJournalPage = function() {
           thName.textContent = "ФИО студента / Группа";
           trHead.appendChild(thName);
 
+          var thAvg = document.createElement("th");
+          thAvg.style = "border:1px solid var(--border); padding:8px; background:var(--card); color:var(--gold); font-weight:bold; position:sticky; left:180px; z-index:2; box-shadow: 2px 0 5px rgba(0,0,0,0.1);";
+          thAvg.textContent = "Ср. балл";
+          trHead.appendChild(thAvg);
+
+          var thCert = document.createElement("th");
+          thCert.style = "border:1px solid var(--border); padding:8px; background:var(--card);";
+          thCert.textContent = "Сертификат";
+          trHead.appendChild(thCert);
+
           ACADEMIC_DATES.forEach(date => {
               var thDate = document.createElement("th");
               thDate.style = "border:1px solid var(--border); padding:4px; min-width:35px; font-size:11px; font-weight:normal; writing-mode:vertical-rl; transform:rotate(180deg); height:80px;";
@@ -103,25 +136,41 @@ window.renderJournalPage = function() {
           students.forEach((s) => {
               var sKey = s.name.trim().toLowerCase() + "|" + s.group.trim().toLowerCase();
               var tr = document.createElement("tr");
+              var p = {}; try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
+              var manualGrades = p.manualGrades || {};
 
-              // Колонка с ФИО
+              // ФИО
               var tdName = document.createElement("td");
               tdName.style = "border:1px solid var(--border); padding:8px; text-align:left; font-weight:bold; position:sticky; left:0; background:var(--card); z-index:1; box-shadow: 2px 0 5px rgba(0,0,0,0.1);";
               tdName.innerHTML = window.escapeHtml(s.name) + "<br><span style='font-size:11px;color:var(--accent);font-weight:normal;'>гр. " + window.escapeHtml(s.group) + "</span>";
               tr.appendChild(tdName);
 
-              var p = {};
-              try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
-              var manualGrades = p.manualGrades || {};
+              // Средний балл
+              var sum = 0; var count = 0;
+              for (var date in manualGrades) {
+                  var gradeVal = parseFloat(manualGrades[date]);
+                  if (!isNaN(gradeVal)) { sum += gradeVal; count++; }
+              }
+              var avg = count > 0 ? (sum / count).toFixed(2) : "—";
+              var tdAvg = document.createElement("td");
+              tdAvg.style = "border:1px solid var(--border); padding:8px; font-weight:bold; color:" + (avg !== "—" && avg >= 4 ? "var(--ok)" : (avg !== "—" && avg < 3 ? "var(--err)" : "var(--text)")) + "; background:var(--card); position:sticky; left:180px; z-index:1; box-shadow: 2px 0 5px rgba(0,0,0,0.1);";
+              tdAvg.textContent = avg;
+              tr.appendChild(tdAvg);
 
-              // Колонки с оценками
+              // Сертификат
+              var tdCert = document.createElement("td");
+              tdCert.style = "border:1px solid var(--border); padding:8px; text-align:center;";
+              var certStatus = p.certificateApproved ? "✅ Подтвержден" : (p.certificateRequested ? "⏳ Запрошен" : "—");
+              var btnCert = p.certificateRequested && !p.certificateApproved ? `<button class="btn no-print" style="padding:4px 8px; font-size:12px; margin-top:5px;" onclick="window.approveCert('${sKey}')">Подтвердить</button>` : "";
+              tdCert.innerHTML = `<span style="font-size:12px; font-weight:bold; color:var(--accent);">${certStatus}</span><br>${btnCert}`;
+              tr.appendChild(tdCert);
+
+              // Оценки
               ACADEMIC_DATES.forEach(date => {
                   var tdGrade = document.createElement("td");
                   tdGrade.style = "border:1px solid var(--border); padding:2px;";
-                  
                   var input = document.createElement("input");
-                  input.type = "text";
-                  input.maxLength = 3;
+                  input.type = "text"; input.maxLength = 3;
                   input.value = manualGrades[date] || "";
                   input.placeholder = "-";
                   input.style = "width:32px; height:32px; text-align:center; font-weight:bold; border:1px solid transparent; background:transparent; color:var(--text); border-radius:4px; font-size:14px;";
@@ -130,7 +179,6 @@ window.renderJournalPage = function() {
                       var val = this.value.trim();
                       var newPayload = { ...p };
                       if (!newPayload.manualGrades) newPayload.manualGrades = {};
-                      
                       if (val) newPayload.manualGrades[date] = val;
                       else delete newPayload.manualGrades[date];
 
@@ -139,13 +187,10 @@ window.renderJournalPage = function() {
                           if(res.ok) {
                               setTimeout(() => input.style.background = "transparent", 500);
                               p = newPayload;
-                              window.showToast("Сохранено", "ok");
-                          } else {
-                              window.showToast("Ошибка сохранения", "err");
+                              renderTable(); 
                           }
-                      }).catch(()=> window.showToast("Ошибка сети", "err"));
+                      });
                   };
-                  
                   input.onfocus = function() { this.style.borderColor = "var(--accent)"; this.style.background = "var(--card-soft)"; };
                   input.onblur = function() { this.style.borderColor = "transparent"; this.style.background = "transparent"; };
 
@@ -161,17 +206,96 @@ window.renderJournalPage = function() {
           contentWrap.appendChild(tableWrap);
 
       }).catch((err) => { 
-          var errorMsg = err && err.message ? err.message : "Неизвестная ошибка сети";
-          contentWrap.innerHTML = `<div class="module" style="color:var(--err); padding:20px;">
-              <b>Ошибка загрузки данных:</b><br>
-              ${errorMsg}<br><br>
-              <i>Проверьте консоль (F12) и настройки Google Apps Script.</i>
-          </div>`; 
+          contentWrap.innerHTML = `<div class="module" style="color:var(--err);">Ошибка: ${err.message}</div>`; 
       });
   }
+
+  // Обработчик быстрого ввода
+  document.getElementById("btnQuickAdd").onclick = function() {
+      var sKey = document.getElementById("qgStudent").value;
+      var date = document.getElementById("qgDate").value.trim();
+      var grade = document.getElementById("qgGrade").value.trim();
+      
+      if (!sKey || !date || !grade) return window.showToast("Заполните все поля", "err");
+      
+      var s = CURRENT_STUDENTS_CACHE.find(x => (x.name.trim().toLowerCase() + "|" + x.group.trim().toLowerCase()) === sKey);
+      if (!s) return;
+
+      var p = {}; try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
+      if (!p.manualGrades) p.manualGrades = {};
+      p.manualGrades[date] = grade;
+
+      window.API.saveStudent(sKey, s.name, s.group, JSON.stringify(p)).then(res => {
+          if(res.ok) {
+              window.showToast("Оценка добавлена!", "ok");
+              document.getElementById("qgGrade").value = "";
+              renderTable();
+          } else {
+              window.showToast("Ошибка сохранения", "err");
+          }
+      });
+  };
+
+  // ЭКСПОРТ В EXCEL (CSV)
+  document.getElementById("btnExportExcel").onclick = function() {
+      if (CURRENT_STUDENTS_CACHE.length === 0) return window.showToast("Нет данных для экспорта", "err");
+      
+      var csvContent = "\uFEFF"; // BOM для корректного отображения кириллицы в Excel
+      
+      // Заголовки
+      var headers = ["ФИО", "Группа", "Средний балл", "Сертификат"];
+      ACADEMIC_DATES.forEach(d => headers.push(d));
+      csvContent += headers.join(";") + "\n";
+      
+      // Данные
+      CURRENT_STUDENTS_CACHE.forEach(s => {
+          var p = {}; try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
+          var manualGrades = p.manualGrades || {};
+          
+          var sum = 0; var count = 0;
+          for (var date in manualGrades) {
+              var gradeVal = parseFloat(manualGrades[date]);
+              if (!isNaN(gradeVal)) { sum += gradeVal; count++; }
+          }
+          var avg = count > 0 ? (sum / count).toFixed(2) : "";
+          
+          var certStatus = p.certificateApproved ? "Да" : (p.certificateRequested ? "Запрошен" : "Нет");
+          
+          var row = [`"${s.name}"`, `"${s.group}"`, avg, `"${certStatus}"`];
+          ACADEMIC_DATES.forEach(d => {
+              row.push(manualGrades[d] || "");
+          });
+          
+          csvContent += row.join(";") + "\n";
+      });
+      
+      // Скачивание файла
+      var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      var link = document.createElement("a");
+      var url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Журнал_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '_')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
 
   document.getElementById("journalGroupFilter").onchange = renderTable;
   document.getElementById("btnRefreshJournal").onclick = renderTable;
   
   renderTable();
+};
+
+// Подтверждение сертификата
+window.approveCert = function(sKey) {
+    window.API.getStudents().then(d => {
+        var s = d.students.find(x => (x.name.trim().toLowerCase() + "|" + x.group.trim().toLowerCase()) === sKey);
+        if(!s) return;
+        var p = {}; try { p = JSON.parse(s.payload || "{}"); } catch(e) {}
+        p.certificateApproved = true;
+        window.API.saveStudent(sKey, s.name, s.group, JSON.stringify(p)).then(res => {
+            if(res.ok) { window.showToast("Сертификат подтвержден!", "ok"); window.renderJournalPage(); }
+        });
+    });
 };

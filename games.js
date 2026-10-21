@@ -15,18 +15,23 @@ window.renderArcadePage = function() {
     app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
     app.appendChild(el('<section class="hero"><h1>🎮 Игровая комната</h1><p>Зарабатывай XP и развлекайся!</p></section>'));
 
-    var games = [
-        { id: "minesweeper", title: "💣 Сапёр", desc: "Классический сапёр с флажками и уровнями сложности." },
-        { id: "tictactoe", title: "❌ Крестики-нолики", desc: "От 3х3 до 8х8. Победи робота!" },
-        { id: "sudoku", title: "🔢 Судоку", desc: "Разные уровни сложности." },
-        { id: "casino", title: "🎰 Казино", desc: "Испытай удачу на слотах." },
-        { id: "roulette", title: "🎡 Рулетка", desc: "Красное или черное? Угадай число!" },
-        { id: "spider", title: "🕷️ Солитёр Паук", desc: "Собирайте последовательности от Короля до Туза." },
-        { id: "party", title: "☠️ Смертельная вечеринка", desc: "Викторина на выживание с таймером." }
+    var allGames = [
+        { id: "minesweeper", title: "💣 Сапёр", desc: "Классический сапёр с флажками и уровнями сложности.", courses: ["07.01", "04.01", "02.01", "02.02"] },
+        { id: "tictactoe", title: "❌ Крестики-нолики", desc: "От 3х3 до 8х8. Победи робота!", courses: ["07.01", "04.01", "02.01", "02.02"] },
+        { id: "sudoku", title: "🔢 Судоку", desc: "Разные уровни сложности. Тренируй логику!", courses: ["02.01", "04.01"] },
+        { id: "casino", title: "🎰 Казино", desc: "Испытай удачу на слотах.", courses: ["07.01"] },
+        { id: "roulette", title: "🎡 Рулетка", desc: "Красное или черное? Угадай число!", courses: ["07.01"] },
+        { id: "spider", title: "🕷️ Солитёр Паук", desc: "Собирайте последовательности от Короля до Туза.", courses: ["02.01", "02.02"] },
+        { id: "party", title: "☠️ Смертельная вечеринка", desc: "Викторина на выживание с таймером (вопросы по ЧПУ и логике).", courses: ["07.01", "04.01", "02.01", "02.02"] }
     ];
 
+    // Фильтруем игры по текущему МДК
+    var currentCourse = window.state.activeCourseId;
+    var filteredGames = allGames.filter(g => g.courses.includes(currentCourse));
+
     var grid = el('<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px;"></div>');
-    games.forEach(g => {
+    
+    filteredGames.forEach(g => {
         var best = localStorage.getItem('hs_' + g.id) || 0;
         var bestTxt = best > 0 ? `<div style="color:var(--gold); font-size:13px; font-weight:bold; margin-top:10px;">⭐ Рекорд: ${best}</div>` : '';
         
@@ -39,6 +44,11 @@ window.renderArcadePage = function() {
             <button class="btn ghost" style="width:100%; margin-top:15px;">Играть</button>
         </div>`));
     });
+    
+    if (filteredGames.length === 0) {
+        grid.innerHTML = "<p style='color:var(--muted);'>Для этого предмета игры еще не добавлены.</p>";
+    }
+    
     app.appendChild(grid);
 };
 
@@ -393,10 +403,7 @@ function startParty(container) {
         container.innerHTML = '<div style="color:var(--err);">Нет файлов с вопросами!</div>'; return;
     }
     var TARGET = 20;
-    // Собираем все вопросы
     var allQ = [].concat(_Q.mdk, _Q.anime, _Q.games, _Q.logic);
-    
-    // Удаляем дубликаты (если вдруг они есть в исходных файлах)
     var uniqueQ = [];
     var seen = new Set();
     for (var i = 0; i < allQ.length; i++) {
@@ -406,10 +413,10 @@ function startParty(container) {
         }
     }
 
-    var pool = _shuffle(uniqueQ); // Перемешиваем уникальные вопросы
+    var pool = _shuffle(uniqueQ);
     var lives = 3, score = 0;
     var timerId, timeLeft = 15;
-    var isAnswering = false; // Защита от двойных кликов
+    var isAnswering = false;
 
     function startTimer(correctIdx) {
         clearInterval(timerId);
@@ -422,12 +429,11 @@ function startParty(container) {
             if (timerEl) timerEl.textContent = `⏱ ${timeLeft}с`;
             if (timeLeft <= 0) {
                 clearInterval(timerId);
-                if (isAnswering) return; // Если уже отвечаем, не штрафуем
+                if (isAnswering) return;
                 isAnswering = true;
                 lives--;
                 window.showToast("❌ Время вышло! Осталось жизней: " + lives, "err");
                 
-                // Блокируем кнопки и показываем правильный ответ
                 var btns = document.querySelectorAll("#partyOpts button");
                 btns.forEach(b => { b.disabled = true; b.style.opacity = 0.6; });
                 btns.forEach(b => {
@@ -447,15 +453,12 @@ function startParty(container) {
         if (lives <= 0) return showEnd('lose');
         if (score >= TARGET) return showEnd('win');
         
-        // Если вопросы закончились, перемешиваем заново
-        if (pool.length === 0) { 
-            pool = _shuffle(uniqueQ); 
-        }
+        if (pool.length === 0) { pool = _shuffle(uniqueQ); }
 
-        var q = pool.pop(); // Забираем вопрос (он удаляется из пула, поэтому не повторится)
+        var q = pool.pop();
         
         var correctText = q[1].split("|")[q[2]];
-        var opts = _shuffle(q[1].split("|")); // Перемешиваем варианты
+        var opts = _shuffle(q[1].split("|"));
         var correctIdx = opts.indexOf(correctText);
 
         container.innerHTML = `<div style="text-align:center;">
@@ -473,11 +476,10 @@ function startParty(container) {
     }
 
     window._partyAns = function(btn, selected, correct) {
-        if (isAnswering) return; // Защита от спама кликами
+        if (isAnswering) return;
         isAnswering = true;
         clearInterval(timerId);
         
-        // Визуальная блокировка
         var btns = document.querySelectorAll("#partyOpts button");
         btns.forEach(b => { b.disabled = true; b.style.opacity = 0.6; });
         btn.style.opacity = 1;
@@ -492,7 +494,6 @@ function startParty(container) {
             window.showToast("❌ Ошибка! Осталось жизней: " + lives, "err"); 
             btn.style.background = "rgba(255, 110, 94, 0.2)";
             
-            // Показываем правильный ответ
             btns.forEach(b => {
                 if (b.getAttribute("onclick").includes(` ${correct})`)) {
                     b.style.borderColor = "var(--ok)";
@@ -501,10 +502,7 @@ function startParty(container) {
             });
         }
         
-        setTimeout(() => { 
-            isAnswering = false; 
-            nextQ(); 
-        }, 1500);
+        setTimeout(() => { isAnswering = false; nextQ(); }, 1500);
     };
 
     function showEnd(type) {
@@ -538,7 +536,7 @@ function startSpider(container) {
 
     var cols = [[], [], [], [], [], [], [], [], [], []];
     for (var i = 0; i < 10; i++) {
-        var count = i < 4 ? 6 : 5; // 54 карты в раздаче
+        var count = i < 4 ? 6 : 5;
         for (var j = 0; j < count; j++) {
             var card = deck.pop();
             if (j === count - 1) card.faceUp = true;
@@ -560,7 +558,6 @@ function startSpider(container) {
             var colEl = document.createElement("div");
             colEl.style = "width:65px; min-height:200px; border:1px dashed var(--border); border-radius:5px; padding:5px 0; display:flex; flex-direction:column; align-items:center; background:var(--bg);";
             
-            // Обработка клика по пустой колонке
             colEl.onclick = (e) => {
                 if (e.target === colEl && selectedCol !== null) {
                     var movingCards = cols[selectedCol].slice(selectedIdx);

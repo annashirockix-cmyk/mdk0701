@@ -9,7 +9,6 @@ const ACHIEVEMENTS = [
     { id: "rich", title: "Богач", desc: "Накопить 1000 XP", icon: "💰", check: (s) => s.xp >= 1000 }
 ];
 
-// Товары в магазине
 const THEMES = [
     { id: "default", title: "Стандартная", price: 0, color: "#ff6b3d", type: "theme" },
     { id: "neon", title: "Киберпанк", price: 500, color: "#ff00cc", type: "theme" },
@@ -84,18 +83,6 @@ window.renderShopPage = function() {
     app.innerHTML += renderCategory("🎨 Темы оформления", THEMES, "theme");
     app.innerHTML += renderCategory("👤 Аватары", AVATARS, "avatar");
     app.innerHTML += renderCategory("✨ Эффекты аватара", EFFECTS, "effect");
-    
-    // Плюшки за уровень
-    var lvl = window.getLevel(window.state.xp);
-    app.innerHTML += `<h3 style="margin-top:30px; border-bottom: 2px solid var(--border); padding-bottom:10px;">🎁 Плюшки за уровень</h3>
-    <div class="module">
-        <p>Ваш уровень: <b>${lvl}</b></p>
-        <ul>
-            <li>Ур. 2: Открывается кастомизация профиля (скоро)</li>
-            <li>Ур. 5: Скидка 10% в магазине (скоро)</li>
-            <li>Ур. 10: Особый значок в профиле (скоро)</li>
-        </ul>
-    </div>`;
 };
 
 window.buyShopItem = function(type, id, price, url) {
@@ -143,6 +130,35 @@ window.renderProfilePage = function() {
   var effCss = window.state.effect && window.state.effect !== 'none' ? EFFECTS.find(e => e.id === window.state.effect).css : "";
   var avHtml = window.state.avatar ? `<img src="${window.state.avatar}" style="width:100px; height:100px; border-radius:50%; object-fit:cover;">` : "👨‍🎓";
 
+  // Блок с оценками
+  var resultsHtml = "";
+  var results = window.state.results || {};
+  var hasResults = false;
+  
+  for (var key in results) {
+      if (results.hasOwnProperty(key)) {
+          hasResults = true;
+          var grade = results[key].grade || "?";
+          var color = grade >= 4 ? "var(--ok)" : (grade >= 3 ? "var(--gold)" : "var(--err)");
+          
+          // Красивое название для ключа
+          var displayName = key;
+          if (key.includes("_test")) {
+              var topicId = key.replace("_test", "");
+              displayName = "Тест / Практика (Тема " + topicId + ")";
+          }
+          
+          resultsHtml += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border);">
+              <span>${window.escapeHtml(displayName)}</span>
+              <b style="color:${color}; font-size:18px;">${grade}</b>
+          </div>`;
+      }
+  }
+
+  if (!hasResults) {
+      resultsHtml = "<p style='color:var(--muted);'>Вы пока не прошли ни одного теста.</p>";
+  }
+
   app.innerHTML += `<section class="module" style="text-align:center; padding:40px;">
       <div style="width:120px; height:120px; margin:0 auto 20px; border-radius:50%; border:4px solid var(--accent); display:flex; align-items:center; justify-content:center; font-size:60px; ${effCss}">
           ${avHtml}
@@ -153,17 +169,9 @@ window.renderProfilePage = function() {
           <b style="color:var(--gold);">${window.state.xp} XP</b> · Уровень ${lvl}
       </div>
   </section>
+  
   <section class="module">
-      <h3>Подпись профиля</h3>
-      <input type="text" id="profileNick" class="self-input" placeholder="Никнейм (по умолчанию ФИО)" value="${window.state.nickname || ''}">
-      <input type="text" id="profileSign" class="self-input" placeholder="Подпись или статус" value="${window.state.signature || ''}">
-      <button class="btn" onclick="window.saveProfileDetails()">Сохранить</button>
+      <h3>📊 Мои оценки</h3>
+      ${resultsHtml}
   </section>`;
-};
-
-window.saveProfileDetails = function() {
-    window.state.nickname = document.getElementById("profileNick").value;
-    window.state.signature = document.getElementById("profileSign").value;
-    window.saveStudentData();
-    window.showToast("Профиль обновлен", "ok");
 };

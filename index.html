@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Учебный портал МДК</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
-<!-- Подключаем шрифты для тем -->
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script>
@@ -18,6 +17,44 @@
     }
   } catch(e) {}
 </script>
+
+<!-- СТИЛИ ДЛЯ ПЕЧАТИ СЕРТИФИКАТА И ВКЛАДЫША -->
+<style>
+    @media print {
+        body * { visibility: hidden; }
+        /* Показываем только сертификат и вкладыш */
+        #printable-cert, #printable-cert *, #printable-supplement, #printable-supplement * { visibility: visible; }
+        
+        /* Настройки для первой страницы (Сертификат) */
+        #printable-cert { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            page-break-after: always; /* Принудительный разрыв страницы после */
+            margin: 0; 
+            padding: 0; 
+            box-shadow: none; 
+            border-radius: 0;
+            background-size: 100% 100% !important;
+        }
+        
+        /* Настройки для второй страницы (Вкладыш) */
+        #printable-supplement { 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            page-break-before: always; /* Начинаем с новой страницы */
+            background-size: 100% 100% !important;
+        }
+        
+        .no-print { display: none !important; }
+        .topbar, .drawer, .drawer-overlay, .toast-container, #asFab { display: none !important; }
+        main#app { padding: 0 !important; margin: 0 !important; }
+        body { background: #fff; margin: 0; padding: 0; }
+    }
+</style>
 </head>
 <body>
 
@@ -92,6 +129,7 @@
   <nav class="drawer-nav">
     <a class="drawer-item" data-go="#/">🏠 Главная</a>
     <a class="drawer-item" data-go="#/profile">👤 Личный кабинет</a>
+    <a class="drawer-item" data-go="#/certificate">📜 Мой сертификат</a>
     <a class="drawer-item" data-go="#/achievements">🏆 Достижения</a>
     <a class="drawer-item" data-go="#/shop">🛒 Магазин</a>
     <a class="drawer-item" data-go="#/videos">🎬 Видео</a>
@@ -113,7 +151,7 @@
 <!-- ОСНОВНОЙ КОНТЕНТ -->
 <main id="app"></main>
 
-<!-- СКРИПТЫ -->
+<!-- СКРИПТЫ (Порядок важен!) -->
 <script src="data-global.js"></script>
 <script src="data-0701.js"></script>
 <script src="data-0201.js"></script>
@@ -121,6 +159,8 @@
 <script src="data-0401.js"></script>
 
 <script src="api.js"></script>
+<script src="tests-extra.js"></script> 
+
 <script src="app.js"></script>
 
 <script src="exam_0201.js"></script>
@@ -144,13 +184,6 @@
 
 <script src="games.js"></script>
 <script src="assistant.js"></script>
-
-<script src="data-extra.js"></script>
-
-<!-- ДОБАВЬТЕ ЭТУ СТРОКУ: -->
-<script src="tests-extra.js"></script>
-<script src="api.js"></script>
-<script src="app.js"></script>
 
 </body>
 </html>
