@@ -160,3 +160,22 @@ main#app { padding: 32px 24px 100px; max-width: 1100px; margin: 0 auto; min-heig
   .drawer { width: 85vw; }
   #asFab { width: 50px !important; height: 50px !important; font-size: 24px !important; bottom: 15px !important; right: 15px !important; }
 }
+/* Стили для кнопок вкладок в темах */
+.tab {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-soft);
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+.tab:hover {
+    border-color: var(--accent);
+}
+.tab.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}

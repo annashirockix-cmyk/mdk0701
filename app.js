@@ -1,5 +1,6 @@
 "use strict";
 
+// ================= БАЗОВЫЕ УТИЛИТЫ =================
 window.$ = (id) => document.getElementById(id);
 window.escapeHtml = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 window.el = (html) => { var div = document.createElement("div"); div.innerHTML = html.trim(); return div.firstChild; };
@@ -15,6 +16,7 @@ window.showToast = function(msg, type) {
   setTimeout(() => { toast.classList.add("out"); setTimeout(() => toast.remove(), 300); }, 3000);
 };
 
+// ================= СОСТОЯНИЕ =================
 window.state = {
   activeCourseId: "07.01",
   student: null, staff: null, xp: 0, results: {},
@@ -30,6 +32,7 @@ try {
 if (!window.MDK_DATA || !window.MDK_DATA[window.state.activeCourseId]) window.state.activeCourseId = "07.01";
 window.COURSE = (window.MDK_DATA && window.MDK_DATA[window.state.activeCourseId]) || null;
 
+// ================= XP И СОХРАНЕНИЕ =================
 window.getLevel = (xp) => !xp || xp <= 0 ? 1 : Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100);
 
 window.updateXpDisplay = function() {
@@ -91,6 +94,7 @@ window.loadStudentData = function() {
   window.renderUserChip();
 };
 
+// ================= АВТОРИЗАЦИЯ =================
 window.doStudentLogin = function() {
   var n = $("loginName").value.trim(); var g = $("loginGroup").value.trim();
   if (!n || !g) { window.showToast("Введите ФИО и Группу!", "err"); return; }
@@ -207,18 +211,67 @@ window.route = function() {
   window.scrollTo(0, 0);
 };
 
-// ================= РЕНДЕР ТЕМЫ (ИСПРАВЛЕНО) =================
+// ================= УНИВЕРСАЛЬНЫЙ ГЕНЕРАТОР ТЕСТОВ =================
+window.buildTestBlock = function(prefix, uniqueId, questions) {
+    if (!questions || questions.length === 0) return "";
+    
+    // Кодируем вопросы в безопасную строку, чтобы они не ломали HTML
+    var safeQuestions = encodeURIComponent(JSON.stringify(questions));
+    
+    var html = `<div style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border);">
+        <p style="font-weight:bold; margin-bottom:15px; font-size:16px;">🎯 Проверочный тест:</p>`;
+    
+    questions.forEach((q, qi) => {
+        html += `<div style="margin-bottom:15px; padding:15px; background:var(--bg); border-radius:8px; border: 1px solid var(--border);">
+            <b>${qi + 1}. ${q.q}</b><div style="margin-top:10px;">`;
+        q.options.forEach((opt, oi) => {
+            html += `<label id="opt_${prefix}_${uniqueId}_${qi}_${oi}" style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer; padding:6px; border-radius:6px; transition: background 0.2s; border: 1px solid transparent;" onmouseover="this.style.background='var(--card-soft)'" onmouseout="if(!this.classList.contains('checked')) this.style.background='transparent'">
+                <input type="radio" name="${prefix}_q_${uniqueId}_${qi}" value="${oi}" style="transform:scale(1.2);"> 
+                <span style="font-size:15px;">${opt}</span>
+            </label>`;
+        });
+        html += `</div></div>`;
+    });
+    
+    html += `<button class="btn" id="btn_${prefix}_${uniqueId}" style="width:100%; padding:12px; font-size:16px; margin-top:10px;" onclick="window.gradeTest('${prefix}', '${uniqueId}', '${safeQuestions}')">Проверить результат</button>
+    <div id="fb_${prefix}_${uniqueId}" style="margin-top:15px; font-weight:bold; font-size:18px; text-align:center;"></div></div>`;
+    
+    return html;
+};
+
+// ================= РЕНДЕР ТЕМЫ =================
 window.renderTopic = function(topicId, activeTab) {
     var app = $("app"); if (!app) return; app.innerHTML = "";
     var topic = null;
+    var foundCourseId = null;
     
     if (window.COURSE && window.COURSE.sections) {
         window.COURSE.sections.forEach(s => {
             s.topics.forEach(t => { if (t.id === topicId) topic = t; });
         });
     }
-
+    
+    if (!topic && window.MDK_DATA) {
+        for (var cid in window.MDK_DATA) {
+            var c = window.MDK_DATA[cid];
+            if (c.sections) {
+                c.sections.forEach(s => {
+                    s.topics.forEach(t => { 
+                        if (t.id === topicId) { topic = t; foundCourseId = cid; } 
+                    });
+                });
+            }
+        }
+    }
+    
     if (!topic) { app.innerHTML = '<div class="module">Тема не найдена.</div>'; return; }
+    
+    if (foundCourseId && window.state.activeCourseId !== foundCourseId) {
+        window.state.activeCourseId = foundCourseId;
+        window.COURSE = window.MDK_DATA[foundCourseId];
+        var selector = document.getElementById("mdkSelector");
+        if (selector) selector.value = foundCourseId;
+    }
 
     app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
     app.appendChild(el(`<section class="hero"><span class="brand-badge">${topic.code}</span><h1>${topic.title}</h1></section>`));
@@ -227,13 +280,11 @@ window.renderTopic = function(topicId, activeTab) {
     if (topic.lectures && topic.lectures.length) tabs.push({ id: 'lectures', label: '📖 Лекции' });
     if (topic.practicals && topic.practicals.length) tabs.push({ id: 'practicals', label: '🛠 Практика' });
     if (topic.selfWork && topic.selfWork.length) tabs.push({ id: 'selfWork', label: '✍️ Самостоятельная' });
-    if (topic.test && topic.test.length) tabs.push({ id: 'test', label: '📝 Тест' });
+    if ((topic.test && topic.test.length) || (topic.tests && topic.tests.length)) tabs.push({ id: 'test', label: '📝 Тест' });
     if (topic.presentations && topic.presentations.length) tabs.push({ id: 'presentations', label: '📊 Презентации' });
 
-    // Исправление: URL приходит как 'lecture', а ID вкладки 'lectures'
     if (!activeTab || activeTab === 'lecture') activeTab = 'lectures';
     if (activeTab === 'practical') activeTab = 'practicals';
-    if (activeTab === 'test') activeTab = 'test';
 
     var tabHtml = '<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">';
     tabs.forEach(t => {
@@ -246,49 +297,194 @@ window.renderTopic = function(topicId, activeTab) {
     var contentBox = el('<div class="module"></div>');
     app.appendChild(contentBox);
 
+    var baseQuestions = topic.test || topic.tests || [];
+
+    // --- 1. ЛЕКЦИИ ---
     if (activeTab === 'lectures' && topic.lectures) {
         topic.lectures.forEach(lec => {
             contentBox.innerHTML += `<h3>${lec.code} ${lec.title}</h3><div style="line-height:1.6; margin-bottom:30px;">${lec.content}</div>`;
         });
+        if(window.addXP) window.addXP(5);
     } 
+    
+    // --- 2. ПРАКТИКА ---
     else if (activeTab === 'practicals' && topic.practicals) {
-        topic.practicals.forEach(p => {
-            contentBox.innerHTML += `<div style="margin-bottom:20px; padding:15px; background:var(--card-soft); border-radius:8px; border:1px solid var(--border);">
-                <h4 style="margin-top:0; color:var(--accent);">${p.code} ${p.title}</h4>
+        topic.practicals.forEach((p, index) => {
+            var uniqueId = `prac_${topicId}_${index}`;
+            var isDone = window.state.results[uniqueId] ? "background: rgba(88, 201, 138, 0.1); border-color: var(--ok);" : "";
+            
+            var extraData = window.EXTRA_TESTS && window.EXTRA_TESTS[uniqueId];
+            var expectedAnswer = p.expectedAnswer || (extraData && extraData.expectedAnswer);
+            
+            var html = `<div style="margin-bottom:20px; padding:20px; background:var(--card-soft); border-radius:12px; border:1px solid var(--border); ${isDone}">
+                <h4 style="margin-top:0; color:var(--accent); font-size:18px;">${p.code} ${p.title}</h4>
                 <p><b>Цель:</b> ${p.goal}</p>
                 <p><b>Задание:</b> ${p.task}</p>
-                ${p.variants ? '<p><b>Варианты:</b></p><ul>' + p.variants.map(v => `<li>${v}</li>`).join('') + '</ul>' : ''}
-            </div>`;
+                ${p.variants ? '<p><b>Варианты:</b></p><ul style="margin-bottom:15px;">' + p.variants.map(v => `<li>${v}</li>`).join('') + '</ul>' : ''}`;
+                
+            if (expectedAnswer) {
+                html += `<div style="margin-top:15px; padding-top:15px; border-top:1px dashed var(--border);">
+                    <label style="font-weight:bold; display:block; margin-bottom:8px;">Введите ваш ответ:</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="ans_${uniqueId}" class="self-input" style="max-width:250px; margin:0;" placeholder="Ваш ответ...">
+                        <button class="btn" id="btn_${uniqueId}" onclick="window.checkPracticalAnswer('${uniqueId}', '${expectedAnswer}')">Проверить</button>
+                    </div>
+                    <div id="fb_${uniqueId}" style="margin-top:15px; font-weight:bold; font-size:16px;"></div>
+                </div>`;
+            } else if (extraData && extraData.questions) {
+                html += window.buildTestBlock("prac", uniqueId, extraData.questions);
+            } else if (baseQuestions.length > 0) {
+                html += `<p style="font-size:14px; color:var(--accent); margin-top:15px; margin-bottom:10px;">💡 * Для проверки знаний по этому заданию, пройдите тест:</p>`;
+                html += window.buildTestBlock("prac", uniqueId, baseQuestions);
+            } else {
+                html += `<p style="color:var(--muted); font-size:13px; margin-top:15px; font-style:italic;">* Вопросы для проверки пока не добавлены.</p>`;
+            }
+            
+            html += `</div>`;
+            contentBox.innerHTML += html;
         });
     } 
+    
+    // --- 3. САМОСТОЯТЕЛЬНАЯ ---
     else if (activeTab === 'selfWork' && topic.selfWork) {
-        topic.selfWork.forEach(sw => {
-            contentBox.innerHTML += `<div style="margin-bottom:20px; padding:15px; background:var(--card-soft); border-radius:8px; border:1px solid var(--border);">
-                <h4 style="margin-top:0; color:var(--accent);">${sw.code} ${sw.title}</h4>
-                <p><b>Задание:</b> ${sw.task}</p>
-                ${sw.questions ? '<p><b>Контрольные вопросы:</b></p><ul>' + sw.questions.map(q => `<li>${q}</li>`).join('') + '</ul>' : ''}
-            </div>`;
+        topic.selfWork.forEach((sw, index) => {
+            var uniqueId = `self_${topicId}_${index}`;
+            var extraData = window.EXTRA_TESTS && window.EXTRA_TESTS[uniqueId];
+            var isDone = window.state.results[uniqueId] ? "background: rgba(88, 201, 138, 0.1); border-color: var(--ok);" : "";
+
+            var swTitle = (sw.code ? sw.code + ' ' : '') + sw.title;
+
+            var html = `<div style="margin-bottom:20px; padding:20px; background:var(--card-soft); border-radius:12px; border:1px solid var(--border); ${isDone}">
+                <h4 style="margin-top:0; color:var(--accent); font-size:18px;">${swTitle}</h4>
+                <p><b>Задание:</b> ${sw.task}</p>`;
+
+            if (extraData && extraData.questions) {
+                html += window.buildTestBlock("self", uniqueId, extraData.questions);
+            } else if (baseQuestions.length > 0) {
+                html += window.buildTestBlock("self", uniqueId, baseQuestions);
+            } else {
+                html += `<p style="color:var(--muted); font-size:13px; margin-top:15px; font-style:italic;">* Для этой работы пока не добавлены вопросы.</p>`;
+            }
+
+            html += `</div>`;
+            contentBox.innerHTML += html;
         });
     } 
-    else if (activeTab === 'test' && topic.test) {
-        contentBox.innerHTML = `<p>В этой теме доступен тест для проверки знаний.</p>
-            <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
-                <a href="#/training/${window.state.activeCourseId}" class="btn">🎯 Перейти к тренировке</a>
-                <a href="#/final/${window.state.activeCourseId}" class="btn ghost">📋 Пройти экзамен</a>
-            </div>`;
-    } 
+    
+    // --- 4. ТЕСТ (По теме) ---
+    else if (activeTab === 'test' && baseQuestions.length > 0) {
+        contentBox.innerHTML = `<h3>📝 Контрольный тест по теме</h3>
+        <p>Ответьте на все вопросы, чтобы получить оценку.</p>
+        ${window.buildTestBlock("inline", topicId, baseQuestions)}`;
+    }
+    
+    // --- 5. ПРЕЗЕНТАЦИИ ---
     else if (activeTab === 'presentations' && topic.presentations) {
         topic.presentations.forEach(p => {
+            var isPdf = p.file.toLowerCase().endsWith('.pdf');
             contentBox.innerHTML += `<div style="margin-bottom:15px; padding:15px; background:var(--card-soft); border-radius:8px;">
                 <h4 style="margin-top:0;">${p.code} ${p.title}</h4>
                 <p>${p.description}</p>
-                <a href="${p.file}" download class="btn ghost" style="padding:6px 12px; font-size:12px;">Скачать (${p.slides} слайдов)</a>
+                ${isPdf ? `
+                <div style="width: 100%; height: 500px; margin-top: 15px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
+                    <iframe src="${p.file}" width="100%" height="100%" style="border: none;"></iframe>
+                </div>` : `<p style="color:var(--err); font-size:12px; margin-top:10px;">* Просмотр в браузере доступен только для PDF-файлов. Нажмите "Скачать".</p>`}
+                <a href="${p.file}" download class="btn ghost" style="margin-top:10px; font-size:12px; display:inline-block;">📥 Скачать файл</a>
             </div>`;
         });
+    } 
+};
+
+// ================= ФУНКЦИИ ПРОВЕРКИ =================
+
+// Проверка задачи с вводом ответа (Практика)
+window.checkPracticalAnswer = function(id, expected) {
+    var input = document.getElementById("ans_" + id);
+    var fb = document.getElementById("fb_" + id);
+    var btn = document.getElementById("btn_" + id);
+    if (!input || !fb) return;
+    
+    var val = input.value.trim().replace(',', '.'); 
+    var exp = String(expected).trim().replace(',', '.');
+    
+    if (val === exp) {
+        fb.innerHTML = `<span style="color:var(--ok); font-size:20px;">✅ Верно! +10 XP</span>`;
+        input.disabled = true;
+        input.style.borderColor = "var(--ok)";
+        input.style.background = "rgba(88, 201, 138, 0.1)";
+        if (btn) btn.style.display = "none";
+        
+        if (!window.state.results[id]) {
+            window.state.results[id] = { grade: 5 };
+            if (window.addXP) window.addXP(10);
+            window.saveStudentData();
+        }
+    } else {
+        fb.innerHTML = `<span style="color:var(--err); font-size:18px;">❌ Неверно. Попробуйте еще раз.</span>`;
+        input.style.borderColor = "var(--err)";
+        setTimeout(() => { input.style.borderColor = "var(--border)"; }, 1500);
     }
 };
 
-// ================= ДОСТИЖЕНИЯ =================
+// Проверка тестов (кнопка "Проверить результат")
+window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
+    var questions = JSON.parse(decodeURIComponent(encodedQuestions));
+    var correct = 0;
+    var total = questions.length;
+    var btn = document.getElementById("btn_" + prefix + "_" + uniqueId);
+    
+    // Сначала убираем старые цвета, если тест перепроходят
+    document.querySelectorAll(`[id^="opt_${prefix}_${uniqueId}_"]`).forEach(el => {
+        el.style.background = "transparent";
+        el.style.borderColor = "transparent";
+        el.innerHTML = el.innerHTML.replace(/<span style="color:.*?">.*?<\/span>/g, ""); // Убираем галочки/крестики
+        var radio = el.querySelector('input');
+        if(radio) radio.disabled = true; // Блокируем инпуты после ответа
+    });
+
+    questions.forEach((q, qi) => {
+        var selected = document.querySelector(`input[name="${prefix}_q_${uniqueId}_${qi}"]:checked`);
+        var selectedVal = selected ? Number(selected.value) : null;
+        
+        if (selectedVal === q.correct) correct++;
+
+        // Подсвечиваем правильные и неправильные ответы
+        for (var oi = 0; oi < q.options.length; oi++) {
+            var optLabel = document.getElementById(`opt_${prefix}_${uniqueId}_${qi}_${oi}`);
+            if (!optLabel) continue;
+            
+            if (oi === q.correct) {
+                optLabel.style.background = "rgba(88, 201, 138, 0.15)";
+                optLabel.style.borderColor = "var(--ok)";
+                optLabel.innerHTML += " <span style='color:var(--ok); font-weight:bold;'>✅ (Верно)</span>";
+            } else if (oi === selectedVal) {
+                optLabel.style.background = "rgba(255, 110, 94, 0.15)";
+                optLabel.style.borderColor = "var(--err)";
+                optLabel.innerHTML += " <span style='color:var(--err); font-weight:bold;'>❌ (Ваш выбор)</span>";
+            }
+        }
+    });
+    
+    var pct = Math.round((correct / total) * 100);
+    var grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2;
+    var fb = document.getElementById("fb_" + prefix + "_" + uniqueId);
+    
+    if (grade >= 3) {
+        fb.innerHTML = `<span style="color:var(--ok); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}. +15 XP`;
+        if (btn) btn.style.display = "none";
+        
+        if (!window.state.results[uniqueId]) {
+            window.state.results[uniqueId] = { grade: grade, total: correct, max: total };
+            if (window.addXP) window.addXP(15); 
+            window.saveStudentData();
+        }
+    } else {
+        fb.innerHTML = `<span style="color:var(--err); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}.<br><button class="btn ghost" style="margin-top:10px;" onclick="window.location.reload()">Попробовать снова</button>`;
+        if (btn) btn.style.display = "none";
+    }
+};
+
+// ================= ДОСТИЖЕНИЯ И ПРОСТЫЕ СТРАНИЦЫ =================
 window.renderAchievementsPage = function() {
     var app = $("app"); if (!app) return; app.innerHTML = "";
     document.getElementById("crumbs").textContent = "Достижения";
@@ -342,6 +538,7 @@ window.renderSimplePage = function(title, items, icon) {
     app.appendChild(list);
 };
 
+// ================= ГЛАВНАЯ =================
 function renderHome() {
   var app = $("app"); app.innerHTML = "";
   var c = window.COURSE;
@@ -354,7 +551,10 @@ function renderHome() {
     html += '<div style="font-weight:bold; margin:20px 0 10px; color:var(--accent); text-transform:uppercase; font-size:12px;">' + window.escapeHtml(sec.title) + '</div>';
     (sec.topics || []).forEach(t => {
       var badges = []; 
-      if (t.lectures) badges.push("📖"); if (t.practicals) badges.push("🛠"); if (t.test) badges.push("📝");
+      if (t.lectures) badges.push("📖"); 
+      if (t.practicals) badges.push("🛠"); 
+      if (t.test || t.tests) badges.push("📝");
+      
       html += `<div class="topic" onclick="location.hash='#/topic/${t.id}/lecture'">
         <div style="flex:1;">
             <div style="font-size:12px; color:var(--muted);">${t.code}</div>
@@ -367,6 +567,7 @@ function renderHome() {
   app.innerHTML = html;
 }
 
+// ================= ИНИЦИАЛИЗАЦИЯ =================
 window.addEventListener("DOMContentLoaded", function() {
   var savedTheme = "dark";
   try { savedTheme = localStorage.getItem("mdk.theme") || "dark"; } catch(e){}
@@ -377,8 +578,12 @@ window.addEventListener("DOMContentLoaded", function() {
   
   if ($("themeToggle")) {
       $("themeToggle").onclick = () => { 
-          var cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; 
-          window.applyTheme(cur); 
+          if(window.renderShopPage) {
+              location.hash = "#/shop";
+              setTimeout(() => {
+                  window.showToast("Выберите тему в разделе 'Темы оформления' и нажмите 'Применить'", "info");
+              }, 300);
+          }
       };
   }
   
