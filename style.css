@@ -4,22 +4,11 @@
 
 /* --- 1. ПЕРЕМЕННЫЕ И ТЕМЫ --- */
 :root {
-  /* Темная тема (по умолчанию) */
-  --bg: #0e0e10;
-  --card: #171719;
-  --card-soft: #1c1c1f;
-  --border: #2a2a2e;
-  --text: #e8e6e1;
-  --text-soft: #c8c5bd;
-  --muted: #8f8b80;
-  --accent: #ff6b3d;
-  --accent-soft: #2a1c15;
-  --ok: #58c98a;
-  --err: #ff6e5e;
-  --gold: #ffd700;
+  --bg: #0e0e10; --card: #171719; --card-soft: #1c1c1f; --border: #2a2a2e;
+  --text: #e8e6e1; --text-soft: #c8c5bd; --muted: #8f8b80;
+  --accent: #ff6b3d; --accent-soft: #2a1c15; --ok: #58c98a; --err: #ff6e5e; --gold: #ffd700;
   --shadow: 0 4px 12px rgba(0,0,0,0.3);
   --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 [data-theme="light"] {
@@ -29,31 +18,34 @@
   --gold: #d4a000; --shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* --- ПЛАТНЫЕ ТЕМЫ --- */
+/* --- КРУТЫЕ ТЕМЫ --- */
 [data-theme="neon"] {
   --bg: #09090b; --card: #18181b; --card-soft: #27272a; --border: #3f3f46;
   --text: #f4f4f5; --text-soft: #d4d4d8; --muted: #a1a1aa;
   --accent: #ff00cc; --accent-soft: #4a003a; --ok: #00ffcc; --err: #ff0055; --gold: #fbbf24;
 }
-[data-theme="matrix"] {
+[data-theme="matrix"], [data-theme="hacker"] {
   --bg: #000000; --card: #0a0a0a; --card-soft: #111111; --border: #003300;
   --text: #00ff00; --text-soft: #00cc00; --muted: #008800;
   --accent: #00ff00; --accent-soft: #002200; --ok: #00ff00; --err: #ff0000; --gold: #00ff00;
+  --font-main: 'Share Tech Mono', monospace;
 }
-[data-theme="matrix"] * { font-family: var(--font-mono); }
-[data-theme="matrix"] .btn { border: 1px solid var(--accent); color: var(--accent); background: transparent; }
-[data-theme="matrix"] .btn:hover { background: var(--accent); color: #000; }
-[data-theme="ocean"] {
-  --bg: #0f172a; --card: #1e293b; --card-soft: #334155; --border: #475569;
-  --text: #f8fafc; --text-soft: #cbd5e1; --muted: #94a3b8;
-  --accent: #38bdf8; --accent-soft: #0c4a6e; --ok: #34d399; --err: #f43f5e; --gold: #fbbf24;
+[data-theme="hacker"] body {
+  background-image: linear-gradient(rgba(0, 255, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
-[data-theme="gold"] {
-  --bg: #1a1500; --card: #2a2200; --card-soft: #3d3300; --border: #554700;
-  --text: #fff8e7; --text-soft: #ffe4a3; --muted: #d4af37;
-  --accent: #ffd700; --accent-soft: #4d3f00; --ok: #4ade80; --err: #f87171; --gold: #ffd700;
+[data-theme="cyberpunk"] {
+  --bg: #0a0015; --card: #150022; --card-soft: #200033; --border: #ff00ff;
+  --text: #00ffff; --text-soft: #ff00ff; --muted: #887799;
+  --accent: #ff00ff; --accent-soft: rgba(255, 0, 255, 0.2); --ok: #00ffff; --err: #ff0055; --gold: #ffcc00;
+  --font-main: 'Orbitron', sans-serif;
 }
-[data-theme="gold"] .btn { color: #000; }
+[data-theme="cyberpunk"] body {
+  background-image: radial-gradient(circle at 50% 50%, #200033 0%, #0a0015 100%);
+}
+[data-theme="cyberpunk"] .btn {
+  text-transform: uppercase; letter-spacing: 1px; border: 1px solid var(--accent); box-shadow: 0 0 10px var(--accent-soft);
+}
 
 /* --- 2. БАЗОВЫЕ СТИЛИ --- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -61,6 +53,7 @@ html { scroll-behavior: smooth; }
 body {
   font-family: var(--font-main); background-color: var(--bg); color: var(--text);
   line-height: 1.6; -webkit-font-smoothing: antialiased; transition: background-color 0.3s, color 0.3s;
+  background-attachment: fixed;
 }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; }
@@ -68,8 +61,7 @@ input, textarea, select { font-family: inherit; }
 h1, h2, h3, h4, h5, h6 { line-height: 1.2; margin-bottom: 0.5em; }
 p { margin-bottom: 1em; }
 ul, ol { margin-bottom: 1em; padding-left: 20px; }
-code { font-family: var(--font-mono); background: var(--card-soft); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-pre { background: var(--card-soft); padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); font-family: var(--font-mono); margin-bottom: 1em; }
+code { font-family: monospace; background: var(--card-soft); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
 
 /* --- 3. ТОПБАР --- */
 .topbar {
@@ -103,148 +95,68 @@ main#app { padding: 32px 24px 100px; max-width: 1100px; margin: 0 auto; min-heig
 .steps-title { font-weight: bold; margin: 30px 0 15px; color: var(--accent); text-transform: uppercase; font-size: 13px; letter-spacing: 1px; }
 
 /* --- 6. КНОПКИ --- */
-.btn { display: inline-block; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; background: var(--accent); color: #fff; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+.btn { display: inline-block; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; background: var(--accent); color: #000; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+[data-theme="dark"] .btn, [data-theme="neon"] .btn, [data-theme="matrix"] .btn, [data-theme="hacker"] .btn { color: #fff; }
+[data-theme="hacker"] .btn { color: #000; }
+[data-theme="cyberpunk"] .btn { color: #fff; }
 .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); box-shadow: none; }
 .btn.ghost:hover { background: var(--card-soft); }
 
-/* --- 7. КАРТОЧКИ ТЕМ И ТАБЫ --- */
+/* --- 7. КАРТОЧКИ ТЕМ --- */
 .topic { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; align-items: center; cursor: pointer; margin-bottom: 12px; transition: 0.2s; }
 .topic:hover { border-color: var(--accent); transform: translateX(4px); }
-.tab { padding: 10px 18px; border: 1px solid var(--border); border-radius: 20px; background: var(--card); cursor: pointer; color: var(--text); font-weight: 600; transition: 0.2s; }
-.tab:hover { background: var(--card-soft); }
-.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* --- 8. ФОРМЫ И ТЕСТЫ --- */
 .self-input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; outline: none; transition: 0.2s; }
 .self-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.question { margin-bottom: 24px; padding: 20px; background: var(--card-soft); border-radius: 12px; border: 1px solid var(--border); }
-.q-text { font-weight: 600; margin-bottom: 12px; font-size: 16px; }
-.option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; border-radius: 8px; margin-bottom: 6px; transition: 0.1s; border: 1px solid transparent; }
-.option:hover { background: var(--border); }
-.option input[type="radio"] { transform: scale(1.2); accent-color: var(--accent); }
 
-/* --- 9. ТАБЛИЦЫ (ЖУРНАЛ) --- */
-.journal-container { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+/* --- 9. ТАБЛИЦЫ --- */
 .journal-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; background: var(--card); }
 .journal-table th { background: var(--card-soft); padding: 14px 12px; font-weight: 600; border-bottom: 2px solid var(--border); }
 .journal-table td { padding: 14px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.journal-table tr:last-child td { border-bottom: none; }
-.journal-table tr:hover { background: rgba(255,255,255,0.02); }
-[data-theme="light"] .journal-table tr:hover { background: rgba(0,0,0,0.02); }
 
-/* --- 10. УВЕДОМЛЕНИЯ (TOAST) --- */
+/* --- 10. УВЕДОМЛЕНИЯ --- */
 .toast-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.toast { background: var(--card); border: 1px solid var(--border); padding: 12px 20px; border-radius: 8px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.2); animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+.toast { background: var(--card); border: 1px solid var(--border); padding: 12px 20px; border-radius: 8px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.2); animation: slideUp 0.3s; pointer-events: auto; }
 .toast.ok { border-color: var(--ok); color: var(--ok); }
 .toast.err { border-color: var(--err); color: var(--err); }
-.toast.info { border-color: var(--accent); color: var(--accent); }
-.toast.out { opacity: 0; transform: translateY(20px); transition: 0.3s; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-/* --- 11. ЭКРАН ВХОДА (LOGIN) --- */
+/* --- 11. ЭКРАН ВХОДА (ИСПРАВЛЕНО) --- */
 .login-overlay { 
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-  background: rgba(0,0,0,0.85); 
-  z-index: 99999; /* Перекрывает кнопку робота */
-  backdrop-filter: blur(5px); 
-  overflow-y: auto; /* Включаем прокрутку */
-  -webkit-overflow-scrolling: touch; 
-  display: none; /* JS включает его как block */
-  padding: 20px; /* Отступы по краям, чтобы контент не прилипал */
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: var(--bg); z-index: 99999;
+  display: none; /* JS включает/выключает */
+  overflow-y: auto; /* Свободная прокрутка */
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 10px; /* Отступы для мобилок */
 }
 .login-shell { 
-  width: 100%; max-width: 800px; background: var(--card); padding: 40px; 
+  width: 100%; max-width: 800px; background: var(--card); padding: 30px; 
   border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
-  margin: 20px auto; /* Центрирование и отступы для прокрутки */
+  margin: 0 auto; /* Центрирование без обрезки */
 }
-.login-brand h1 { font-size: 28px; margin-bottom: 8px; color: var(--accent); }
 .login-grid { display: flex; gap: 20px; flex-wrap: wrap; }
-.login-card { background: var(--card-soft); padding: 24px; border-radius: 16px; flex: 1; min-width: 300px; border: 1px solid var(--border); }
-.login-card label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.login-card { background: var(--card-soft); padding: 20px; border-radius: 12px; flex: 1; min-width: 280px; border: 1px solid var(--border); }
 .login-card input { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); outline: none; }
-.login-card input:focus { border-color: var(--accent); }
-.login-hint { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
-  
 
-/* --- 12. СПЕЦИАЛЬНЫЕ КЛАССЫ --- */
-.tour-highlight { box-shadow: 0 0 0 4px var(--gold), 0 0 20px rgba(255, 215, 0, 0.4) !important; border-radius: 8px; z-index: 10000 !important; position: relative; transition: all 0.3s ease; }
-.skeleton { background: linear-gradient(90deg, var(--card-soft) 25%, var(--border) 50%, var(--card-soft) 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 8px; }
-@keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-input[type="number"] { -moz-appearance: textfield; }
-input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-/* --- 13. АДАПТИВНОСТЬ --- */
+/* --- 12. АДАПТИВНОСТЬ --- */
 @media (max-width: 768px) {
-  /* Шапка */
   .topbar { gap: 6px; padding: 8px 10px; }
-  .topbar .brand-badge { font-size: 11px; padding: 4px 6px; }
   #mdkSelector { font-size: 12px; padding: 4px 6px; max-width: 130px; }
-  .topbar-status .status-pill { font-size: 11px; padding: 4px 6px; }
-  #themeToggle, #topbarLogout { padding: 6px 8px !important; }
-
-  /* Контент */
   main#app { padding: 15px 10px 80px; }
-  .hero { padding: 20px 15px; margin-bottom: 15px; }
+  .hero { padding: 20px 15px; }
   .hero h1 { font-size: 1.4rem; }
-  .hero p { font-size: 0.95rem; }
-  .module { padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-
-  /* Окно входа */
-  .login-shell { 
-      padding: 20px 15px; 
-      width: 95%; 
-      margin: 20px auto; 
-  }
-  .login-grid { 
-      flex-direction: column; 
-      gap: 15px; 
-  }
-  .login-card { 
-      min-width: 100%; 
-      padding: 15px; 
-  }
-  .login-card input { 
-      padding: 10px; 
-      margin-bottom: 12px; 
-  }
-  .login-brand h1 { font-size: 22px; }
-
-  /* Таблицы */
-  .journal-table { font-size: 12px; }
-  .journal-table th, .journal-table td { padding: 6px; }
-
-  /* Боковое меню */
+  .module { padding: 15px; }
+  
+  /* Вход на телефоне */
+  .login-shell { padding: 20px 15px; }
+  .login-grid { flex-direction: column; gap: 15px; }
+  .login-card { min-width: 100%; padding: 15px; }
+  
   .drawer { width: 85vw; }
-
-  /* Кнопка ассистента */
-  #asFab { 
-      width: 50px !important; 
-      height: 50px !important; 
-      font-size: 24px !important; 
-      bottom: 15px !important; 
-      right: 15px !important; 
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-  }
+  #asFab { width: 50px !important; height: 50px !important; font-size: 24px !important; bottom: 15px !important; right: 15px !important; }
 }
-
-/* --- 14. СТИЛИ ДЛЯ ПОЛЕЗНЫХ МАТЕРИАЛОВ --- */
-.links-list { display: flex; flex-direction: column; gap: 12px; }
-.link-card { display: flex; align-items: flex-start; gap: 16px; padding: 16px; background: var(--card-soft); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: inherit; transition: 0.2s; }
-.link-card:hover { border-color: var(--accent); transform: translateX(4px); }
-.link-card-icon { font-size: 24px; }
-.link-card-body { flex: 1; }
-.link-card-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
-.link-card-source { font-size: 12px; color: var(--accent); margin-bottom: 4px; }
-.link-card-desc { font-size: 14px; color: var(--muted); }
-.link-card-arrow { font-size: 20px; color: var(--muted); }
-
-.book-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.book-card { display: flex; gap: 16px; padding: 16px; background: var(--card-soft); border: 1px solid var(--border); border-radius: 12px; }
-.book-cover { font-size: 40px; }
-.book-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
-.book-author { font-size: 14px; color: var(--text-soft); margin-bottom: 4px; }
-.book-meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-.book-desc { font-size: 13px; color: var(--muted); }
