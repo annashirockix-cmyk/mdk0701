@@ -23,19 +23,10 @@
 }
 
 [data-theme="light"] {
-  --bg: #f5f2ec;
-  --card: #ffffff;
-  --card-soft: #f0ece4;
-  --border: #dcd7cd;
-  --text: #2c2c2c;
-  --text-soft: #4a4a4a;
-  --muted: #7a776e;
-  --accent: #c14a2a;
-  --accent-soft: #f7e4dd;
-  --ok: #2e9e5e;
-  --err: #d93838;
-  --gold: #d4a000;
-  --shadow: 0 4px 12px rgba(0,0,0,0.08);
+  --bg: #f5f2ec; --card: #ffffff; --card-soft: #f0ece4; --border: #dcd7cd;
+  --text: #2c2c2c; --text-soft: #4a4a4a; --muted: #7a776e;
+  --accent: #c14a2a; --accent-soft: #f7e4dd; --ok: #2e9e5e; --err: #d93838;
+  --gold: #d4a000; --shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 /* --- ПЛАТНЫЕ ТЕМЫ --- */
@@ -154,18 +145,20 @@ main#app { padding: 32px 24px 100px; max-width: 1100px; margin: 0 auto; min-heig
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
 /* --- 11. ЭКРАН ВХОДА (LOGIN) --- */
+/* ИСПРАВЛЕНО: Убран flex, добавлен скролл и z-index > кнопки робота */
 .login-overlay { 
-    position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; 
-    display: flex; align-items: center; justify-content: center; 
-    backdrop-filter: blur(5px); 
-    overflow-y: auto; /* Включаем прокрутку, если контент не влезает */
-    -webkit-overflow-scrolling: touch; 
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+  background: rgba(0,0,0,0.85); 
+  z-index: 99999; /* Перекрывает кнопку робота (у нее 9999) */
+  backdrop-filter: blur(5px); 
+  overflow-y: auto; /* Включаем скролл */
+  -webkit-overflow-scrolling: touch; 
+  display: none; /* Управляется через JS */
 }
 .login-shell { 
-    width: 90%; max-width: 800px; background: var(--card); padding: 40px; 
-    border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
-    margin: auto; /* Это свойство спасает от обрезки сверху/снизу во флекс-контейнере */
-    flex-shrink: 0;
+  width: 90%; max-width: 800px; background: var(--card); padding: 40px; 
+  border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+  margin: 40px auto; /* Центрирование по горизонтали и отступы сверху/снизу для скролла */
 }
 .login-brand h1 { font-size: 28px; margin-bottom: 8px; color: var(--accent); }
 .login-grid { display: flex; gap: 20px; flex-wrap: wrap; }
@@ -198,15 +191,11 @@ input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-i
   .hero p { font-size: 0.95rem; }
   .module { padding: 15px; border-radius: 12px; margin-bottom: 15px; }
 
-  /* Окно входа (Login) */
-  .login-overlay { 
-      align-items: flex-start; /* Прижимаем к верху, чтобы не обрезало */
-      padding: 15px 10px; 
-  }
+  /* Окно входа */
   .login-shell { 
       padding: 20px 15px; 
-      width: 100%; 
-      max-width: 100%; 
+      width: 95%; 
+      margin: 20px auto; 
   }
   .login-grid { 
       flex-direction: column; 
@@ -237,12 +226,6 @@ input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-i
       bottom: 15px !important; 
       right: 15px !important; 
       box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-  }
-  
-  /* Прячем робота, пока открыт экран входа, чтобы он не перекрывал кнопки */
-  #loginOverlay[style*="display: flex"] ~ #asFab,
-  #loginOverlay[style*="display:flex"] ~ #asFab { 
-      display: none !important; 
   }
 }
 
