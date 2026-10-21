@@ -18,9 +18,8 @@ window.MDK_DATA = window.MDK_DATA || {};
     return { code: code, title: title, goal: goal, task: task, variants: variants || [], isText: isText || false };
   }
   
-  // ИСПРАВЛЕНО: tests -> test (в единственном числе)
-  function topic(id, code, title, lecture, practicals, selfWork, test) {
-    return { id: id, code: code, title: title, lectures: [lecture], practicals: practicals, selfWork: selfWork, test: test };
+  function topic(id, code, title, lecture, practicals, selfWork, tests) {
+    return { id: id, code: code, title: title, lectures: [lecture], practicals: practicals, selfWork: selfWork, tests: tests };
   }
   
   function tq(q, options, correct) { return { q: q, options: options, correct: correct }; }
@@ -168,6 +167,7 @@ window.MDK_DATA = window.MDK_DATA || {};
     formatting: {}
   };
 })();
+
 /* =========================================================
    ПОЛНЫЕ МЕТОДИЧЕСКИЕ МАТЕРИАЛЫ (ЛЕКЦИИ)
    ========================================================= */
@@ -210,7 +210,8 @@ window.MDK_DATA = window.MDK_DATA || {};
       ["Принципы TPM-системы (Total Productive Maintenance)", "TPM — это концепция всеобщего обслуживания оборудования, направленная на достижение нулевого количества отказов, нулевого брака и нулевых травматизмов. Это часть бережливого производства. Ключевые принципы TPM: 1. Автономное обслуживание (оператор станка самостоятельно выполняет ежедневную чистку, смазку и осмотр своего оборудования по чек-листам). 2. Планирование ТО (переход от ремонта 'по факту поломки' к планово-предупредительному обслуживанию). 3. Повышение квалификации (обучение операторов и наладчиков). 4. Управление качеством (раннее выявление дефектов для предотвращения брака). 5. Система 5S (организация рабочего места). Для оценки эффективности используется коэффициент OEE."]
     ]
   };
-    function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   
   function makeContent(title, pack) {
     var out = '<article class="lecture-text lecture-expanded">';
