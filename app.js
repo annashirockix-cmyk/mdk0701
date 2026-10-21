@@ -207,7 +207,7 @@ window.route = function() {
   window.scrollTo(0, 0);
 };
 
-// ================= РЕНДЕР ТЕМЫ (Лекции, Тесты) =================
+// ================= РЕНДЕР ТЕМЫ (ИСПРАВЛЕНО) =================
 window.renderTopic = function(topicId, activeTab) {
     var app = $("app"); if (!app) return; app.innerHTML = "";
     var topic = null;
@@ -230,7 +230,10 @@ window.renderTopic = function(topicId, activeTab) {
     if (topic.test && topic.test.length) tabs.push({ id: 'test', label: '📝 Тест' });
     if (topic.presentations && topic.presentations.length) tabs.push({ id: 'presentations', label: '📊 Презентации' });
 
-    if (!activeTab) activeTab = 'lectures';
+    // Исправление: URL приходит как 'lecture', а ID вкладки 'lectures'
+    if (!activeTab || activeTab === 'lecture') activeTab = 'lectures';
+    if (activeTab === 'practical') activeTab = 'practicals';
+    if (activeTab === 'test') activeTab = 'test';
 
     var tabHtml = '<div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">';
     tabs.forEach(t => {
@@ -247,7 +250,6 @@ window.renderTopic = function(topicId, activeTab) {
         topic.lectures.forEach(lec => {
             contentBox.innerHTML += `<h3>${lec.code} ${lec.title}</h3><div style="line-height:1.6; margin-bottom:30px;">${lec.content}</div>`;
         });
-        if(window.addXP) window.addXP(5); // Бонус за прочтение
     } 
     else if (activeTab === 'practicals' && topic.practicals) {
         topic.practicals.forEach(p => {
@@ -316,11 +318,9 @@ window.renderAchievementsPage = function() {
             <p style="font-size:12px; color:var(--muted); margin:0;">${a.desc}</p>
         </div>`));
     });
-    
     app.appendChild(box);
 };
 
-// ================= ПРОСТАЯ СТРАНИЦА =================
 window.renderSimplePage = function(title, items, icon) {
     var app = document.getElementById("app"); app.innerHTML = "";
     document.getElementById("crumbs").textContent = title;
@@ -342,7 +342,6 @@ window.renderSimplePage = function(title, items, icon) {
     app.appendChild(list);
 };
 
-// ================= ГЛАВНАЯ =================
 function renderHome() {
   var app = $("app"); app.innerHTML = "";
   var c = window.COURSE;
