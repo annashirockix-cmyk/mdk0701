@@ -2,9 +2,11 @@
 <html lang="ru" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Учебный портал МДК</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
+<!-- Подключаем шрифты для тем -->
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script>
   try {
@@ -21,15 +23,15 @@
 
 <!-- ОКНО ВХОДА -->
 <div class="login-overlay" id="loginOverlay">
-  <div class="login-shell" style="display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin: 0 auto;">
-    <div class="login-brand" style="text-align: center; margin-bottom: 10px;">
+  <div class="login-shell">
+    <div class="login-brand" style="text-align: center; margin-bottom: 20px;">
       <span class="brand-badge">ПОРТАЛ МДК</span>
       <h1>Оператор станков с ПУ</h1>
       <p>15.02.16 Технология машиностроения · ПМ.07</p>
     </div>
     
-    <div class="login-grid" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-      <div class="login-card" style="flex: 1; min-width: 300px;">
+    <div class="login-grid">
+      <div class="login-card">
         <h3>Вход студента</h3>
         <p class="login-hint">Укажите ФИО и группу.</p>
         <label>ФИО <input id="loginName" type="text" placeholder="Иванов Иван"></label>
@@ -37,7 +39,7 @@
         <button type="button" id="btnLoginStudent" class="btn" style="width: 100%; margin-top: 10px;">Войти</button>
       </div>
 
-      <div class="login-card" style="flex: 1; min-width: 300px;">
+      <div class="login-card">
         <h3>Вход преподавателя</h3>
         <p class="login-hint">Используйте <b>teacher / teacher</b> или <b>admin / admin</b></p>
         <label>Логин <input id="teacherUser" type="text" placeholder="teacher"></label>
@@ -112,24 +114,20 @@
 <main id="app"></main>
 
 <!-- СКРИПТЫ -->
-<!-- 1. Данные -->
 <script src="data-global.js"></script>
 <script src="data-0701.js"></script>
 <script src="data-0201.js"></script>
 <script src="data-0202.js"></script>
 <script src="data-0401.js"></script>
 
-<!-- 2. Ядро и API -->
 <script src="api.js"></script>
 <script src="app.js"></script>
 
-<!-- 3. Модули и страницы -->
 <script src="exam_0201.js"></script>
 <script src="exam_0202.js"></script>
 <script src="exam_0401.js"></script>
 <script src="exam_0701.js"></script>
 <script src="shop.js"></script>
-<script src="games.js"></script>
 <script src="reports.js"></script>
 <script src="extra.js"></script>
 <script src="info.js"></script>
@@ -137,12 +135,15 @@
 <script src="rating.js"></script>
 <script src="journal.js"></script>
 <script src="schedule.js"></script>
-<script src="js/questions-setup.js"></script>
-<script src="js/questions-mdk.js"></script>
-<script src="js/questions-anime.js"></script>
-<script src="js/questions-games.js"></script>
-<script src="js/questions-logic.js"></script>
-<script src="js/games.js"></script>
+
+<script src="questions-setup.js"></script>
+<script src="questions-mdk.js"></script>
+<script src="questions-anime.js"></script>
+<script src="questions-games.js"></script>
+<script src="questions-logic.js"></script>
+
+<script src="games.js"></script>
+<script src="assistant.js"></script>
 
 </body>
 </html>
