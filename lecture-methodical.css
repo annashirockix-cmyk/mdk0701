@@ -1,0 +1,7 @@
+/* Дополнительное оформление лекционных блоков. Можно добавить в существующий style.css. */
+.lecture-methodical { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #d8dee8; line-height: 1.65; }
+.lecture-methodical h3 { margin: 1.2rem 0 .45rem; font-size: 1.05rem; }
+.lecture-methodical ul, .lecture-methodical ol { padding-left: 1.5rem; }
+.lecture-methodical li { margin: .25rem 0; }
+.methodical-scheme { margin: 1rem 0; padding: .85rem; border: 1px solid #cbd5e1; border-radius: .75rem; background: rgba(148,163,184,.08); }
+.scheme-flow { font-weight: 600; overflow-wrap: anywhere; }
