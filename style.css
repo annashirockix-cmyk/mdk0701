@@ -173,20 +173,65 @@ input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-i
 
 /* --- 13. АДАПТИВНОСТЬ --- */
 @media (max-width: 768px) {
-  .topbar { gap: 8px; padding: 10px 12px; }
-  .topbar .brand-badge { font-size: 12px; padding: 4px 8px; }
-  #mdkSelector { font-size: 12px; padding: 6px; max-width: 150px; }
-  .topbar-status .status-pill { font-size: 11px; padding: 4px 8px; }
-  .hero, .module { padding: 16px; border-radius: 12px; }
-  .hero h1 { font-size: 1.5rem; }
-  main#app { padding: 20px 12px 100px; }
-  .drawer { width: 260px; }
+  /* Шапка */
+  .topbar { gap: 6px; padding: 8px 10px; }
+  .topbar .brand-badge { font-size: 11px; padding: 4px 6px; }
+  #mdkSelector { font-size: 12px; padding: 4px 6px; max-width: 130px; }
+  .topbar-status .status-pill { font-size: 11px; padding: 4px 6px; }
+  #themeToggle, #topbarLogout { padding: 6px 8px !important; }
+
+  /* Контент */
+  main#app { padding: 15px 10px 80px; }
+  .hero { padding: 20px 15px; margin-bottom: 15px; }
+  .hero h1 { font-size: 1.4rem; }
+  .hero p { font-size: 0.95rem; }
+  .module { padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+
+  /* Окно входа (Login) - ИСПРАВЛЕНО */
+  .login-overlay { 
+      align-items: flex-start; 
+      overflow-y: auto; 
+      padding: 15px 10px; 
+  }
+  .login-shell { 
+      padding: 20px 15px; 
+      margin: auto; 
+      width: 100%; 
+      max-width: 100%; 
+  }
+  .login-grid { 
+      flex-direction: column; 
+      gap: 15px; 
+  }
+  .login-card { 
+      min-width: 100%; 
+      padding: 15px; 
+  }
+  .login-card input { 
+      padding: 10px; 
+      margin-bottom: 12px; 
+  }
+  .login-brand h1 { font-size: 22px; }
+
+  /* Таблицы */
   .journal-table { font-size: 12px; }
-  .journal-table th, .journal-table td { padding: 8px; }
-  .login-shell { padding: 24px; }
+  .journal-table th, .journal-table td { padding: 6px; }
+
+  /* Боковое меню */
+  .drawer { width: 85vw; }
+
+  /* Кнопка ассистента - ИСПРАВЛЕНО */
+  #asFab { 
+      width: 50px !important; 
+      height: 50px !important; 
+      font-size: 24px !important; 
+      bottom: 15px !important; 
+      right: 15px !important; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+  }
 }
 
-/* --- 14. СТИЛИ ДЛЯ ПОЛЕЗНЫХ МАТЕРИАЛОВ (ВОССТАНОВЛЕНО) --- */
+/* --- 14. СТИЛИ ДЛЯ ПОЛЕЗНЫХ МАТЕРИАЛОВ --- */
 .links-list { display: flex; flex-direction: column; gap: 12px; }
 .link-card { display: flex; align-items: flex-start; gap: 16px; padding: 16px; background: var(--card-soft); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: inherit; transition: 0.2s; }
 .link-card:hover { border-color: var(--accent); transform: translateX(4px); }
