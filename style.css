@@ -154,8 +154,19 @@ main#app { padding: 32px 24px 100px; max-width: 1100px; margin: 0 auto; min-heig
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
 /* --- 11. ЭКРАН ВХОДА (LOGIN) --- */
-.login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-.login-shell { width: 90%; max-width: 800px; background: var(--card); padding: 40px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.login-overlay { 
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; 
+    display: flex; align-items: center; justify-content: center; 
+    backdrop-filter: blur(5px); 
+    overflow-y: auto; /* Включаем прокрутку, если контент не влезает */
+    -webkit-overflow-scrolling: touch; 
+}
+.login-shell { 
+    width: 90%; max-width: 800px; background: var(--card); padding: 40px; 
+    border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+    margin: auto; /* Это свойство спасает от обрезки сверху/снизу во флекс-контейнере */
+    flex-shrink: 0;
+}
 .login-brand h1 { font-size: 28px; margin-bottom: 8px; color: var(--accent); }
 .login-grid { display: flex; gap: 20px; flex-wrap: wrap; }
 .login-card { background: var(--card-soft); padding: 24px; border-radius: 16px; flex: 1; min-width: 300px; border: 1px solid var(--border); }
@@ -187,15 +198,13 @@ input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-i
   .hero p { font-size: 0.95rem; }
   .module { padding: 15px; border-radius: 12px; margin-bottom: 15px; }
 
-  /* Окно входа (Login) - ИСПРАВЛЕНО */
+  /* Окно входа (Login) */
   .login-overlay { 
-      align-items: flex-start; 
-      overflow-y: auto; 
+      align-items: flex-start; /* Прижимаем к верху, чтобы не обрезало */
       padding: 15px 10px; 
   }
   .login-shell { 
       padding: 20px 15px; 
-      margin: auto; 
       width: 100%; 
       max-width: 100%; 
   }
@@ -220,7 +229,7 @@ input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-i
   /* Боковое меню */
   .drawer { width: 85vw; }
 
-  /* Кнопка ассистента - ИСПРАВЛЕНО */
+  /* Кнопка ассистента */
   #asFab { 
       width: 50px !important; 
       height: 50px !important; 
@@ -228,6 +237,12 @@ input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-i
       bottom: 15px !important; 
       right: 15px !important; 
       box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+  }
+  
+  /* Прячем робота, пока открыт экран входа, чтобы он не перекрывал кнопки */
+  #loginOverlay[style*="display: flex"] ~ #asFab,
+  #loginOverlay[style*="display:flex"] ~ #asFab { 
+      display: none !important; 
   }
 }
 
