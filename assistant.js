@@ -1,5 +1,5 @@
 /* ============================================================
-   МДК — assistant.js (Помощник с экскурсией)
+   МДК — assistant.js
    ============================================================ */
 "use strict";
 
@@ -60,9 +60,6 @@ window.openAssistant = function(){
           reply = "📋 Итоговые экзамены находятся в левом меню. 10 вопросов, 10 минут.";
       } else if (v.includes("рейтинг") || v.includes("почет")) {
           reply = "🏆 Доска почета показывает лучших студентов по XP. Проверь, на каком месте ты!";
-      } else {
-          var results = searchCourse(val);
-          if (results.length) reply = `Нашел: <a href="#/topic/${results[0].id}/lecture" style="color:var(--accent)" onclick="document.getElementById('assistantPanel').remove()">${results[0].title}</a>`;
       }
       
       addBot(reply);
@@ -70,30 +67,14 @@ window.openAssistant = function(){
   });
 };
 
-function searchCourse(query) {
-    var c = window.COURSE; if(!c) return [];
-    var q = query.toLowerCase(); var res = [];
-    c.sections.forEach(sec => {
-        (sec.topics || []).forEach(t => {
-            if (t.title.toLowerCase().includes(q) || t.code.toLowerCase().includes(q)) { res.push(t); }
-            else { (t.lectures || []).forEach(l => { if (l.title.toLowerCase().includes(q)) { if (!res.some(r => r.id === t.id)) res.push(t); } }); }
-        });
-    });
-    return res;
-}
-
-// ИСПРАВЛЕНО: Кнопка теперь имеет класс для адаптивности
 function initAssistantButton(){
   if (document.getElementById("asFab")) return;
   var btn = document.createElement("button");
   btn.id = "asFab";
   btn.innerHTML = "🤖";
-  
   btn.style = "position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;background:var(--accent);color:#fff;font-size:30px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:transform 0.2s;";
-  
   btn.onmouseover = () => btn.style.transform = 'scale(1.05)';
   btn.onmouseout = () => btn.style.transform = 'scale(1)';
-
   btn.addEventListener("click", window.openAssistant);
   document.body.appendChild(btn);
 }
@@ -124,7 +105,7 @@ function startTour() {
 
         if (currentStep >= steps.length) {
             overlay.remove();
-            if (window.showToast) window.showToast("Экскурсия завершена! Теперь вы знаете, как пользоваться порталом.", "ok");
+            if (window.showToast) window.showToast("Экскурсия завершена!", "ok");
             return;
         }
 
@@ -162,19 +143,13 @@ function startTour() {
         document.body.appendChild(tip);
         
         tip.querySelector("#tourNext").onclick = function() {
-            target.style.position = "";
-            target.style.zIndex = "";
-            currentStep++;
-            showStep();
+            target.style.position = ""; target.style.zIndex = "";
+            currentStep++; showStep();
         };
         tip.querySelector("#tourSkip").onclick = function() {
-            target.style.position = "";
-            target.style.zIndex = "";
-            overlay.remove();
-            tip.remove();
-            target.classList.remove("tour-highlight");
+            target.style.position = ""; target.style.zIndex = "";
+            overlay.remove(); tip.remove(); target.classList.remove("tour-highlight");
         };
     }
-    
     showStep();
 }
