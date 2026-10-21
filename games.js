@@ -25,7 +25,8 @@ window.renderArcadePage = function() {
         { id: "party", title: "☠️ Смертельная вечеринка", desc: "Викторина на выживание с таймером." }
     ];
 
-    var grid = el('<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;"></div>');
+    // ИСПРАВЛЕНО: minmax(240px, 1fr) вместо 280px для лучшего отображения на телефонах
+    var grid = el('<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px;"></div>');
     games.forEach(g => {
         var best = localStorage.getItem('hs_' + g.id) || 0;
         var bestTxt = best > 0 ? `<div style="color:var(--gold); font-size:13px; font-weight:bold; margin-top:10px;">⭐ Рекорд: ${best}</div>` : '';
