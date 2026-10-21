@@ -23,7 +23,6 @@ window.state = {
   purchasedThemes: [], unlockedAchievements: [], avatar: null, effect: null
 };
 
-// Проверка наличия данных курса
 if (!window.MDK_DATA || !window.MDK_DATA[window.state.activeCourseId]) {
     window.state.activeCourseId = "07.01";
 }
@@ -51,7 +50,7 @@ window.addXP = function(amount) {
   if (window.checkAchievements) window.checkAchievements();
 };
 
-// --- СОХРАНЕНИЕ / ЗАГРУЗКА ДАННЫХ СТУДЕНТА ---
+// --- СОХРАНЕНИЕ / ЗАГРУЗКА ---
 window.saveStudentData = function() {
   var k = window.studentKey(); if (!k) return;
   var ek = encodeURIComponent(k);
@@ -80,7 +79,6 @@ window.loadStudentData = function() {
   var k = window.studentKey(); if (!k) return;
   var ek = encodeURIComponent(k);
   
-  // Загрузка из локального хранилища (для мгновенного отображения)
   try {
     window.state.xp = parseInt(localStorage.getItem("mdk.xp." + ek) || "0", 10);
     var r = localStorage.getItem("mdk.results." + ek); 
@@ -96,8 +94,8 @@ window.loadStudentData = function() {
   } catch (e) {}
   
   window.updateXpDisplay();
+  window.renderUserChip(); // Обновляем аватар
 
-  // Синхронизация с сервером (если доступен)
   if (window.API && window.API.getStudentData) {
       window.API.getStudentData(k).then(res => {
           if (res && res.ok && res.payload) {
@@ -108,7 +106,7 @@ window.loadStudentData = function() {
                   if (p.xp !== undefined) window.state.xp = p.xp;
                   if (p.avatar) window.state.avatar = p.avatar;
                   if (p.effect) window.state.effect = p.effect;
-                  window.saveStudentData(); // Сохраняем локально обновленные данные
+                  window.saveStudentData();
               } catch(e){}
           }
           window.updateXpDisplay();
@@ -131,7 +129,6 @@ window.doStudentLogin = function() {
   localStorage.setItem("mdk.student", JSON.stringify(window.state.student)); 
   localStorage.removeItem("mdk.staff");
   
-  $("loginOverlay").style.display = "none"; 
   window.renderUserChip(); 
   window.loadStudentData(); 
   window.route();
@@ -151,7 +148,6 @@ window.doTeacherLogin = function() {
       localStorage.setItem("mdk.staff", JSON.stringify(window.state.staff)); 
       localStorage.removeItem("mdk.student");
       
-      $("loginOverlay").style.display = "none"; 
       window.renderUserChip(); 
       window.updateXpDisplay(); 
       window.route();
@@ -168,13 +164,15 @@ window.handleLogout = function() {
   localStorage.removeItem("mdk.student"); 
   localStorage.removeItem("mdk.staff");
   
-  $("loginOverlay").style.display = "flex"; // Показываем окно входа
-  $("app").innerHTML = ""; // Очищаем контент
+  // Очищаем поля ввода при выходе
+  if ($("loginName")) $("loginName").value = "";
+  if ($("loginGroup")) $("loginGroup").value = "";
+  
   window.closeDrawer(); 
   window.route();
 };
 
-// --- ИНТЕРФЕЙС И ТЕМЫ ---
+// --- ИНТЕРФЕЙС ---
 window.switchCourse = function(id) { 
     localStorage.setItem("mdk.active", id); 
     window.state.activeCourseId = id; 
@@ -211,12 +209,21 @@ window.renderUserChip = function() {
 window.route = function() {
   window.closeDrawer();
   
-  // Если не авторизован - показываем окно входа и прерываем роутинг
-  if (!window.state.student && !window.state.staff) { 
-      $("loginOverlay").style.display = "flex"; 
-      $("app").innerHTML = ""; // Очищаем экран от старых данных
+  var overlay = $("loginOverlay");
+  var fab = document.getElementById("asFab");
+  var isLoggedIn = !!(window.state.student || window.state.staff);
+
+  // Если НЕ авторизован: показываем экран входа, прячем робота, очищаем контент
+  if (!isLoggedIn) { 
+      if (overlay) overlay.style.display = "block"; 
+      if (fab) fab.style.display = "none";
+      if ($("app")) $("app").innerHTML = ""; 
       return; 
   }
+
+  // Если авторизован: скрываем экран входа, показываем робота
+  if (overlay) overlay.style.display = "none";
+  if (fab) fab.style.display = "flex";
 
   var hash = location.hash.replace(/^#/, "") || "/"; 
   var parts = hash.split("/").filter(Boolean);
@@ -291,17 +298,14 @@ function renderHome() {
   app.innerHTML = html;
 }
 
-// --- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ---
+// --- ИНИЦИАЛИЗАЦИЯ ---
 window.addEventListener("DOMContentLoaded", function() {
-  // Применяем сохраненную тему
   var savedTheme = localStorage.getItem("mdk.theme_active") || "default"; 
   document.documentElement.setAttribute("data-theme", savedTheme !== "default" ? savedTheme : (localStorage.getItem("mdk.theme") || "dark"));
 
-  // Обработчики кнопок входа
   if ($("btnLoginStudent")) $("btnLoginStudent").onclick = window.doStudentLogin;
   if ($("btnLoginTeacher")) $("btnLoginTeacher").onclick = window.doTeacherLogin;
   
-  // Тема
   if ($("themeToggle")) {
       $("themeToggle").onclick = () => { 
           var cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; 
@@ -309,18 +313,15 @@ window.addEventListener("DOMContentLoaded", function() {
       };
   }
   
-  // Бургер меню
   if ($("burgerBtn")) $("burgerBtn").onclick = () => { $("drawer").classList.toggle("open"); $("drawerOverlay").classList.toggle("open"); };
   if ($("drawerClose")) $("drawerClose").onclick = window.closeDrawer;
   if ($("drawerOverlay")) $("drawerOverlay").onclick = window.closeDrawer;
   
-  // Селектор курса
   if ($("mdkSelector")) { 
       $("mdkSelector").value = window.state.activeCourseId; 
       $("mdkSelector").onchange = (e) => window.switchCourse(e.target.value); 
   }
   
-  // Навигация в боковом меню
   document.querySelectorAll("[data-go]").forEach(item => { 
       item.onclick = (e) => { 
           e.preventDefault(); 
@@ -329,10 +330,8 @@ window.addEventListener("DOMContentLoaded", function() {
       }; 
   });
 
-  // Восстановление UI
   window.renderUserChip(); 
   
-  // Проверка, авторизован ли пользователь, и запуск роутера
   if (window.state.student) window.loadStudentData();
   window.route();
 });
