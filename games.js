@@ -25,7 +25,6 @@ window.renderArcadePage = function() {
         { id: "party", title: "☠️ Смертельная вечеринка", desc: "Викторина на выживание с таймером." }
     ];
 
-    // ИСПРАВЛЕНО: minmax(240px, 1fr) вместо 280px для лучшего отображения на телефонах
     var grid = el('<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px;"></div>');
     games.forEach(g => {
         var best = localStorage.getItem('hs_' + g.id) || 0;
@@ -45,7 +44,6 @@ window.renderArcadePage = function() {
 
 window.startGame = function(gameId) {
     var app = document.getElementById("app"); app.innerHTML = "";
-    // Исправленная кнопка "Назад" (вызывает рендер напрямую, а не меняет хэш)
     app.appendChild(el('<a class="backlink" href="javascript:void(0)" onclick="window.renderArcadePage()" style="color:var(--accent); cursor:pointer;">← В меню игр</a>'));
 
     var rules = {
@@ -55,7 +53,7 @@ window.startGame = function(gameId) {
         casino: "Сделайте ставку и крутите слоты. 3 одинаковых — джекпот.",
         roulette: "Угадайте число (х35) или чёт/нечет (х2).",
         spider: "Кликните по карте, чтобы взять её, и по другой колонке, чтобы положить. Собирайте от Короля до Туза в одной масти. Кнопка 'Раздать' выдает новый ряд.",
-        party: "У вас 15 секунд на ответ и 3 жизни. Ошибка или просрочка времени отнимает жизнь."
+        party: "У вас 15 секунд на ответ и 3 жизни. Вопросы не повторяются. Ошибка или просрочка времени отнимает жизнь."
     };
 
     app.appendChild(el(`<details style="margin-bottom:15px; background:var(--card-soft); padding:12px; border-radius:8px; border:1px solid var(--border);">
@@ -395,24 +393,51 @@ function startParty(container) {
         container.innerHTML = '<div style="color:var(--err);">Нет файлов с вопросами!</div>'; return;
     }
     var TARGET = 20;
+    // Собираем все вопросы
     var allQ = [].concat(_Q.mdk, _Q.anime, _Q.games, _Q.logic);
-    var pool = _shuffle(allQ);
-    var lives = 3, score = 0, idx = 0;
-    var timerId, timeLeft = 15;
+    
+    // Удаляем дубликаты (если вдруг они есть в исходных файлах)
+    var uniqueQ = [];
+    var seen = new Set();
+    for (var i = 0; i < allQ.length; i++) {
+        if (!seen.has(allQ[i][0])) {
+            seen.add(allQ[i][0]);
+            uniqueQ.push(allQ[i]);
+        }
+    }
 
-    function startTimer() {
+    var pool = _shuffle(uniqueQ); // Перемешиваем уникальные вопросы
+    var lives = 3, score = 0;
+    var timerId, timeLeft = 15;
+    var isAnswering = false; // Защита от двойных кликов
+
+    function startTimer(correctIdx) {
         clearInterval(timerId);
         timeLeft = 15;
         var timerEl = document.getElementById("partyTimer");
         if (timerEl) timerEl.textContent = `⏱ ${timeLeft}с`;
+        
         timerId = setInterval(() => {
             timeLeft--;
             if (timerEl) timerEl.textContent = `⏱ ${timeLeft}с`;
             if (timeLeft <= 0) {
                 clearInterval(timerId);
+                if (isAnswering) return; // Если уже отвечаем, не штрафуем
+                isAnswering = true;
                 lives--;
                 window.showToast("❌ Время вышло! Осталось жизней: " + lives, "err");
-                setTimeout(nextQ, 500);
+                
+                // Блокируем кнопки и показываем правильный ответ
+                var btns = document.querySelectorAll("#partyOpts button");
+                btns.forEach(b => { b.disabled = true; b.style.opacity = 0.6; });
+                btns.forEach(b => {
+                    if (b.getAttribute("onclick").includes(` ${correctIdx})`)) {
+                        b.style.borderColor = "var(--ok)";
+                        b.style.background = "rgba(88, 201, 138, 0.2)";
+                    }
+                });
+                
+                setTimeout(() => { isAnswering = false; nextQ(); }, 1500);
             }
         }, 1000);
     }
@@ -421,11 +446,16 @@ function startParty(container) {
         clearInterval(timerId);
         if (lives <= 0) return showEnd('lose');
         if (score >= TARGET) return showEnd('win');
-        if (idx >= pool.length) { pool = _shuffle(pool); idx = 0; }
+        
+        // Если вопросы закончились, перемешиваем заново
+        if (pool.length === 0) { 
+            pool = _shuffle(uniqueQ); 
+        }
 
-        var q = pool[idx++];
+        var q = pool.pop(); // Забираем вопрос (он удаляется из пула, поэтому не повторится)
+        
         var correctText = q[1].split("|")[q[2]];
-        var opts = _shuffle(q[1].split("|"));
+        var opts = _shuffle(q[1].split("|")); // Перемешиваем варианты
         var correctIdx = opts.indexOf(correctText);
 
         container.innerHTML = `<div style="text-align:center;">
@@ -435,18 +465,46 @@ function startParty(container) {
                 <span>Счет: ${score}/${TARGET}</span>
             </div>
             <h3 style="margin-bottom:20px;">${q[0]}</h3>
-            <div style="display:flex; flex-direction:column; gap:10px; max-width:400px; margin:0 auto;">
-                ${opts.map((opt, i) => `<button class="btn ghost" style="padding:12px;" onclick="window._partyAns(${i}, ${correctIdx})">${opt}</button>`).join('')}
+            <div id="partyOpts" style="display:flex; flex-direction:column; gap:10px; max-width:400px; margin:0 auto;">
+                ${opts.map((opt, i) => `<button class="btn ghost" style="padding:12px;" onclick="window._partyAns(this, ${i}, ${correctIdx})">${opt}</button>`).join('')}
             </div>
         </div>`;
-        startTimer();
+        startTimer(correctIdx);
     }
 
-    window._partyAns = function(selected, correct) {
+    window._partyAns = function(btn, selected, correct) {
+        if (isAnswering) return; // Защита от спама кликами
+        isAnswering = true;
         clearInterval(timerId);
-        if (selected === correct) { score++; window.showToast("✅ Верно!", "ok"); }
-        else { lives--; window.showToast("❌ Ошибка! Осталось жизней: " + lives, "err"); }
-        setTimeout(nextQ, 700);
+        
+        // Визуальная блокировка
+        var btns = document.querySelectorAll("#partyOpts button");
+        btns.forEach(b => { b.disabled = true; b.style.opacity = 0.6; });
+        btn.style.opacity = 1;
+        btn.style.borderColor = (selected === correct) ? "var(--ok)" : "var(--err)";
+
+        if (selected === correct) { 
+            score++; 
+            window.showToast("✅ Верно!", "ok"); 
+            btn.style.background = "rgba(88, 201, 138, 0.2)";
+        } else { 
+            lives--; 
+            window.showToast("❌ Ошибка! Осталось жизней: " + lives, "err"); 
+            btn.style.background = "rgba(255, 110, 94, 0.2)";
+            
+            // Показываем правильный ответ
+            btns.forEach(b => {
+                if (b.getAttribute("onclick").includes(` ${correct})`)) {
+                    b.style.borderColor = "var(--ok)";
+                    b.style.background = "rgba(88, 201, 138, 0.2)";
+                }
+            });
+        }
+        
+        setTimeout(() => { 
+            isAnswering = false; 
+            nextQ(); 
+        }, 1500);
     };
 
     function showEnd(type) {
