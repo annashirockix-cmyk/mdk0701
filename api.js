@@ -1,10 +1,9 @@
 "use strict";
 
-// ★ Ваша рабочая ссылка из Google Apps Script
-var APPS_SCRIPT_URL = "https://script.google.com/macros/library/d/14lUlV-hb7RIfIHVsg91JNWeoVsI3rJpBjF09F8T_rp28RlUleRj0XHd-/24";
+// ★ Вставлена ваша рабочая ссылка
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Ev3stuvLl36nxjmXU0q2zi4UsS5ViXwEj1x6q_JjlCccMJld36o6y1H__CvJn5KB/exec";
 
 async function fetchAPI(action, params = {}, method = "GET") {
-    // Проверка, что ссылка заменена
     if (APPS_SCRIPT_URL.includes("ВАШ_НОВЫЙ_URL")) {
         alert("Ошибка: В файле api.js не указана ссылка на Google Apps Script!");
         return { ok: false, error: "URL not configured" };
@@ -24,11 +23,18 @@ async function fetchAPI(action, params = {}, method = "GET") {
     const timeoutId = setTimeout(() => controller.abort(), 60000); 
     
     try {
-        const options = { signal: controller.signal, cache: "no-store" };
+        const options = { 
+            signal: controller.signal, 
+            cache: "no-store",
+            // text/plain помогает избежать лишних проверок CORS (preflight)
+            headers: { "Content-Type": "text/plain;charset=utf-8" }
+        };
+        
         if (method === "POST") { 
             options.method = "POST"; 
             options.body = url.searchParams; 
         }
+        
         const response = await fetch(url.toString(), options);
         clearTimeout(timeoutId);
         
