@@ -1,7 +1,7 @@
 "use strict";
 
 // ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT (см. Шаг 3)
-var APPS_SCRIPT_URL = "https://docs.google.com/spreadsheets/d/1lpNmnxr8TCaG-3-FpqUMU1wMAHQmk82jNlnSRDGASDQ/edit?gid=1051580763#gid=1051580763";
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Ev3stuvLl36nxjmXU0q2zi4UsS5ViXwEj1x6q_JjlCccMJld36o6y1H__CvJn5KB/exec";
 
 async function fetchAPI(action, params = {}, method = "GET") {
     if (APPS_SCRIPT_URL.includes("ВАША_ССЫЛКА")) {
