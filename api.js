@@ -1,6 +1,5 @@
 "use strict";
 
-// ★ ПРАВИЛЬНАЯ ССЫЛКА (заканчивается на /exec, а не на /library/d/)
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Ev3stuvLl36nxjmXU0q2zi4UsS5ViXwEj1x6q_JjlCccMJld36o6y1H__CvJn5KB/exec";
 
 async function fetchAPI(action, params = {}, method = "GET") {
@@ -54,6 +53,7 @@ window.API = {
     saveStudent: (key, name, group, payload) => fetchAPI("save", { key, name, group, payload }, "POST"),
     grantXP: (key, amount) => fetchAPI("grantXP", { key, amount }, "POST"),
     deleteStudent: (key) => fetchAPI("deleteStudent", { key: key }, "POST"),
+    approveRetake: (key, uniqueId) => fetchAPI("approveRetake", { key, uniqueId }, "POST"), // Новая функция
     getChat: (group) => fetchAPI("chatload", { group }),
     sendChat: (group, key, name, text) => fetchAPI("chatsave", { group, key, name, text }, "POST"),
     getSchedule: () => fetchAPI("getschedule"),
