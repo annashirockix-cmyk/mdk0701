@@ -4,7 +4,7 @@
 var APPS_SCRIPT_URL = "https://docs.google.com/spreadsheets/d/1lpNmnxr8TCaG-3-FpqUMU1wMAHQmk82jNlnSRDGASDQ/edit?gid=1051580763#gid=1051580763";
 
 async function fetchAPI(action, params = {}, method = "GET") {
-    if (APPS_SCRIPT_URL.includes("https://docs.google.com/spreadsheets/d/1lpNmnxr8TCaG-3-FpqUMU1wMAHQmk82jNlnSRDGASDQ/edit?gid=1051580763#gid=1051580763")) {
+    if (APPS_SCRIPT_URL.includes("ВАША_ССЫЛКА")) {
         alert("Ошибка: В файле api.js не указана ссылка на Google Apps Script!");
         return { ok: false, error: "URL not configured" };
     }
