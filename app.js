@@ -19,7 +19,7 @@ window.showToast = function(msg, type) {
 // ================= СОСТОЯНИЕ =================
 window.state = {
   activeCourseId: "07.01",
-  student: null, staff: null, xp: 0, results: {}, manualGrades: {},
+  student: null, staff: null, xp: 0, results: {}, manualGrades: {}, retakeRequests: [],
   purchasedThemes: [], unlockedAchievements: [], avatar: null, effect: null,
   certBg: "1.jpg", suppBg: "1.jpg"
 };
@@ -60,7 +60,8 @@ window.saveStudentData = function() {
     localStorage.setItem("mdk.results." + ek, JSON.stringify(window.state.results || {}));
     localStorage.setItem("mdk.shop." + ek, JSON.stringify({ 
         purchasedThemes: window.state.purchasedThemes || [], unlockedAchievements: window.state.unlockedAchievements || [],
-        avatar: window.state.avatar || null, effect: window.state.effect || null
+        avatar: window.state.avatar || null, effect: window.state.effect || null,
+        retakeRequests: window.state.retakeRequests || []
     }));
   } catch (e) {}
   
@@ -73,7 +74,8 @@ window.saveStudentData = function() {
           purchasedThemes: window.state.purchasedThemes || [], 
           unlockedAchievements: window.state.unlockedAchievements || [], 
           avatar: window.state.avatar || null, 
-          effect: window.state.effect || null 
+          effect: window.state.effect || null,
+          retakeRequests: window.state.retakeRequests || []
       })
     ).catch(() => {});
   }
@@ -88,7 +90,7 @@ window.loadStudentData = function() {
     var s = localStorage.getItem("mdk.shop." + ek); 
     if(s) { 
         var sh = JSON.parse(s); window.state.purchasedThemes = sh.purchasedThemes || []; window.state.unlockedAchievements = sh.unlockedAchievements || [];
-        window.state.avatar = sh.avatar || null; window.state.effect = sh.effect || null; 
+        window.state.avatar = sh.avatar || null; window.state.effect = sh.effect || null; window.state.retakeRequests = sh.retakeRequests || [];
     }
   } catch (e) {}
   
@@ -103,10 +105,11 @@ window.loadStudentData = function() {
                   window.state.xp = p.xp || window.state.xp;
                   window.state.results = p.results || window.state.results;
                   window.state.manualGrades = p.manualGrades || {};
+                  window.state.retakeRequests = p.retakeRequests || window.state.retakeRequests;
                   localStorage.setItem("mdk.xp." + ek, window.state.xp);
                   localStorage.setItem("mdk.results." + ek, JSON.stringify(window.state.results));
                   window.updateXpDisplay();
-                  if(location.hash === "#/profile") window.renderProfilePage();
+                  if(location.hash === "#/profile" || location.hash.includes("/topic/")) window.route();
               } catch(e) {}
           }
       }).catch(() => {});
@@ -217,6 +220,33 @@ window.buildTestBlock = function(prefix, uniqueId, questions) {
     return html;
 };
 
+// Функция для отображения блока, если тест уже пройден
+window.renderCompletedBlock = function(uniqueId, grade) {
+    var isRequested = (window.state.retakeRequests || []).includes(uniqueId);
+    var btnHtml = "";
+    if (isRequested) {
+        btnHtml = `<p style="color:var(--gold); font-weight:bold; margin-top:15px;">⏳ Запрос на пересдачу отправлен. Ожидайте подтверждения преподавателя.</p>`;
+    } else {
+        btnHtml = `<button class="btn ghost" style="margin-top:15px; border-color:var(--err); color:var(--err);" onclick="window.requestRetake('${uniqueId}')">🔄 Запросить пересдачу</button>`;
+    }
+    return `<div style="text-align:center; padding:20px; background:var(--card-soft); border:1px solid var(--ok); border-radius:12px;">
+        <h3 style="color:var(--ok); margin-top:0;">✅ Работа сдана</h3>
+        <p style="font-size:18px; margin-bottom:5px;">Ваша оценка: <b>${grade}</b></p>
+        <p style="color:var(--muted); font-size:14px; margin-bottom:15px;">Перепрохождение доступно только с разрешения преподавателя.</p>
+        ${btnHtml}
+    </div>`;
+};
+
+window.requestRetake = function(uniqueId) {
+    if (!window.state.retakeRequests) window.state.retakeRequests = [];
+    if (!window.state.retakeRequests.includes(uniqueId)) {
+        window.state.retakeRequests.push(uniqueId);
+        window.saveStudentData();
+        window.showToast("Запрос на пересдачу отправлен!", "ok");
+        window.route(); // Перерисовать страницу
+    }
+};
+
 window.renderTopic = function(topicId, activeTab) {
     var app = $("app"); if (!app) return; app.innerHTML = "";
     var topic = null; var foundCourseId = null;
@@ -257,9 +287,16 @@ window.renderTopic = function(topicId, activeTab) {
     } 
     else if (activeTab === 'practicals' && topic.practicals) {
         topic.practicals.forEach((p, index) => {
-            var uniqueId = `prac_${topicId}_${index}`; var isDone = window.state.results[uniqueId] ? "background: rgba(88, 201, 138, 0.1); border-color: var(--ok);" : "";
+            var uniqueId = `prac_${topicId}_${index}`; 
+            var pastResult = window.state.results[uniqueId];
+            
+            if (pastResult) {
+                contentBox.innerHTML += window.renderCompletedBlock(uniqueId, pastResult.grade);
+                return;
+            }
+
             var extraData = window.EXTRA_TESTS && window.EXTRA_TESTS[uniqueId]; var expectedAnswer = p.expectedAnswer || (extraData && extraData.expectedAnswer);
-            var html = `<div style="margin-bottom:20px; padding:20px; background:var(--card-soft); border-radius:12px; border:1px solid var(--border); ${isDone}"><h4 style="margin-top:0; color:var(--accent); font-size:18px;">${p.code} ${p.title}</h4><p><b>Цель:</b> ${p.goal}</p><p><b>Задание:</b> ${p.task}</p>${p.variants ? '<p><b>Варианты:</b></p><ul style="margin-bottom:15px;">' + p.variants.map(v => `<li>${v}</li>`).join('') + '</ul>' : ''}`;
+            var html = `<div style="margin-bottom:20px; padding:20px; background:var(--card-soft); border-radius:12px; border:1px solid var(--border);"><h4 style="margin-top:0; color:var(--accent); font-size:18px;">${p.code} ${p.title}</h4><p><b>Цель:</b> ${p.goal}</p><p><b>Задание:</b> ${p.task}</p>${p.variants ? '<p><b>Варианты:</b></p><ul style="margin-bottom:15px;">' + p.variants.map(v => `<li>${v}</li>`).join('') + '</ul>' : ''}`;
             if (expectedAnswer) {
                 html += `<div style="margin-top:15px; padding-top:15px; border-top:1px dashed var(--border);"><label style="font-weight:bold; display:block; margin-bottom:8px;">Введите ваш ответ:</label><div style="display:flex; gap:10px;"><input type="text" id="ans_${uniqueId}" class="self-input" style="max-width:250px; margin:0;" placeholder="Ваш ответ..."><button class="btn" id="btn_${uniqueId}" onclick="window.checkPracticalAnswer('${uniqueId}', '${expectedAnswer}')">Проверить</button></div><div id="fb_${uniqueId}" style="margin-top:15px; font-weight:bold; font-size:16px;"></div></div>`;
             } else if (extraData && extraData.questions) html += window.buildTestBlock("prac", uniqueId, extraData.questions);
@@ -269,16 +306,32 @@ window.renderTopic = function(topicId, activeTab) {
     } 
     else if (activeTab === 'selfWork' && topic.selfWork) {
         topic.selfWork.forEach((sw, index) => {
-            var uniqueId = `self_${topicId}_${index}`; var extraData = window.EXTRA_TESTS && window.EXTRA_TESTS[uniqueId];
-            var isDone = window.state.results[uniqueId] ? "background: rgba(88, 201, 138, 0.1); border-color: var(--ok);" : "";
+            var uniqueId = `self_${topicId}_${index}`; 
+            var pastResult = window.state.results[uniqueId];
+
+            if (pastResult) {
+                contentBox.innerHTML += window.renderCompletedBlock(uniqueId, pastResult.grade);
+                return;
+            }
+
+            var extraData = window.EXTRA_TESTS && window.EXTRA_TESTS[uniqueId];
             var swTitle = (sw.code ? sw.code + ' ' : '') + sw.title;
-            var html = `<div style="margin-bottom:20px; padding:20px; background:var(--card-soft); border-radius:12px; border:1px solid var(--border); ${isDone}"><h4 style="margin-top:0; color:var(--accent); font-size:18px;">${swTitle}</h4><p><b>Задание:</b> ${sw.task}</p>`;
+            var html = `<div style="margin-bottom:20px; padding:20px; background:var(--card-soft); border-radius:12px; border:1px solid var(--border);"><h4 style="margin-top:0; color:var(--accent); font-size:18px;">${swTitle}</h4><p><b>Задание:</b> ${sw.task}</p>`;
             if (extraData && extraData.questions) html += window.buildTestBlock("self", uniqueId, extraData.questions);
             else if (baseQuestions.length > 0) html += window.buildTestBlock("self", uniqueId, baseQuestions);
             html += `</div>`; contentBox.innerHTML += html;
         });
     } 
-    else if (activeTab === 'test' && baseQuestions.length > 0) contentBox.innerHTML = `<h3>📝 Контрольный тест по теме</h3>${window.buildTestBlock("inline", topicId, baseQuestions)}`;
+    else if (activeTab === 'test' && baseQuestions.length > 0) {
+        var uniqueId = `inline_${topicId}`;
+        var pastResult = window.state.results[uniqueId];
+
+        if (pastResult) {
+            contentBox.innerHTML = `<h3>📝 Контрольный тест по теме</h3>` + window.renderCompletedBlock(uniqueId, pastResult.grade);
+        } else {
+            contentBox.innerHTML = `<h3>📝 Контрольный тест по теме</h3>` + window.buildTestBlock("inline", uniqueId, baseQuestions);
+        }
+    }
     else if (activeTab === 'presentations' && topic.presentations) {
         topic.presentations.forEach(p => {
             var isPdf = p.file.toLowerCase().endsWith('.pdf');
@@ -288,7 +341,6 @@ window.renderTopic = function(topicId, activeTab) {
 };
 
 // ================= ФУНКЦИИ ПРОВЕРКИ =================
-
 window.checkPracticalAnswer = function(id, expected) {
     var input = document.getElementById("ans_" + id); 
     var fb = document.getElementById("fb_" + id); 
@@ -322,19 +374,16 @@ window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
     var total = questions.length;
     var btn = document.getElementById("btn_" + prefix + "_" + uniqueId);
     
-    // 1. Собираем все ответы до любых изменений в DOM
     var selectedValues = [];
     questions.forEach((q, qi) => {
         var selected = document.querySelector(`input[name="${prefix}_q_${uniqueId}_${qi}"]:checked`);
-        // Используем parseInt для надежности, если придет строка
         selectedValues.push(selected ? parseInt(selected.value, 10) : -1);
     });
 
-    // 2. Считаем правильные и рисуем
     questions.forEach((q, qi) => {
         var selectedVal = selectedValues[qi];
         var correctVal = parseInt(q.correct, 10);
-        if (isNaN(correctVal)) correctVal = 0; // Защита, если correct не число
+        if (isNaN(correctVal)) correctVal = 0;
         
         if (selectedVal === correctVal) correct++;
         
@@ -342,7 +391,6 @@ window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
             var optLabel = document.getElementById(`opt_${prefix}_${uniqueId}_${qi}_${oi}`); 
             if (!optLabel) continue;
             
-            // Очистка старых стилей
             optLabel.style.background = "transparent"; 
             optLabel.style.borderColor = "transparent"; 
             var oldSpan = optLabel.querySelector('.test-mark');
@@ -361,24 +409,24 @@ window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
         }
     });
     
-    // 3. Блокируем все кнопки
     document.querySelectorAll(`input[name^="${prefix}_q_${uniqueId}_"]`).forEach(el => el.disabled = true);
 
-    // 4. Выводим результат
     var pct = Math.round((correct / total) * 100); 
     var grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2; 
     var fb = document.getElementById("fb_" + prefix + "_" + uniqueId);
     
+    // Сохраняем результат НЕЗАВИСИМО от оценки
+    if (!window.state.results[uniqueId]) { 
+        window.state.results[uniqueId] = { grade: grade, total: correct, max: total }; 
+        if (grade >= 3 && window.addXP) window.addXP(15); 
+        window.saveStudentData(); 
+    }
+
     if (grade >= 3) {
         fb.innerHTML = `<span style="color:var(--ok); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}. +15 XP`; 
         if (btn) btn.style.display = "none";
-        if (!window.state.results[uniqueId]) { 
-            window.state.results[uniqueId] = { grade: grade, total: correct, max: total }; 
-            if (window.addXP) window.addXP(15); 
-            window.saveStudentData(); 
-        }
     } else { 
-        fb.innerHTML = `<span style="color:var(--err); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}.<br><button class="btn ghost" style="margin-top:10px;" onclick="window.location.reload()">Попробовать снова</button>`; 
+        fb.innerHTML = `<span style="color:var(--err); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}.<br><p style="color:var(--muted); font-size:14px; margin-top:10px;">Запросите пересдачу у преподавателя.</p>`; 
         if (btn) btn.style.display = "none"; 
     }
 };
@@ -447,6 +495,7 @@ window.renderProfilePage = function() {
           var displayName = key.includes("_test") ? "Тест / Тема " + key.replace("_test", "") : key;
           if (key.includes("prac_")) displayName = "Практика / " + key.replace("prac_", "").replace(/_\d+$/, "");
           if (key.includes("self_")) displayName = "Сам. работа / " + key.replace("self_", "").replace(/_\d+$/, "");
+          if (key.includes("inline_")) displayName = "Тест / " + key.replace("inline_", "");
           resultsHtml += `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border);"><span>${window.escapeHtml(displayName)}</span><b style="color:${color}; font-size:18px;">${grade}</b></div>`;
       }
   }
