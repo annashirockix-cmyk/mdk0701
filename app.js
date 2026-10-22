@@ -322,27 +322,19 @@ window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
     var total = questions.length;
     var btn = document.getElementById("btn_" + prefix + "_" + uniqueId);
     
-    // ★ ИСПРАВЛЕНИЕ: Сначала собираем выбранные ответы, ПОКА НЕ ТРОГАЛИ DOM
+    // 1. Собираем все ответы до любых изменений в DOM
     var selectedValues = [];
     questions.forEach((q, qi) => {
         var selected = document.querySelector(`input[name="${prefix}_q_${uniqueId}_${qi}"]:checked`);
-        selectedValues.push(selected ? Number(selected.value) : -1);
+        // Используем parseInt для надежности, если придет строка
+        selectedValues.push(selected ? parseInt(selected.value, 10) : -1);
     });
 
-    // Теперь безопасно очищаем старую подсветку и блокируем кнопки
-    document.querySelectorAll(`[id^="opt_${prefix}_${uniqueId}_"]`).forEach(el => { 
-        el.style.background = "transparent"; 
-        el.style.borderColor = "transparent"; 
-        var toRemove = el.querySelectorAll('span[style*="color"]');
-        toRemove.forEach(s => s.remove());
-        var radio = el.querySelector('input'); 
-        if(radio) radio.disabled = true; 
-    });
-
-    // Считаем и рисуем
+    // 2. Считаем правильные и рисуем
     questions.forEach((q, qi) => {
         var selectedVal = selectedValues[qi];
-        var correctVal = Number(q.correct);
+        var correctVal = parseInt(q.correct, 10);
+        if (isNaN(correctVal)) correctVal = 0; // Защита, если correct не число
         
         if (selectedVal === correctVal) correct++;
         
@@ -350,19 +342,29 @@ window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
             var optLabel = document.getElementById(`opt_${prefix}_${uniqueId}_${qi}_${oi}`); 
             if (!optLabel) continue;
             
+            // Очистка старых стилей
+            optLabel.style.background = "transparent"; 
+            optLabel.style.borderColor = "transparent"; 
+            var oldSpan = optLabel.querySelector('.test-mark');
+            if (oldSpan) oldSpan.remove();
+
             if (oi === correctVal) { 
                 optLabel.style.background = "rgba(88, 201, 138, 0.15)"; 
                 optLabel.style.borderColor = "var(--ok)"; 
-                optLabel.innerHTML += " <span style='color:var(--ok); font-weight:bold;'>✅ (Верно)</span>"; 
+                optLabel.insertAdjacentHTML('beforeend', ' <span class="test-mark" style="color:var(--ok); font-weight:bold;">✅ (Верно)</span>'); 
             }
             else if (oi === selectedVal && selectedVal !== correctVal) { 
                 optLabel.style.background = "rgba(255, 110, 94, 0.15)"; 
                 optLabel.style.borderColor = "var(--err)"; 
-                optLabel.innerHTML += " <span style='color:var(--err); font-weight:bold;'>❌ (Ваш выбор)</span>"; 
+                optLabel.insertAdjacentHTML('beforeend', ' <span class="test-mark" style="color:var(--err); font-weight:bold;">❌ (Ваш выбор)</span>'); 
             }
         }
     });
     
+    // 3. Блокируем все кнопки
+    document.querySelectorAll(`input[name^="${prefix}_q_${uniqueId}_"]`).forEach(el => el.disabled = true);
+
+    // 4. Выводим результат
     var pct = Math.round((correct / total) * 100); 
     var grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2; 
     var fb = document.getElementById("fb_" + prefix + "_" + uniqueId);
