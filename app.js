@@ -67,7 +67,14 @@ window.saveStudentData = function() {
   window.updateXpDisplay();
   if (window.API && window.API.saveStudent) {
     window.API.saveStudent(k, window.state.student.name, window.state.student.group,
-      JSON.stringify({ xp: window.state.xp, results: window.state.results, purchasedThemes: window.state.purchasedThemes || [], unlockedAchievements: window.state.unlockedAchievements || [], avatar: window.state.avatar || null, effect: window.state.effect || null })
+      JSON.stringify({ 
+          xp: window.state.xp, 
+          results: window.state.results, 
+          purchasedThemes: window.state.purchasedThemes || [], 
+          unlockedAchievements: window.state.unlockedAchievements || [], 
+          avatar: window.state.avatar || null, 
+          effect: window.state.effect || null 
+      })
     ).catch(() => {});
   }
 };
@@ -88,7 +95,7 @@ window.loadStudentData = function() {
   window.updateXpDisplay();
   window.renderUserChip();
 
-  // Синхронизация с сервером (подтягиваем оценки из журнала)
+  // Синхронизация с сервером
   if (window.API && window.API.getStudentData) {
       window.API.getStudentData(k).then(res => {
           if (res && res.ok && res.payload) {
@@ -281,33 +288,93 @@ window.renderTopic = function(topicId, activeTab) {
     } 
 };
 
+// ================= ФУНКЦИИ ПРОВЕРКИ (ИСПРАВЛЕНЫ) =================
+
 window.checkPracticalAnswer = function(id, expected) {
-    var input = document.getElementById("ans_" + id); var fb = document.getElementById("fb_" + id); var btn = document.getElementById("btn_" + id);
+    var input = document.getElementById("ans_" + id); 
+    var fb = document.getElementById("fb_" + id); 
+    var btn = document.getElementById("btn_" + id);
     if (!input || !fb) return;
-    if (input.value.trim().replace(',', '.') === String(expected).trim().replace(',', '.')) {
-        fb.innerHTML = `<span style="color:var(--ok); font-size:20px;">✅ Верно! +10 XP</span>`; input.disabled = true; input.style.borderColor = "var(--ok)"; input.style.background = "rgba(88, 201, 138, 0.1)"; if (btn) btn.style.display = "none";
-        if (!window.state.results[id]) { window.state.results[id] = { grade: 5 }; if (window.addXP) window.addXP(10); window.saveStudentData(); }
-    } else { fb.innerHTML = `<span style="color:var(--err); font-size:18px;">❌ Неверно. Попробуйте еще раз.</span>`; input.style.borderColor = "var(--err)"; setTimeout(() => { input.style.borderColor = "var(--border)"; }, 1500); }
+    
+    // Очистка: убираем пробелы по краям, меняем запятую на точку
+    var val = String(input.value).trim().replace(',', '.');
+    var exp = String(expected).trim().replace(',', '.');
+    
+    if (val === exp) {
+        fb.innerHTML = `<span style="color:var(--ok); font-size:20px;">✅ Верно! +10 XP</span>`; 
+        input.disabled = true; 
+        input.style.borderColor = "var(--ok)"; 
+        input.style.background = "rgba(88, 201, 138, 0.1)"; 
+        if (btn) btn.style.display = "none";
+        if (!window.state.results[id]) { 
+            window.state.results[id] = { grade: 5 }; 
+            if (window.addXP) window.addXP(10); 
+            window.saveStudentData(); 
+        }
+    } else { 
+        fb.innerHTML = `<span style="color:var(--err); font-size:18px;">❌ Неверно. Попробуйте еще раз.</span>`; 
+        input.style.borderColor = "var(--err)"; 
+        setTimeout(() => { input.style.borderColor = "var(--border)"; }, 1500); 
+    }
 };
 
 window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
-    var questions = JSON.parse(decodeURIComponent(encodedQuestions)); var correct = 0; var total = questions.length;
+    var questions = JSON.parse(decodeURIComponent(encodedQuestions)); 
+    var correct = 0; 
+    var total = questions.length;
     var btn = document.getElementById("btn_" + prefix + "_" + uniqueId);
-    document.querySelectorAll(`[id^="opt_${prefix}_${uniqueId}_"]`).forEach(el => { el.style.background = "transparent"; el.style.borderColor = "transparent"; el.innerHTML = el.innerHTML.replace(/<span style="color:.*?">.*?<\/span>/g, ""); var radio = el.querySelector('input'); if(radio) radio.disabled = true; });
+    
+    // Сброс подсветки прошлых попыток
+    document.querySelectorAll(`[id^="opt_${prefix}_${uniqueId}_"]`).forEach(el => { 
+        el.style.background = "transparent"; 
+        el.style.borderColor = "transparent"; 
+        el.innerHTML = el.innerHTML.replace(/<span style="color:.*?">.*?<\/span>/g, ""); 
+        var radio = el.querySelector('input'); 
+        if(radio) radio.disabled = true; 
+    });
+
     questions.forEach((q, qi) => {
-        var selected = document.querySelector(`input[name="${prefix}_q_${uniqueId}_${qi}"]:checked`); var selectedVal = selected ? Number(selected.value) : null;
-        if (selectedVal === q.correct) correct++;
+        var selected = document.querySelector(`input[name="${prefix}_q_${uniqueId}_${qi}"]:checked`); 
+        
+        // Приведение к числу, чтобы избежать ошибки "string" === "number"
+        var selectedVal = selected ? Number(selected.value) : -1;
+        var correctVal = Number(q.correct);
+        
+        if (selectedVal === correctVal) correct++;
+        
         for (var oi = 0; oi < q.options.length; oi++) {
-            var optLabel = document.getElementById(`opt_${prefix}_${uniqueId}_${qi}_${oi}`); if (!optLabel) continue;
-            if (oi === q.correct) { optLabel.style.background = "rgba(88, 201, 138, 0.15)"; optLabel.style.borderColor = "var(--ok)"; optLabel.innerHTML += " <span style='color:var(--ok); font-weight:bold;'>✅ (Верно)</span>"; }
-            else if (oi === selectedVal) { optLabel.style.background = "rgba(255, 110, 94, 0.15)"; optLabel.style.borderColor = "var(--err)"; optLabel.innerHTML += " <span style='color:var(--err); font-weight:bold;'>❌ (Ваш выбор)</span>"; }
+            var optLabel = document.getElementById(`opt_${prefix}_${uniqueId}_${qi}_${oi}`); 
+            if (!optLabel) continue;
+            
+            if (oi === correctVal) { 
+                optLabel.style.background = "rgba(88, 201, 138, 0.15)"; 
+                optLabel.style.borderColor = "var(--ok)"; 
+                optLabel.innerHTML += " <span style='color:var(--ok); font-weight:bold;'>✅ (Верно)</span>"; 
+            }
+            else if (oi === selectedVal && selectedVal !== correctVal) { 
+                optLabel.style.background = "rgba(255, 110, 94, 0.15)"; 
+                optLabel.style.borderColor = "var(--err)"; 
+                optLabel.innerHTML += " <span style='color:var(--err); font-weight:bold;'>❌ (Ваш выбор)</span>"; 
+            }
         }
     });
-    var pct = Math.round((correct / total) * 100); var grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2; var fb = document.getElementById("fb_" + prefix + "_" + uniqueId);
+    
+    var pct = Math.round((correct / total) * 100); 
+    var grade = pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : 2; 
+    var fb = document.getElementById("fb_" + prefix + "_" + uniqueId);
+    
     if (grade >= 3) {
-        fb.innerHTML = `<span style="color:var(--ok); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}. +15 XP`; if (btn) btn.style.display = "none";
-        if (!window.state.results[uniqueId]) { window.state.results[uniqueId] = { grade: grade, total: correct, max: total }; if (window.addXP) window.addXP(15); window.saveStudentData(); }
-    } else { fb.innerHTML = `<span style="color:var(--err); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}.<br><button class="btn ghost" style="margin-top:10px;" onclick="window.location.reload()">Попробовать снова</button>`; if (btn) btn.style.display = "none"; }
+        fb.innerHTML = `<span style="color:var(--ok); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}. +15 XP`; 
+        if (btn) btn.style.display = "none";
+        if (!window.state.results[uniqueId]) { 
+            window.state.results[uniqueId] = { grade: grade, total: correct, max: total }; 
+            if (window.addXP) window.addXP(15); 
+            window.saveStudentData(); 
+        }
+    } else { 
+        fb.innerHTML = `<span style="color:var(--err); font-size:24px;">Оценка: ${grade}</span><br>Верно ${correct} из ${total}.<br><button class="btn ghost" style="margin-top:10px;" onclick="window.location.reload()">Попробовать снова</button>`; 
+        if (btn) btn.style.display = "none"; 
+    }
 };
 
 // ================= СЕРТИФИКАТ И ВКЛАДЫШ =================
@@ -432,7 +499,6 @@ window.addEventListener("DOMContentLoaded", function() {
   if ($("btnLoginStudent")) $("btnLoginStudent").onclick = window.doStudentLogin;
   if ($("btnLoginTeacher")) $("btnLoginTeacher").onclick = window.doTeacherLogin;
   
-  // ★ ИСПРАВЛЕНИЕ КНОПКИ ТЕМЫ
   if ($("themeToggle")) {
       $("themeToggle").onclick = () => { 
           var current = document.documentElement.getAttribute("data-theme");
