@@ -1,7 +1,7 @@
 "use strict";
 
 // ★ Ваша рабочая ссылка из Google Apps Script
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Ev3stuvLl36nxjmXU0q2zi4UsS5ViXwEj1x6q_JjlCccMJld36o6y1H__CvJn5KB/exec";
+var APPS_SCRIPT_URL = "https://script.google.com/macros/library/d/14lUlV-hb7RIfIHVsg91JNWeoVsI3rJpBjF09F8T_rp28RlUleRj0XHd-/24";
 
 async function fetchAPI(action, params = {}, method = "GET") {
     // Проверка, что ссылка заменена
