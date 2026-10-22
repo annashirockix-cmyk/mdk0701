@@ -1,9 +1,10 @@
 "use strict";
 
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/ВАШ_НОВЫЙ_КОД/exec";
+// ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT (см. Шаг 3)
+var APPS_SCRIPT_URL = "https://docs.google.com/spreadsheets/d/1lpNmnxr8TCaG-3-FpqUMU1wMAHQmk82jNlnSRDGASDQ/edit?gid=1051580763#gid=1051580763";
 
 async function fetchAPI(action, params = {}, method = "GET") {
-    if (APPS_SCRIPT_URL.includes("ВАША_НОВАЯ_ССЫЛКА")) {
+    if (APPS_SCRIPT_URL.includes("https://docs.google.com/spreadsheets/d/1lpNmnxr8TCaG-3-FpqUMU1wMAHQmk82jNlnSRDGASDQ/edit?gid=1051580763#gid=1051580763")) {
         alert("Ошибка: В файле api.js не указана ссылка на Google Apps Script!");
         return { ok: false, error: "URL not configured" };
     }
@@ -22,11 +23,20 @@ async function fetchAPI(action, params = {}, method = "GET") {
     const timeoutId = setTimeout(() => controller.abort(), 60000); 
     
     try {
-        const options = { signal: controller.signal, cache: "no-store" };
+        const options = { 
+            signal: controller.signal, 
+            cache: "no-store",
+            // Добавляем заголовки, чтобы браузер не блокировал запрос
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+        
         if (method === "POST") { 
             options.method = "POST"; 
             options.body = url.searchParams; 
         }
+        
         const response = await fetch(url.toString(), options);
         clearTimeout(timeoutId);
         
