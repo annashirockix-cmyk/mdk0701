@@ -95,7 +95,6 @@ window.loadStudentData = function() {
   window.updateXpDisplay();
   window.renderUserChip();
 
-  // Синхронизация с сервером
   if (window.API && window.API.getStudentData) {
       window.API.getStudentData(k).then(res => {
           if (res && res.ok && res.payload) {
@@ -288,7 +287,7 @@ window.renderTopic = function(topicId, activeTab) {
     } 
 };
 
-// ================= ФУНКЦИИ ПРОВЕРКИ (ИСПРАВЛЕНЫ) =================
+// ================= ФУНКЦИИ ПРОВЕРКИ =================
 
 window.checkPracticalAnswer = function(id, expected) {
     var input = document.getElementById("ans_" + id); 
@@ -296,7 +295,6 @@ window.checkPracticalAnswer = function(id, expected) {
     var btn = document.getElementById("btn_" + id);
     if (!input || !fb) return;
     
-    // Очистка: убираем пробелы по краям, меняем запятую на точку
     var val = String(input.value).trim().replace(',', '.');
     var exp = String(expected).trim().replace(',', '.');
     
@@ -324,20 +322,26 @@ window.gradeTest = function(prefix, uniqueId, encodedQuestions) {
     var total = questions.length;
     var btn = document.getElementById("btn_" + prefix + "_" + uniqueId);
     
-    // Сброс подсветки прошлых попыток
+    // ★ ИСПРАВЛЕНИЕ: Сначала собираем выбранные ответы, ПОКА НЕ ТРОГАЛИ DOM
+    var selectedValues = [];
+    questions.forEach((q, qi) => {
+        var selected = document.querySelector(`input[name="${prefix}_q_${uniqueId}_${qi}"]:checked`);
+        selectedValues.push(selected ? Number(selected.value) : -1);
+    });
+
+    // Теперь безопасно очищаем старую подсветку и блокируем кнопки
     document.querySelectorAll(`[id^="opt_${prefix}_${uniqueId}_"]`).forEach(el => { 
         el.style.background = "transparent"; 
         el.style.borderColor = "transparent"; 
-        el.innerHTML = el.innerHTML.replace(/<span style="color:.*?">.*?<\/span>/g, ""); 
+        var toRemove = el.querySelectorAll('span[style*="color"]');
+        toRemove.forEach(s => s.remove());
         var radio = el.querySelector('input'); 
         if(radio) radio.disabled = true; 
     });
 
+    // Считаем и рисуем
     questions.forEach((q, qi) => {
-        var selected = document.querySelector(`input[name="${prefix}_q_${uniqueId}_${qi}"]:checked`); 
-        
-        // Приведение к числу, чтобы избежать ошибки "string" === "number"
-        var selectedVal = selected ? Number(selected.value) : -1;
+        var selectedVal = selectedValues[qi];
         var correctVal = Number(q.correct);
         
         if (selectedVal === correctVal) correct++;
