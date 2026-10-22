@@ -1,6 +1,6 @@
 "use strict";
 
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Ev3stuvLl36nxjmXU0q2zi4UsS5ViXwEj1x6q_JjlCccMJld36o6y1H__CvJn5KB/exec";
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/ВАШ_НОВЫЙ_КОД/exec";
 
 async function fetchAPI(action, params = {}, method = "GET") {
     if (APPS_SCRIPT_URL.includes("ВАША_НОВАЯ_ССЫЛКА")) {
