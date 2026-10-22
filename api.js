@@ -1,9 +1,10 @@
 "use strict";
 
-// ★ Вставьте сюда ваш URL из Google Apps Script (заканчивается на /exec)
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/ВАШ_НОВЫЙ_URL/exec";
+// ★ Ваша рабочая ссылка из Google Apps Script
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw3Ev3stuvLl36nxjmXU0q2zi4UsS5ViXwEj1x6q_JjlCccMJld36o6y1H__CvJn5KB/exec";
 
 async function fetchAPI(action, params = {}, method = "GET") {
+    // Проверка, что ссылка заменена
     if (APPS_SCRIPT_URL.includes("ВАШ_НОВЫЙ_URL")) {
         alert("Ошибка: В файле api.js не указана ссылка на Google Apps Script!");
         return { ok: false, error: "URL not configured" };
