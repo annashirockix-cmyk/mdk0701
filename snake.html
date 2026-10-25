@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cursor Snake</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #05050C; color: #E6E9F5; font-family: system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .snake-game { position: relative; aspect-ratio: 380 / 456; border-radius: 30px; overflow: hidden; cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none;
+    background: linear-gradient(#0B0A26, #05040F);
+    box-shadow: 0 0 0 2px #8A5CFF, 0 0 24px rgba(138,92,255,.55), 0 0 60px rgba(255,61,203,.18); width: min(480px, 95vw); }
+  .snake-game canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .snake-game:focus-visible { outline: 2px solid #39E6FF; outline-offset: 5px; }
+</style>
+</head>
+<body>
+  <div class="snake-game" tabindex="0" role="application" aria-label="Snake that follows the pointer. Arrow keys steer, Space starts a new round"><canvas></canvas></div>
+
+<script>
+// Cursor Snake by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file
+const game = document.querySelector('.snake-game');
+const canvas = game.querySelector('canvas'), g = canvas.getContext('2d');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eout = k => 1 - Math.pow(1 - clamp(k), 3);
+const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+const TAU = Math.PI * 2;
+const turn = d => Math.atan2(Math.sin(d), Math.cos(d));
+
+let W = 0, H = 0, dpr = 1, now = 0, mx = 0, my = 0, steered = false, keyDir = null;
+let body = [], trail = [], head = null, food = [], bulges = [], sparks = [], len = 0, over = 0, nextFood = 0;
+let best = 0;
+try { best = +localStorage.getItem('snake-best') || 0; } catch {}
+const REACH = 14, BULGE = 42;
+const radius = i => lerp(10.5, 5, Math.pow(i / Math.max(1, body.length - 1), 1.1));
+const emit = action => game.dispatchEvent(new CustomEvent('snake', { detail: { action, length: len, best } }));
+
+function start() {
+  food = []; bulges = []; sparks = []; over = 0; nextFood = now + .4;
+  head = { x: W * .3, y: H * .8, dir: 0 };
+  trail = []; 
+  for (let d = 0; d <= 5 * GAP; d += 2) trail.push({ x: head.x - d, y: head.y });
+  body = [head];
+  for (let i = 1; i < 6; i++) body.push(pathAt(i * GAP));
+  len = body.length;
+  if (!steered) { mx = W * .6; my = H * .7; }
+}
+function resize() {
+  const r = game.getBoundingClientRect(); dpr = Math.min(devicePixelRatio || 1, 2);
+  W = r.width; H = r.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  if (!head) start();
+}
+new ResizeObserver(resize).observe(game);
+
+const near = (h, list) => list.some(f => Math.hypot(f.x - h.x, f.y - h.y) < REACH);
+function swallow(list) {
+  for (const f of list.filter(f => Math.hypot(f.x - head.x, f.y - head.y) < REACH)) {
+    bulges.push({ t: now, hue: f.hue }); len++;
+    if (!reduce) for (let i = 0; i < 14; i++) sparks.push({ x: f.x, y: f.y, a: i / 14 * TAU + Math.random(), v: 60 + 110 * Math.random(), t: now, hue: f.hue });
+    sparks.push({ x: f.x, y: f.y, t: now, ring: true });
+    emit('eat');
+  }
+  food = food.filter(f => Math.hypot(f.x - head.x, f.y - head.y) >= REACH);
+}
+const bites = (h, list) => list.some((b, i) => i >= 12 && Math.hypot(b.x - h.x, b.y - h.y) < (12 + radius(i)) * .8);
+function crash() {
+  over = now;
+  if (len > best) { best = len; try { localStorage.setItem('snake-best', best); } catch {} }
+  emit('crash');
+  if(len >= 20 && window.parent && window.parent.unlockAchievement) {
+      window.parent.unlockAchievement('snake_win');
+  }
+}
+function grow() {
+  body.push(body[body.length - 1]);
+}
+function trace(h) {
+  let p = trail[0];
+  for (let d = Math.hypot(h.x - p.x, h.y - p.y); d >= 2; d -= 2) {
+    p = { x: p.x + (h.x - p.x) * 2 / d, y: p.y + (h.y - p.y) * 2 / d };
+    trail.unshift(p);
+  }
+  trail.length = Math.min(trail.length, Math.ceil(body.length * GAP / 2) + 2);
+}
+const pathAt = dist => trail[Math.min(trail.length - 1, Math.round(dist / 2))];
+function spawnFood() {
+  const line = Math.random() < .3 ? 4 : 1, a = Math.random() * TAU, d = 70 + Math.random() * 80, step = Math.random() * TAU;
+  for (let i = 0; i < line; i++) {
+    const x = clamp(mx + Math.cos(a) * d + Math.cos(step) * 18 * i, 24, W - 24), y = clamp(my + Math.sin(a) * d + Math.sin(step) * 18 * i, 60, H - 24);
+    food.push({ x, y, t: now, hue: 40 + Math.random() * 22, seed: Math.random() * 99 });
+  }
+}
+
+const SPEED = 180, TURN = 4.5;
+const GAP = 12;
+function update(dt) {
+  const dx = mx - head.x, dy = my - head.y;
+  const want = Math.atan2(dy, dx), d = Math.hypot(dx, dy);
+  const brake = d > 2 ? Math.min(1, d * TURN / SPEED) : 0;
+  head.dir += turn(want - head.dir) * TURN * dt;
+  head.x += Math.cos(head.dir) * SPEED * brake * dt;
+  head.y += Math.sin(head.dir) * SPEED * brake * dt;
+  trace(head);
+  for (let i = 1; i < body.length; i++)
+    body[i] = pathAt(i * GAP);
+  if (near(head, food)) swallow(food);
+  if (bites(head, body)) crash();
+}
+
+function tick(dt) {
+  now += dt;
+  if (over) return;
+  if (!steered) { mx = W / 2 + Math.cos(now * .9) * W * .28; my = H * .55 + Math.sin(now * 1.3) * H * .22; }
+  if (keyDir) { mx = head.x + keyDir[0] * 200; my = head.y + keyDir[1] * 200; }
+  mx = clamp(mx, 30, W - 30); my = clamp(my, 30, H - 30);
+  update(dt);
+  head.x = clamp(head.x, 8, W - 8); head.y = clamp(head.y, 8, H - 8);
+  bulges = bulges.filter(b => { if ((now - b.t) * BULGE >= body.length - 1) { grow(); return false; } return true; });
+  food = food.filter(f => now - f.t < 7);
+  if (steered && now > nextFood && food.length < 5) { spawnFood(); nextFood = now + .7 + Math.random() * .5; }
+}
+
+const local = e => { const r = game.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+game.addEventListener('pointermove', e => { [mx, my] = local(e); steered = true; keyDir = null; });
+game.addEventListener('pointerdown', e => { [mx, my] = local(e); steered = true; keyDir = null; if (over && now - over > .6) start(); });
+game.addEventListener('keydown', e => {
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (d) { steered = true; keyDir = d; }
+  else if ((e.key === ' ' || e.key === 'Enter') && over && now - over > .6) start();
+  else return;
+  e.preventDefault();
+});
+
+function draw() {
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  let kx = 0, ky = 0;
+  if (!reduce) for (const b of bulges) { const a = now - b.t; if (a < .16) { const e = Math.exp(-a * 22) * 2.6; kx += Math.sin(a * 90 + b.t * 7) * e; ky += Math.cos(a * 77 + b.t * 5) * e; } }
+  g.translate(kx, ky);
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0B0A26'); bg.addColorStop(1, '#05040F');
+  g.fillStyle = bg; g.fillRect(-10, -10, W + 20, H + 20);
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (const [x, y, r, c] of [[W * .2, H * .26, W * .5, '255,60,200'], [W * .8, H * .72, W * .55, '40,210,255'], [W * .58, H * .13, W * .42, '130,90,255']]) {
+    const n = g.createRadialGradient(x, y, 0, x, y, r); n.addColorStop(0, `rgba(${c},.13)`); n.addColorStop(1, `rgba(${c},0)`);
+    g.fillStyle = n; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 70; i++) {
+    const a = reduce ? .6 : .25 + .75 * (.5 + .5 * Math.sin(now * (1 + hash(i) * 2) + i));
+    g.fillStyle = `rgba(220,230,255,${.55 * a})`; g.beginPath(); g.arc(hash(i * 3.1) * W, hash(i * 7.3) * H, .5 + hash(i * 1.7) * 1.1, 0, TAU); g.fill();
+  }
+  g.restore();
+  for (const f of food) {
+    const a = now - f.t, pop = a < .25 ? .6 + .4 * eout(a / .25) + .15 * Math.sin(clamp(a / .25) * Math.PI) : 1;
+    const y = f.y + Math.sin(now * 4 + f.seed) * 1.5, r = 6 * pop * clamp((7 - a) / .4);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    const h = g.createRadialGradient(f.x, y, 0, f.x, y, r * 4.2); h.addColorStop(0, `hsla(${f.hue},100%,60%,.55)`); h.addColorStop(1, `hsla(${f.hue},100%,60%,0)`);
+    g.fillStyle = h; g.fillRect(f.x - r * 4.2, y - r * 4.2, r * 8.4, r * 8.4); g.restore();
+    const c = g.createRadialGradient(f.x - r * .3, y - r * .3, 0, f.x, y, r);
+    c.addColorStop(0, '#FFFBEA'); c.addColorStop(.5, `hsl(${f.hue},100%,62%)`); c.addColorStop(1, `hsl(${f.hue - 10},95%,45%)`);
+    g.fillStyle = c; g.beginPath(); g.arc(f.x, y, r, 0, TAU); g.fill();
+  }
+  drawSnake();
+  sparks = sparks.filter(p => now - p.t < .7);
+  for (const p of sparks) {
+    const a = now - p.t;
+    if (p.ring) {
+      if (a < .35) { g.strokeStyle = `rgba(255,220,120,${.7 * (1 - a / .35)})`; g.lineWidth = 2; g.beginPath(); g.arc(p.x, p.y, 8 + 34 * eout(a / .35), 0, TAU); g.stroke(); }
+      g.fillStyle = `rgba(255,226,140,${1 - a / .7})`; g.font = '700 16px "DIN Condensed", system-ui'; g.textAlign = 'center'; g.fillText('+1', p.x + 10, p.y - 14 - 26 * eout(a / .7));
+      continue;
+    }
+    if (a > .5) continue;
+    const d = p.v * a * (1 - a), k = 1 - a / .5;
+    g.fillStyle = `hsla(${p.hue},100%,65%,${k})`; g.beginPath(); g.arc(p.x + Math.cos(p.a) * d, p.y + Math.sin(p.a) * d, 1.2 + 1.6 * k, 0, TAU); g.fill();
+  }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawHud();
+}
+function drawSnake() {
+  const n = body.length, fl = bulges.filter(b => now - b.t < .5).map(b => (now - b.t) * 70);
+  const bs = bulges.map(b => [(now - b.t) * BULGE, Math.exp(-(now - b.t) * 1.2)]);
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (let i = n - 1; i >= 0; i -= 2) {
+    const { x, y } = body[i], hue = lerp(186, 318, i / Math.max(1, n - 1)), r = 20 - 8 * (i / n);
+    const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, `hsla(${hue},100%,60%,.22)`); gl.addColorStop(1, `hsla(${hue},100%,60%,0)`);
+    g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  g.restore();
+  for (let i = n - 1; i >= 1; i--) {
+    const { x, y } = body[i], hue = lerp(186, 318, i / Math.max(1, n - 1));
+    let r = radius(i), gold = 0, lit = 0;
+    for (const [b, fade] of bs) { const e = Math.exp(-(((i - b) / 1.5) ** 2)); r *= 1 + e * (.2 + .3 * fade); gold = Math.max(gold, e * fade); }
+    for (const f of fl) lit = Math.max(lit, Math.exp(-(((i - f) / 3) ** 2)));
+    const light = 58 + 18 * lit, sg = g.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r);
+    sg.addColorStop(0, `hsl(${lerp(hue, 48, gold)},100%,${Math.min(92, light + 24)}%)`);
+    sg.addColorStop(.55, `hsl(${lerp(hue, 42, gold)},100%,${light}%)`);
+    sg.addColorStop(1, `hsl(${lerp(hue, 36, gold)},90%,${light - 22}%)`);
+    g.fillStyle = sg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    if (i % 3 === 0) { g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.arc(x - r * .38, y - r * .42, r * .22, 0, TAU); g.fill(); }
+  }
+  const { x: hx, y: hy, dir: d } = head, hr = 12.5;
+  const target = food.reduce((m, f) => !m || Math.hypot(f.x - hx, f.y - hy) < Math.hypot(m.x - hx, m.y - hy) ? f : m, null) || { x: mx, y: my };
+  const look = Math.atan2(target.y - hy, target.x - hx);
+  let danger = 0; for (let i = 12; i < n; i++) danger = Math.max(danger, clamp((60 - Math.hypot(body[i].x - hx, body[i].y - hy)) / 36));
+  if (Math.sin(now * 5.3) > .82 && !over) {
+    g.strokeStyle = '#FF4D7A'; g.lineWidth = 2; g.lineCap = 'round';
+    const tx = hx + Math.cos(d) * (hr + 9), ty = hy + Math.sin(d) * (hr + 9);
+    g.beginPath(); g.moveTo(hx + Math.cos(d) * hr, hy + Math.sin(d) * hr); g.lineTo(tx, ty);
+    g.lineTo(tx + Math.cos(d + .5) * 5, ty + Math.sin(d + .5) * 5); g.moveTo(tx, ty); g.lineTo(tx + Math.cos(d - .5) * 5, ty + Math.sin(d - .5) * 5); g.stroke();
+  }
+  const hg = g.createRadialGradient(hx - 4, hy - 5, 1, hx, hy, hr);
+  hg.addColorStop(0, '#E7FDFF'); hg.addColorStop(.45, '#39E6FF'); hg.addColorStop(1, '#0A8FC0');
+  g.fillStyle = hg; g.beginPath(); g.arc(hx, hy, hr, 0, TAU); g.fill();
+  for (const side of [-1, 1]) {
+    const ex = hx + Math.cos(d) * 4 + Math.cos(d + side * Math.PI / 2) * 5.5, ey = hy + Math.sin(d) * 4 + Math.sin(d + side * Math.PI / 2) * 5.5;
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(ex, ey, 3.9 + 1.2 * danger, 0, TAU); g.fill();
+    g.fillStyle = '#0B0B1A'; g.beginPath(); g.arc(ex + Math.cos(look) * 1.5, ey + Math.sin(look) * 1.5, 2.1 - .5 * danger, 0, TAU); g.fill();
+  }
+}
+function drawHud() {
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = '#8F95D6'; g.font = '700 10px system-ui'; g.letterSpacing = '2px'; g.fillText('LENGTH', 22, 30); g.letterSpacing = '0px';
+  const bump = bulges.reduce((m, b) => Math.max(m, now - b.t < .18 ? 1 - (now - b.t) / .18 : 0), 0);
+  g.save(); g.translate(22, 72); g.scale(1 + .12 * bump, 1 + .12 * bump);
+  g.shadowColor = over ? 'rgba(255,50,85,.9)' : 'rgba(57,230,255,.8)'; g.shadowBlur = 14; g.fillStyle = '#fff'; g.font = '700 48px "DIN Condensed", system-ui'; g.fillText(String(len), 0, 0);
+  g.restore();
+  g.fillStyle = '#6F76B0'; g.font = '700 12px "DIN Condensed", system-ui'; g.textAlign = 'right'; g.fillText(`BEST ${best}`, W - 22, 30);
+  if (over) {
+    const v = g.createRadialGradient(W / 2, H / 2, W * .3, W / 2, H / 2, H * .7);
+    v.addColorStop(0, 'rgba(255,30,70,0)'); v.addColorStop(1, 'rgba(255,30,70,.35)'); g.fillStyle = v; g.fillRect(0, 0, W, H);
+    const a = eout((now - over) / .15);
+    g.save(); g.translate(W / 2, H * .42); g.scale(1.2 - .2 * a, 1.2 - .2 * a); g.textAlign = 'center';
+    g.fillStyle = 'rgba(5,5,12,.6)'; g.beginPath(); g.roundRect(-150, -52, 300, 104, 20); g.fill();
+    g.fillStyle = '#fff'; g.font = '800 26px system-ui'; g.fillText(`It bit itself at ${len}`, 0, -8);
+    g.fillStyle = '#FFD447'; g.font = '700 16px system-ui'; g.fillText('Tap or press Space to go again', 0, 26);
+    g.restore();
+  }
+  if (!steered && !over) { g.fillStyle = 'rgba(230,233,245,.7)'; g.font = '600 13px system-ui'; g.textAlign = 'center'; g.fillText('Move over the screen to steer', W / 2, H - 22); }
+}
+
+let last = performance.now(), acc = 0, visible = true;
+new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(game);
+(function frame(ts) {
+  requestAnimationFrame(frame);
+  acc += Math.min(.1, (ts - last) / 1000); last = ts;
+  if (!visible || !W) { acc = 0; return; }
+  while (acc >= 1 / 60) { tick(1 / 60); acc -= 1 / 60; }
+  draw();
+})(last);
+</script>
+</body>
+</html>

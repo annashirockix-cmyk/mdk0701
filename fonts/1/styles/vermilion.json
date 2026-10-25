@@ -1,0 +1,59 @@
+{
+	"settings": {
+		"color": {
+			"palette": [
+				{
+					"color": "#f7f7f7",
+					"name": "Color 1",
+					"slug": "theme-1"
+				},
+				{
+					"color": "#b30000",
+					"name": "Color 2",
+					"slug": "theme-2"
+				},
+				{
+					"color": "#ff80bf",
+					"name": "Color 3",
+					"slug": "theme-3"
+				}
+			]
+		}
+	},
+	"styles": {
+		"blocks": {
+			"core/avatar": {
+				"filter": {
+					"duotone": "var(--wp--preset--duotone--duotone-2)"
+				}
+			},
+			"core/button": {
+				"typography": {
+					"textTransform": "none"
+				}
+			},
+			"core/image": {
+				"filter": {
+					"duotone": "var(--wp--preset--duotone--duotone-2)"
+				}
+			},
+			"core/post-date": {
+				"typography": {
+					"textTransform": "none"
+				}
+			},
+			"core/post-featured-image": {
+				"filter": {
+					"duotone": "var(--wp--preset--duotone--duotone-2)"
+				}
+			},
+			"core/site-title": {
+				"typography": {
+					"textTransform": "none"
+				}
+			}
+		}
+	},
+	"version": 3,
+	"title": "Vermilion"
+}

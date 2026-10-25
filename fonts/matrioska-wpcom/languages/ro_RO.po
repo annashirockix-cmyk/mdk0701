@@ -1,0 +1,218 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: WordPress.com - Themes - Matrioska\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-04-22T00:59:30+00:00\n"
+"PO-Revision-Date: 2025-04-19 08:50:23+0000\n"
+"Language: ro\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : (n==0 || (n%100 > 0 && n%100 < 20)) ? 1 : 2);\n"
+"X-Generator: GlotPress/2.4.0-alpha\n"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Large"
+msgstr "Mare"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Extra Large"
+msgstr "Foarte mare"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Tertiary"
+msgstr "Terță"
+
+#: styles/aubergine.json
+msgctxt "Style variation name"
+msgid "Aubergine"
+msgstr "Vânătă"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Default"
+msgstr "Implicit"
+
+#: theme.json
+msgctxt "Font family name"
+msgid "System Font"
+msgstr "System Font"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Small"
+msgstr "Mic"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Medium"
+msgstr "Mediu"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Cosmic"
+msgstr "Cosmic"
+
+#: styles/cosmic.json
+msgctxt "Style variation name"
+msgid "Cosmic"
+msgstr "Cosmic"
+
+#: styles/moss.json
+msgctxt "Style variation name"
+msgid "Moss"
+msgstr "Mușchi"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Sugar"
+msgstr "Zahăr"
+
+#: styles/teakwood.json
+msgctxt "Style variation name"
+msgid "Teakwood"
+msgstr "Lemn de tec"
+
+#: styles/sugar.json
+msgctxt "Style variation name"
+msgid "Sugar"
+msgstr "Zahăr"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Teakwood"
+msgstr "Lemn de tec"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Aubergine"
+msgstr "Vânătă"
+
+#: patterns/404.php
+msgctxt "Pattern title"
+msgid "404"
+msgstr "404"
+
+#: patterns/archive.php
+msgctxt "Pattern title"
+msgid "archive"
+msgstr "arhivă"
+
+#: patterns/footer-minimal.php
+msgctxt "Pattern title"
+msgid "footer-minimal"
+msgstr "subsol simplu"
+
+#: patterns/footer.php
+msgctxt "Pattern title"
+msgid "footer"
+msgstr "subsol"
+
+#: patterns/index.php
+msgctxt "Pattern title"
+msgid "index"
+msgstr "index"
+
+#: patterns/post-meta.php
+msgctxt "Pattern title"
+msgid "post-meta"
+msgstr "metadate articol"
+
+#: patterns/search.php
+msgctxt "Pattern title"
+msgid "search"
+msgstr "căutare"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Base"
+msgstr "Bază"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Contrast"
+msgstr "Contrast"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Primary"
+msgstr "Principală"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Secondary"
+msgstr "Secundară"
+
+#: patterns/archive.php:13
+#: patterns/archive.php:42
+#: patterns/index.php:13
+#: patterns/index.php:40
+#: patterns/post-meta.php:14
+#: patterns/search.php:17
+#: patterns/search.php:46
+msgid "By"
+msgstr "De"
+
+#: patterns/archive.php:49
+#: patterns/index.php:47
+#: patterns/post-meta.php:21
+#: patterns/search.php:53
+msgid "·"
+msgstr "·"
+
+#: patterns/post-meta.php:27
+msgid "—"
+msgstr "-"
+
+#: patterns/footer-minimal.php:16
+#: patterns/footer-post.php:17
+#: patterns/footer.php:16
+msgid ""
+"\n"
+"Designed with <a href=\"https://wordpress.org\" rel=\"nofollow\">WordPress</a>"
+msgstr ""
+"\n"
+"Proiectat cu <a href=\"https://wordpress.org\" rel=\"nofollow\">WordPress</a>"
+
+#. Description of the theme
+#: style.css
+msgid "Matrioska is a blog design that displays posts overlapping featured images as a Matryoshka effect."
+msgstr "Matrioska este un design pentru bloguri care afișează articole suprapuse peste imaginile reprezentative într-un efect de tip Matryoshka."
+
+#: patterns/404.php:27
+msgid "It looks like nothing was found at this location. Maybe try a search?"
+msgstr "Se pare că nu am găsit nimic la această locație. Încerci o nouă căutare?"
+
+#: patterns/404.php:17
+msgid "Oops!<br>The page can’t<br>be found."
+msgstr "Hopa!<br>Pagina nu poate<br>fi găsită."

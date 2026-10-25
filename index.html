@@ -1,189 +1,192 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Учебный портал МДК</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<script>
-  try {
-    var savedTheme = localStorage.getItem("mdk.theme_active") || "default";
-    if (savedTheme !== "default") {
-      document.documentElement.setAttribute("data-theme", savedTheme);
-    } else {
-      document.documentElement.setAttribute("data-theme", localStorage.getItem("mdk.theme") || "dark");
-    }
-  } catch(e) {}
-</script>
-
-<!-- СТИЛИ ДЛЯ ПЕЧАТИ СЕРТИФИКАТА И ВКЛАДЫША -->
-<style>
-    @media print {
-        body * { visibility: hidden; }
-        /* Показываем только сертификат и вкладыш */
-        #printable-cert, #printable-cert *, #printable-supplement, #printable-supplement * { visibility: visible; }
-        
-        /* Настройки для первой страницы (Сертификат) */
-        #printable-cert { 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            page-break-after: always; /* Принудительный разрыв страницы после */
-            margin: 0; 
-            padding: 0; 
-            box-shadow: none; 
-            border-radius: 0;
-            background-size: 100% 100% !important;
-        }
-        
-        /* Настройки для второй страницы (Вкладыш) */
-        #printable-supplement { 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            page-break-before: always; /* Начинаем с новой страницы */
-            background-size: 100% 100% !important;
-        }
-        
-        .no-print { display: none !important; }
-        .topbar, .drawer, .drawer-overlay, .toast-container, #asFab { display: none !important; }
-        main#app { padding: 0 !important; margin: 0 !important; }
-        body { background: #fff; margin: 0; padding: 0; }
-    }
-</style>
-</head>
-<body>
-
-<!-- ОКНО ВХОДА -->
-<div class="login-overlay" id="loginOverlay">
-  <div class="login-shell">
-    <div class="login-brand" style="text-align: center; margin-bottom: 20px;">
-      <span class="brand-badge">ПОРТАЛ МДК</span>
-      <h1>Оператор станков с ПУ</h1>
-      <p>15.02.16 Технология машиностроения · ПМ.07</p>
-    </div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>МДК 07.01 — Учебный портал</title>
     
-    <div class="login-grid">
-      <div class="login-card">
-        <h3>Вход студента</h3>
-        <p class="login-hint">Укажите ФИО и группу.</p>
-        <label>ФИО <input id="loginName" type="text" placeholder="Иванов Иван"></label>
-        <label>Группа <input id="loginGroup" type="text" placeholder="ТМ-4"></label>
-        <button type="button" id="btnLoginStudent" class="btn" style="width: 100%; margin-top: 10px;">Войти</button>
-      </div>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="animations.css">
+    <link rel="stylesheet" href="lecture-methodical.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+</head>
+<body data-theme="dark">
 
-      <div class="login-card">
-        <h3>Вход преподавателя</h3>
-        <p class="login-hint">Используйте <b>teacher / teacher</b> или <b>admin / admin</b></p>
-        <label>Логин <input id="teacherUser" type="text" placeholder="teacher"></label>
-        <label>Пароль <input id="teacherPass" type="password" placeholder="teacher"></label>
-        <button type="button" id="btnLoginTeacher" class="btn ghost" style="width: 100%; margin-top: 10px;">Войти в журнал</button>
-        <p class="login-error" id="teacherLoginError" style="display:none; color:var(--err); margin-top:10px; font-size:13px;"></p>
-      </div>
+    <header class="topbar">
+        <button class="burger-btn" id="burgerBtn" aria-label="Меню">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="brand-badge" id="mainLogo">МДК Портал</div>
+        
+        <select id="mdkSelector" class="self-input" style="width:auto; margin:0; padding:6px 10px; font-size:14px; background:var(--card); border-color:var(--border); color:var(--text);">
+            <option value="07.01">МДК 07.01 (ЧПУ)</option>
+            <option value="04.01">МДК 04.01 (Диагностика)</option>
+            <option value="02.01">МДК 02.01 (Сборка)</option>
+            <option value="02.02">МДК 02.02 (Прогр. сборки)</option>
+        </select>
+
+        <div class="topbar-status" style="display:flex; gap:10px; align-items:center; margin-left:auto;">
+            <div id="xpCount" class="status-pill" style="cursor:default;">🌟 0 XP</div>
+            <button class="btn ghost" id="themeToggle" style="padding:6px 10px; font-size:16px; border:none;">🎨</button>
+            
+            <div class="user-chip" id="userChip" style="display:flex; align-items:center; gap:8px; background:var(--card); padding:4px 12px 4px 4px; border-radius:20px; border:1px solid var(--border); cursor:pointer;" onclick="location.hash='#/profile'">
+                <div id="userChipAvatar" style="width:32px; height:32px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:16px; overflow:hidden;">👨‍🎓</div>
+                <div style="display:flex; flex-direction:column; line-height:1.1;">
+                    <span id="userChipName" style="font-size:13px; font-weight:bold;">Гость</span>
+                    <span id="userChipGroup" style="font-size:11px; color:var(--muted);">—</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="crumbs" style="padding: 12px 24px; font-size: 14px; color: var(--muted); background: var(--bg); border-bottom: 1px solid var(--border);"></div>
+
+    <main id="app"></main>
+
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <aside class="drawer" id="drawer">
+        <div class="drawer-head">
+            <div class="brand-badge">МДК Портал</div>
+            <button class="drawer-close" id="drawerClose">✕</button>
+        </div>
+        <nav class="drawer-nav">
+            <a href="#/" class="drawer-item" data-go="#/">🏠 Главная</a>
+            <a href="#/profile" class="drawer-item" data-go="#/profile">👤 Личный кабинет</a>
+            <a href="#/certificate" class="drawer-item" data-go="#/certificate">📜 Сертификат</a>
+            <a href="#/achievements" class="drawer-item" data-go="#/achievements">🏆 Достижения</a>
+            <a href="#/shop" class="drawer-item" data-go="#/shop">🛒 Магазин</a>
+            <a href="#/links" class="drawer-item" data-go="#/links">📚 Полезные материалы</a>
+            <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
+            <a href="#/videos" class="drawer-item" data-go="#/videos">🎬 Видеоуроки</a>
+            <a href="#/safety" class="drawer-item" data-go="#/safety">🛡️ Охрана труда</a>
+            <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
+            <a href="#/training" class="drawer-item" data-go="#/training">🎯 Тренировка</a>
+            <a href="#/final" class="drawer-item" data-go="#/final">📋 Экзамен</a>
+            <a href="#/arcade" class="drawer-item" data-go="#/arcade">🎮 Игровая комната</a>
+            <a href="#/rating" class="drawer-item" data-go="#/rating">🏅 Доска почета</a>
+            <hr style="border:0; border-top:1px solid var(--border); margin:10px 0;">
+            <a href="#/schedule" class="drawer-item" data-go="#/schedule">📅 Расписание</a>
+            <a href="#/journal" class="drawer-item" data-go="#/journal">📒 Журнал (Препод)</a>
+            <a href="#/reports" class="drawer-item" data-go="#/reports">📊 Отчеты (Препод)</a>
+            <a href="#/admin" class="drawer-item" data-go="#/admin">⚙️ Админка (Препод)</a>
+            <div style="padding:20px;">
+                <button class="btn ghost" style="width:100%; border-color:var(--err); color:var(--err);" onclick="window.handleLogout()">🚪 Выйти</button>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ИГР -->
+    <div id="loginIframeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:999999; padding:20px; backdrop-filter: blur(5px);">
+        <button class="btn" onclick="document.getElementById('loginIframeModal').style.display='none'" style="position:absolute; top:20px; right:20px; z-index:10; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">✖ Закрыть</button>
+        <iframe id="loginIframeContent" style="width:100%; height:100%; border:none; border-radius:12px; background: #000;"></iframe>
     </div>
-  </div>
-</div>
 
-<!-- ШАПКА -->
-<header class="topbar">
-  <button class="burger-btn" id="burgerBtn" aria-label="Меню"><span></span><span></span><span></span></button>
-  <a class="brand" href="#/"><span class="brand-badge">МДК Портал</span></a>
-  
-  <div style="margin-left: 15px;">
-      <select id="mdkSelector" class="self-input" style="padding: 8px; font-weight: bold; background: var(--card-soft); border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; outline:none; margin:0; width:auto;">
-          <option value="07.01">МДК 07.01 (ЧПУ)</option>
-          <option value="04.01">МДК 04.01 (Диагностика)</option>
-          <option value="02.01">МДК 02.01 (Сборка)</option>
-          <option value="02.02">МДК 02.02 (Программирование сборки)</option>
-      </select>
-  </div>
+    <div class="login-overlay" id="loginOverlay" style="display:none;">
+        <div class="login-shell">
+            <h2 style="text-align:center; margin-bottom:20px;">Вход в портал</h2>
+            <div class="login-grid">
+                <div class="login-card">
+                    <h3 style="margin-top:0; color:var(--accent);">👨‍🎓 Студент</h3>
+                    <form onsubmit="event.preventDefault(); document.getElementById('btnLoginStudent').click();">
+                        <input type="text" id="loginName" placeholder="Ваше ФИО (Иванов Иван)">
+                        <input type="text" id="loginGroup" placeholder="Группа (ТМП 5-2)">
+                        <button type="button" class="btn" id="btnLoginStudent" style="width:100%;">Войти</button>
+                        <button type="button" class="btn ghost" onclick="window.clearCache()" style="width:100%; margin-top:10px; border-color:var(--err); color:var(--err); font-size:12px;">🔄 Сбросить кэш и обновить</button>
+                    </form>
+                </div>
+                <div class="login-card">
+                    <h3 style="margin-top:0; color:var(--gold);">👨‍🏫 Преподаватель</h3>
+                    <form onsubmit="event.preventDefault(); document.getElementById('btnLoginTeacher').click();">
+                        <input type="text" id="teacherUser" placeholder="Логин (admin)">
+                        <input type="password" id="teacherPass" placeholder="Пароль (admin)">
+                        <button type="button" class="btn" id="btnLoginTeacher" style="width:100%; background:var(--gold); color:#000;">Войти в журнал</button>
+                    </form>
+                </div>
+            </div>
 
-  <div class="crumbs" id="crumbs" style="margin-left:auto;"></div>
-  
-  <div class="topbar-status">
-    <span class="status-pill" id="xpCount">🌟 0 XP</span>
-  </div>
-  
-  <button id="themeToggle" class="btn ghost" style="padding: 8px 12px; margin-left: 5px;" title="Сменить тему">🎨</button>
-  <button id="topbarLogout" class="btn ghost" style="padding:8px 12px; margin-left:5px;" onclick="window.handleLogout()" title="Выйти">🚪</button>
-</header>
-
-<!-- БОКОВОЕ МЕНЮ -->
-<div class="drawer-overlay" id="drawerOverlay"></div>
-<aside class="drawer" id="drawer">
-  <div class="drawer-head">
-    <div class="drawer-user" style="display:flex; align-items:center;">
-      <span id="userChipAvatar" style="font-size:24px;">👨‍🎓</span>
-      <div style="margin-left:10px;">
-        <div id="userChipName" style="font-weight:bold;">Гость</div>
-        <div id="userChipGroup" style="font-size:12px; color:var(--muted);">Группа</div>
-      </div>
+            <!-- НОВЫЙ БЛОК С ИГРАМИ НА ЭКРАНЕ ВХОДА -->
+            <div style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px; text-align: center;">
+                <p style="font-size: 13px; color: var(--muted); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px;">Интерактивные элементы</p>
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn ghost" onclick="window.openLoginIframe('captcha_wake_cat.html')" style="font-size: 12px; padding: 8px 15px;">🐱 Кот-капча</button>
+                    <button class="btn ghost" onclick="window.openLoginIframe('heavy_ball_switch.html')" style="font-size: 12px; padding: 8px 15px;">⚫ Тяжелый шар</button>
+                    <button class="btn ghost" onclick="window.openLoginIframe('gravity_password_v2.html')" style="font-size: 12px; padding: 8px 15px;">🔐 Гравитационный пароль</button>
+                    <button class="btn ghost" onclick="window.openLoginIframe('paper_lantern.html')" style="font-size: 12px; padding: 8px 15px;">🏮 Бумажные фонарики</button>
+                    <button class="btn ghost" onclick="window.openLoginIframe('login_v3b.html')" style="font-size: 12px; padding: 8px 15px;">💧 Жидкий металл</button>
+                </div>
+            </div>
+        </div>
     </div>
-    <button class="drawer-close" id="drawerClose">✕</button>
-  </div>
-  
-  <nav class="drawer-nav">
-    <a class="drawer-item" data-go="#/">🏠 Главная</a>
-    <a class="drawer-item" data-go="#/profile">👤 Личный кабинет</a>
-    <a class="drawer-item" data-go="#/certificate">📜 Мой сертификат</a>
-    <a class="drawer-item" data-go="#/achievements">🏆 Достижения</a>
-    <a class="drawer-item" data-go="#/shop">🛒 Магазин</a>
-    <a class="drawer-item" data-go="#/videos">🎬 Видео</a>
-    <a class="drawer-item" data-go="#/passports">📄 Паспорта</a>
-    <a class="drawer-item" data-go="#/safety">🦺 Охрана труда</a>
-    <a class="drawer-item" data-go="#/formatting">📝 Оформление</a>
-    <a class="drawer-item" data-go="#/links">📚 Полезные материалы</a>
-    <a class="drawer-item" data-go="#/training">🎯 Тренировка</a>
-    <a class="drawer-item" data-go="#/final">📋 Итоговые экзамены</a>
-    <a class="drawer-item" data-go="#/arcade">🎮 Игровая комната</a>
-    <a class="drawer-item" data-go="#/rating">🏅 Доска почета</a>
-    <a class="drawer-item" data-go="#/journal">📒 Журнал (Оценки)</a>
-    <a class="drawer-item" data-go="#/reports">📊 Отчеты по курсам</a>
-    <a class="drawer-item" data-go="#/schedule">📅 Расписание</a>
-    <a class="drawer-item" style="color:var(--err); cursor:pointer; margin-top:20px; border-top: 1px solid var(--border);" onclick="window.handleLogout()">🚪 Выйти</a>
-  </nav>
-</aside>
 
-<!-- ОСНОВНОЙ КОНТЕНТ -->
-<main id="app"></main>
+    <div class="toast-container" id="toastContainer"></div>
 
-<!-- СКРИПТЫ (Порядок важен!) -->
-<script src="data-global.js"></script>
-<script src="data-0701.js"></script>
-<script src="data-0201.js"></script>
-<script src="data-0202.js"></script>
-<script src="data-0401.js"></script>
+    <script src="api.js"></script>
+    <script src="data-0701.js"></script>
+    <script src="data-0401.js"></script>
+    <script src="data-0201.js"></script>
+    <script src="data-0202.js"></script>
+    <script src="data-extra.js"></script>
+    <script src="data-global.js"></script>
+    <script src="tests-extra.js"></script>
+    
+    <script src="questions-setup.js"></script>
+    <script src="questions-mdk.js"></script>
+    <script src="questions-anime.js"></script>
+    <script src="questions-games.js"></script>
+    <script src="questions-logic.js"></script>
 
-<script src="api.js"></script>
-<script src="tests-extra.js"></script> 
+    <script src="app.js"></script>
+    
+    <script src="assistant.js"></script>
+    <script src="shop.js"></script>
+    <script src="games.js"></script>
+    <script src="extra.js"></script>
+    <script src="exam-engine.js"></script>
+    <script src="exam_0701.js"></script>
+    <script src="exam_0401.js"></script>
+    <script src="exam_0201.js"></script>
+    <script src="exam_0202.js"></script>
+    <script src="final.js"></script>
+    <script src="journal.js"></script>
+    <script src="reports.js"></script>
+    <script src="schedule.js"></script>
+    <script src="rating.js"></script>
+    <script src="links.js"></script>
+    <script src="info.js"></script>
+    <script src="admin.js"></script>
+    <script src="easter-eggs.js"></script>
+    
+    <script>
+        // Функция открытия игр на экране входа
+        window.openLoginIframe = function(url) {
+            document.getElementById('loginIframeContent').src = './' + url;
+            document.getElementById('loginIframeModal').style.display = 'block';
+        };
 
-<script src="app.js"></script>
+        document.getElementById('mdkSelector').addEventListener('change', function() {
+            if (window.state) {
+                window.state.activeCourseId = this.value;
+                if (window.saveStudentData) window.saveStudentData();
+                if (location.hash === '#/' || location.hash === '') {
+                    if (window.renderHomePage) window.renderHomePage();
+                } else {
+                    location.hash = '#/';
+                }
+            }
+        });
 
-<script src="exam_0201.js"></script>
-<script src="exam_0202.js"></script>
-<script src="exam_0401.js"></script>
-<script src="exam_0701.js"></script>
-<script src="shop.js"></script>
-<script src="reports.js"></script>
-<script src="extra.js"></script>
-<script src="info.js"></script>
-<script src="links.js"></script>
-<script src="rating.js"></script>
-<script src="journal.js"></script>
-<script src="schedule.js"></script>
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (window.state && window.state.activeCourseId) {
+                    document.getElementById('mdkSelector').value = window.state.activeCourseId;
+                }
+            }, 100);
+        });
 
-<script src="questions-setup.js"></script>
-<script src="questions-mdk.js"></script>
-<script src="questions-anime.js"></script>
-<script src="questions-games.js"></script>
-<script src="questions-logic.js"></script>
-
-<script src="games.js"></script>
-<script src="assistant.js"></script>
-
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW ошибка:', err));
+        }
+    </script>
 </body>
 </html>

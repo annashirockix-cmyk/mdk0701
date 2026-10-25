@@ -1,26 +1,46 @@
-/* ============================================================
-   Service Worker (обновленная версия)
-   ============================================================ */
-const CACHE = "mdk0701-v205"; // Обновили версию, чтобы старый кэш удалился
+const CACHE = "mdk0701-v208"; 
 
-// Список ТОЛЬКО тех файлов, которые реально есть в вашем репозитории
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
+  "./animations.css",
+  "./lecture-methodical.css",
   "./manifest.json",
-  "./data.js",
+  "./data-0701.js",
+  "./data-0401.js",
+  "./data-0201.js",
+  "./data-0202.js",
+  "./data-extra.js",
+  "./data-global.js",
+  "./tests-extra.js",
+  "./questions-setup.js",
+  "./questions-mdk.js",
+  "./questions-anime.js",
+  "./questions-games.js",
+  "./questions-logic.js",
   "./app.js",
-  "./programs.js",
-  "./exam.js",
+  "./api.js",
+  "./assistant.js",
+  "./shop.js",
+  "./games.js",
   "./extra.js",
-  "./info.js",
-  "./links.js",
-  "./rating.js",
+  "./exam-engine.js",
+  "./exam_0701.js",
+  "./exam_0401.js",
+  "./exam_0201.js",
+  "./exam_0202.js",
+  "./final.js",
   "./journal.js",
+  "./reports.js",
   "./schedule.js",
-  "./minigames.js",
-  "./api.js"
+  "./rating.js",
+  "./links.js",
+  "./info.js",
+  "./admin.js",
+  "./easter-eggs.js",
+  "./cursor-snake.html",
+  "./carve-pumpkin.html"
 ];
 
 self.addEventListener("install", (e) => {
@@ -28,7 +48,7 @@ self.addEventListener("install", (e) => {
     caches.open(CACHE)
       .then((cache) => {
         return cache.addAll(ASSETS).catch((err) => {
-          console.warn("[SW] Ошибка кэширования:", err);
+          console.warn("[SW] Ошибка кэширования (пропускаем):", err);
         });
       })
       .then(() => self.skipWaiting())
@@ -77,6 +97,8 @@ self.addEventListener("fetch", (e) => {
           caches.open(CACHE).then((c) => c.put(req, copy));
         }
         return res;
+      }).catch(() => {
+        return new Response("Network error", { status: 408, headers: { "Content-Type": "text/plain" } });
       });
     })
   );

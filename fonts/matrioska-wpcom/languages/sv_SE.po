@@ -1,0 +1,218 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: WordPress.com - Themes - Matrioska\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-03-10T03:07:49+00:00\n"
+"PO-Revision-Date: 2025-02-17 19:30:21+0000\n"
+"Language: sv_SE\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: GlotPress/2.4.0-alpha\n"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Large"
+msgstr "Stor"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Extra Large"
+msgstr "Extra stor"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Tertiary"
+msgstr "Tertiär"
+
+#: styles/aubergine.json
+msgctxt "Style variation name"
+msgid "Aubergine"
+msgstr "Aubergine"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Default"
+msgstr "Standard"
+
+#: theme.json
+msgctxt "Font family name"
+msgid "System Font"
+msgstr "Systemtypsnitt"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Small"
+msgstr "Liten"
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Medium"
+msgstr "Medium"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Sugar"
+msgstr "Socker"
+
+#: styles/teakwood.json
+msgctxt "Style variation name"
+msgid "Teakwood"
+msgstr "Teakträ"
+
+#: styles/sugar.json
+msgctxt "Style variation name"
+msgid "Sugar"
+msgstr "Socker"
+
+#: styles/moss.json
+msgctxt "Style variation name"
+msgid "Moss"
+msgstr "Mossa"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Teakwood"
+msgstr "Teakträ"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Cosmic"
+msgstr "Kosmisk"
+
+#: styles/cosmic.json
+msgctxt "Style variation name"
+msgid "Cosmic"
+msgstr "Kosmisk"
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Aubergine"
+msgstr "Aubergine"
+
+#: patterns/404.php
+msgctxt "Pattern title"
+msgid "404"
+msgstr "404"
+
+#: patterns/archive.php
+msgctxt "Pattern title"
+msgid "archive"
+msgstr "arkiv"
+
+#: patterns/footer-minimal.php
+msgctxt "Pattern title"
+msgid "footer-minimal"
+msgstr "sidfot-minimalistisk"
+
+#: patterns/footer.php
+msgctxt "Pattern title"
+msgid "footer"
+msgstr "sidfot"
+
+#: patterns/index.php
+msgctxt "Pattern title"
+msgid "index"
+msgstr "index"
+
+#: patterns/search.php
+msgctxt "Pattern title"
+msgid "search"
+msgstr "sök"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Base"
+msgstr "Bas"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Contrast"
+msgstr "Kontrast"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Primary"
+msgstr "Primär"
+
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+#: theme.json
+msgctxt "Color name"
+msgid "Secondary"
+msgstr "Sekundär"
+
+#: patterns/post-meta.php
+msgctxt "Pattern title"
+msgid "post-meta"
+msgstr "metadata för inlägg"
+
+#: patterns/archive.php:13
+#: patterns/archive.php:42
+#: patterns/index.php:13
+#: patterns/index.php:40
+#: patterns/post-meta.php:14
+#: patterns/search.php:17
+#: patterns/search.php:46
+msgid "By"
+msgstr "Av"
+
+#: patterns/archive.php:49
+#: patterns/index.php:47
+#: patterns/post-meta.php:21
+#: patterns/search.php:53
+msgid "·"
+msgstr "·"
+
+#: patterns/post-meta.php:27
+msgid "—"
+msgstr "—"
+
+#: patterns/footer-minimal.php:16
+#: patterns/footer-post.php:17
+#: patterns/footer.php:16
+msgid ""
+"\n"
+"Designed with <a href=\"https://wordpress.org\" rel=\"nofollow\">WordPress</a>"
+msgstr ""
+"\n"
+"Designad med <a href=\"https://wordpress.org\" rel=\"nofollow\">WordPress</a>"
+
+#. Description of the theme
+#: style.css
+msgid "Matrioska is a blog design that displays posts overlapping featured images as a Matryoshka effect."
+msgstr "Matrioska är en bloggdesign som visar inlägg som överlappar utvalda bilder som en Matryoshka-effekt."
+
+#: patterns/404.php:27
+msgid "It looks like nothing was found at this location. Maybe try a search?"
+msgstr "Det verkar som om inget hittades på denna plats. Kanske prova en sökning?"
+
+#: patterns/404.php:17
+msgid "Oops!<br>The page can’t<br>be found."
+msgstr "Hoppsan!<br>Sidan kan inte<br>hittas."

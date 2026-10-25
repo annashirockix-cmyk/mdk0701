@@ -1,0 +1,135 @@
+{
+	"$schema": "https://schemas.wp.org/wp/7.0/theme.json",
+	"settings": {
+		"typography": {
+			"fontFamilies": [
+				
+				{
+					"fontFace": [
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "normal",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-400-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "normal",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-700-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "italic",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-400-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "italic",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-700-italic.woff2"
+							]
+						}
+					],
+					"fontFamily": "\"Cooper\"",
+					"name": "Cooper*",
+					"slug": "cooper"
+				},
+				
+				{
+					"fontFace": [
+						{
+							"fontFamily": "Spectral",
+							"fontStyle": "normal",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/spectral/spectral-400-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Spectral",
+							"fontStyle": "normal",
+							"fontWeight": "600",
+							"src": [
+								"file:./assets/fonts/spectral/spectral-600-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Spectral",
+							"fontStyle": "normal",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/spectral/spectral-700-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "Spectral",
+							"fontStyle": "italic",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/spectral/spectral-400-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Spectral",
+							"fontStyle": "italic",
+							"fontWeight": "600",
+							"src": [
+								"file:./assets/fonts/spectral/spectral-600-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "Spectral",
+							"fontStyle": "italic",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/spectral/spectral-700-italic.woff2"
+							]
+						}
+					],
+					"fontFamily": "Spectral, serif",
+					"name": "Spectral",
+					"slug": "spectral"
+				}
+			]
+		}
+	},
+	"styles": {
+		"blocks": {
+			"core/button": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--spectral)"
+				}
+			},
+			"core/site-title": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--cooper)",
+					"fontStyle": "normal",
+					"fontWeight": "700"
+				}
+			}
+		},
+		"elements": {
+			"heading": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--cooper)",
+					"fontStyle": "normal",
+					"fontWeight": "700"
+				}
+			}
+		},
+		"typography": {
+			"fontFamily": "var(--wp--preset--font-family--spectral)"
+		}
+	},
+	"version": 3,
+	"title": "Cooper* + Spectral"
+}

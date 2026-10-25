@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<!--
+HOW TO USE
+1. Open this file in a browser. The switch is a heavy steel ball in a groove,
+   and the groove rises in the middle. Push the ball slowly and it climbs the
+   rise, stops and rolls back home: nothing changes. Throw it and it rolls over
+   the top, hits the far end and the page switches between dark and light.
+   A tap on the switch, Space or Enter flips it without a throw.
+2. Numbers to change, top of the script:
+   HUMP      how high the middle of the groove is, px. Higher = harder to throw
+   GRAVITY   how heavy the ball feels, px per frame squared
+   BOUNCE    how much speed the ball keeps when it hits an end, 0 to 0.6
+   ROLL      how much speed it keeps per frame while rolling, 0.98 to 0.998
+   KICK      the speed a tap or a key gives, px per frame. Keep it above
+             the throw you need to clear HUMP and below MAX
+   THROW     how fast the hand must move to count as a throw, px per ms.
+             Slower than this and the ball just rolls back
+   MAX       the fastest throw allowed, so the ball never comes back over
+   WAVE      how long the light takes to spread over the page, ms
+   Colours are at the top of the styles: --night-* and --day-* in .hbs.
+3. Copy into your site: the styles from ".hbs" down (not body), the block
+   marked EFFECT, and the script before </body>. The script sets
+   data-theme="dark" or "light" on <html>, so your own styles can follow it.
+   To remember the choice, fill in saveTheme() in the script (localStorage
+   or your server) and set data-theme on <html> before the page shows.
+4. The real control is an <input type="checkbox" role="switch">, so screen
+   readers hear "Dark mode, on" and the focus ring shows on Tab.
+5. With reduced motion turned on, the ball slides over without the throw
+   and the colours simply fade.
+Built by @codinvisual · 12.10.2026 · t.me/CodinVisual
+Use it free on your own site, personal or commercial. Don't repost or resell this file itself.
+
+КАК ПОЛЬЗОВАТЬСЯ
+1. Откройте файл в браузере. Переключатель это тяжёлый стальной шар в пазу,
+   а посередине паза горка. Толкнёте шар медленно, и он заедет на горку,
+   остановится и скатится домой: ничего не поменяется. Бросьте его, и он
+   перекатится через верх, ударится в дальний край, а страница сменит тему.
+   Касание переключателя, пробел или Enter переключают без броска.
+2. Числа в начале скрипта:
+   HUMP      высота горки посередине паза, px. Выше = труднее перебросить
+   GRAVITY   насколько тяжёлым кажется шар, px за кадр в квадрате
+   BOUNCE    сколько скорости шар сохраняет при ударе о край, от 0 до 0.6
+   ROLL      сколько скорости остаётся за кадр качения, от 0.98 до 0.998
+   KICK      скорость от касания или клавиши, px за кадр. Больше, чем нужно
+             для горки, и меньше MAX
+   THROW     с какой скорости руки движение считается броском, px за мс.
+             Медленнее, и шар просто скатится назад
+   MAX       самый сильный бросок, чтобы шар не возвращался обратно
+   WAVE      за сколько мс свет расходится по странице
+   Цвета в начале стилей: --night-* и --day-* у .hbs.
+3. В свой сайт: стили от ".hbs" и ниже (без body), блок EFFECT и скрипт
+   перед </body>. Скрипт ставит data-theme="dark" или "light" на <html>,
+   ваши стили могут на него опираться. Чтобы тема запоминалась, допишите
+   saveTheme() в скрипте (localStorage или ваш сервер).
+4. Под шаром настоящий <input type="checkbox" role="switch">: экранный
+   диктор читает состояние, по Tab видна рамка фокуса.
+5. При включённом «уменьшить движение» шар просто переезжает без броска,
+   а цвета плавно сменяются.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heavy Ball Switch</title>
+<style>
+/* Heavy Ball Switch by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file */
+body { margin: 0; }
+
+.hbs {
+  --night-sky: #0D0E12;
+  --night-glow: #1B1D26;
+  --night-ink: #ECE8E1;
+  --night-plate: #17191F;
+  --night-groove: #08090C;
+  --day-sky: #F1E6D3;
+  --day-glow: #FBF4E8;
+  --day-ink: #2B241C;
+  --day-plate: #E8DCC7;
+  --day-groove: #D3C4AA;
+  --focus: #F2B45A;
+  --t: 0;
+  --ink: color-mix(in oklab, var(--day-ink) calc(var(--t) * 100%), var(--night-ink));
+  --plate: color-mix(in oklab, var(--day-plate) calc(var(--t) * 100%), var(--night-plate));
+  --groove: color-mix(in oklab, var(--day-groove) calc(var(--t) * 100%), var(--night-groove));
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+.hbs-sky { position: fixed; inset: 0; z-index: -2; pointer-events: none; }
+.hbs-sky.night { background: radial-gradient(110% 70% at 50% 46%, var(--night-glow), var(--night-sky) 62%, #07080A); }
+.hbs-sky.day { background: radial-gradient(110% 70% at 50% 46%, var(--day-glow), var(--day-sky) 58%, #E2D2B8); clip-path: circle(0 at 50% 50%); }
+.hbs-flash { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), rgba(255, 214, 140, .9), rgba(255, 190, 100, .35) 18%, rgba(255, 180, 90, 0) 46%); }
+
+.hbs-content { display: grid; justify-items: center; gap: 22px; padding: 48px 16px; text-align: center; }
+.hbs-title { position: relative; margin: 0 0 6px; height: 1.1em; width: 300px; font-size: 40px; font-weight: 750; line-height: 1.1; letter-spacing: -.025em; }
+.hbs-title span { position: absolute; inset: 0; }
+.hbs-title [data-for="light"] { opacity: 0; }
+
+.hbs-row { display: flex; align-items: center; gap: 14px; }
+.hbs-icon { width: 22px; height: 22px; opacity: .38; }
+.hbs-icon svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+.hbs-switch { position: relative; width: 248px; height: 84px; border-radius: 42px; cursor: pointer; touch-action: none;
+  -webkit-tap-highlight-color: transparent; user-select: none; }
+.hbs-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; }
+.hbs-plate { position: absolute; inset: 0; border-radius: inherit; background: var(--plate);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, calc(.06 + var(--t) * .5)) inset, 0 -1px 0 rgba(0, 0, 0, .35) inset,
+    0 18px 40px -18px rgba(0, 0, 0, calc(.85 - var(--t) * .5)), 0 2px 6px rgba(0, 0, 0, calc(.4 - var(--t) * .28)); }
+.hbs-input:focus-visible ~ .hbs-plate { outline: 2px solid var(--focus); outline-offset: 5px; }
+.hbs-groove { position: absolute; inset: 8px; border-radius: 34px; overflow: hidden; background: var(--groove);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, calc(.75 - var(--t) * .45)) inset, 0 -1px 0 rgba(255, 255, 255, calc(.05 + var(--t) * .4)) inset; }
+.hbs-ridge { position: absolute; left: 50%; top: 0; bottom: 0; width: 120px; margin-left: -60px;
+  background: radial-gradient(50% 75% at 50% 50%, rgba(255, 255, 255, calc(.07 + var(--t) * .28)), rgba(255, 255, 255, 0)); }
+.hbs-shadow { position: absolute; left: 0; top: 0; width: 64px; height: 64px; border-radius: 50%; background: rgba(0, 0, 0, .55);
+  filter: blur(6px); will-change: transform, opacity; }
+
+.hbs-ball { position: absolute; left: 0; top: 0; width: 64px; height: 64px; border-radius: 50%; cursor: grab; will-change: transform; }
+.hbs-switch.dragging .hbs-ball { cursor: grabbing; }
+.hbs-face { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; }
+/* polished steel reflects the room: a dark one at night, the warm light page by day */
+.hbs-steel, .hbs-steel-day { position: absolute; inset: 0; border-radius: 50%; }
+.hbs-steel { background: radial-gradient(circle at 34% 30%, #F6F7FA 0, #C5CBD5 14%, #7D8592 42%, #3A3F49 72%, #1A1D23 100%); }
+.hbs-steel-day { opacity: 0; background: radial-gradient(circle at 34% 30%, #FFFFFF 0, #F3EEE6 15%, #BDB4A6 44%, #6F675C 73%, #2F2A24 100%); }
+.hbs-ring { position: absolute; top: 0; bottom: 0; left: 50%; border: 0 solid rgba(0, 0, 0, .42); border-radius: 50%;
+  box-sizing: border-box; box-shadow: 1px 0 0 rgba(255, 255, 255, .22); }
+.hbs-shine { position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(28% 20% at 33% 25%, rgba(255, 255, 255, .95), rgba(255, 255, 255, 0)),
+    radial-gradient(60% 40% at 66% 88%, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0));
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, .35) inset; }
+
+.hbs-hint { margin: 6px 0 0; font-size: 14px; opacity: .5; }
+</style>
+</head>
+<body>
+
+<!-- EFFECT -->
+<div class="hbs">
+  <div class="hbs-sky night"></div>
+  <div class="hbs-sky day"></div>
+  <div class="hbs-flash"></div>
+  <div class="hbs-content">
+    <h1 class="hbs-title"><span data-for="dark">Dark mode</span><span data-for="light">Light mode</span></h1>
+    <div class="hbs-row">
+      <span class="hbs-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></span>
+      <div class="hbs-switch">
+        <input class="hbs-input" type="checkbox" role="switch" aria-label="Dark mode" checked>
+        <div class="hbs-plate"></div>
+        <div class="hbs-groove"><div class="hbs-ridge"></div><div class="hbs-shadow"></div></div>
+        <div class="hbs-ball">
+          <div class="hbs-face"><div class="hbs-steel"></div><div class="hbs-steel-day"></div><div class="hbs-ring"></div></div>
+          <div class="hbs-shine"></div>
+        </div>
+      </div>
+      <span class="hbs-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.5 14.6A7.6 7.6 0 0 1 9.4 4.5a7.6 7.6 0 1 0 10.1 10.1Z"/></svg></span>
+    </div>
+    <p class="hbs-hint">Throw the ball, or press Space</p>
+  </div>
+</div>
+<!-- /EFFECT -->
+
+<script>
+/* Heavy Ball Switch by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file */
+(() => {
+  const HUMP = 14;
+  const GRAVITY = 2.2;
+  const BOUNCE = 0.42;
+  const ROLL = 0.992;
+  const KICK = 9.4;
+  const THROW = 0.35;
+  const MAX = 14;
+  const WAVE = 760;
+
+  function saveTheme(theme) {
+    // remember the choice here, for example localStorage.setItem('theme', theme)
+  }
+
+  const root = document.querySelector('.hbs');
+  const box = root.querySelector('.hbs-switch'), input = box.querySelector('.hbs-input');
+  const ball = box.querySelector('.hbs-ball'), shadow = box.querySelector('.hbs-shadow');
+  const steelDay = ball.querySelector('.hbs-steel-day'), ring = ball.querySelector('.hbs-ring');
+  const day = root.querySelector('.hbs-sky.day'), flash = root.querySelector('.hbs-flash');
+  const content = root.querySelector('.hbs-content');
+  const titles = { dark: root.querySelector('[data-for="dark"]'), light: root.querySelector('[data-for="light"]') };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const STEP = 1000 / 60, R = 32, EDGE = 8, L = 248 - EDGE * 2 - R * 2;
+  const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const ease = k => 1 - Math.pow(1 - clamp(k, 0, 1), 3);
+
+  let theme = input.checked ? 'dark' : 'light';
+  let s = theme === 'dark' ? L : 0, v = 0, drag = null, frame = 0, last = 0, acc = 0;
+  let wave = null, shake = null;
+
+  const slope = x => HUMP * Math.PI / L * Math.cos(Math.PI * x / L);
+  const rise = x => Math.sin(Math.PI * clamp(x, 0, L) / L);
+  const sideOf = x => (x < L / 2 ? 'light' : 'dark');
+
+  // the hand cannot push the ball over the top: past the crest it only stretches
+  function stretch(x, from) {
+    const room = 30, lim = from === 'light' ? L / 2 - 26 - room / 2 : L / 2 + 26 + room / 2;
+    const over = from === 'light' ? x - lim : lim - x;
+    if (over <= 0) return clamp(x, 0, L);
+    const give = over * room / (over + room) * .5;
+    return from === 'light' ? lim + give : lim - give;
+  }
+
+  // a quick flick hands its speed to the ball, a slow push leaves it with its own
+  function release(d) {
+    const h = d.hist.filter(p => p.t > d.hist[d.hist.length - 1].t - 90);
+    const a = h[0], b = h[h.length - 1], dt = b.t - a.t;
+    const hand = dt > 0 ? (b.x - a.x) / dt : 0;
+    const own = dt > 0 ? (b.s - a.s) / dt : 0;
+    const speed = Math.abs(hand) >= THROW ? hand * .9 : own;
+    return clamp(speed * STEP, -MAX, MAX);
+  }
+
+  function hit(speed) {
+    const force = Math.abs(speed);
+    if (force > 1.2) shake = { at: now(), amp: Math.min(3.2, force * .36), dir: Math.sign(speed) };
+  }
+
+  function setTheme(side) {
+    theme = side;
+    input.checked = side === 'dark';
+    document.documentElement.dataset.theme = side;
+    wave = { at: now(), to: side };
+    if (navigator.vibrate) navigator.vibrate(side === 'light' ? 14 : 8);
+    saveTheme(side);
+    root.dispatchEvent(new CustomEvent('themechange', { detail: { theme: side }, bubbles: true }));
+  }
+
+  function step() {
+    v -= GRAVITY * 5 / 7 * slope(s);
+    v *= ROLL;
+    s += v;
+    if (s < 0 || s > L) {
+      s = s < 0 ? 0 : L;
+      hit(v);
+      const side = sideOf(s);
+      if (side !== theme) setTheme(side);
+      v = -v * BOUNCE;
+    }
+    return Math.abs(v) < .03 && (s === 0 || s === L);
+  }
+
+  const now = () => performance.now();
+
+  function paint(t) {
+    const r = rise(s), lift = r * HUMP;
+    const x = EDGE + s, scale = (1 + r * .075) * (drag && drag.onBall ? .97 : 1);
+    ball.style.transform = `translate(${x.toFixed(2)}px, ${(EDGE + 2 - r * 1.5).toFixed(2)}px) scale(${scale.toFixed(4)})`;
+    shadow.style.transform = `translate(${(x - EDGE + 3 + r * 3).toFixed(2)}px, ${(6 + lift * .45).toFixed(2)}px) scale(${(.92 + r * .1).toFixed(3)})`;
+    shadow.style.opacity = (.62 - r * .3).toFixed(3);
+    // one full turn from end to end, so at rest the engraved line sits on the rim and not across the face
+    const turn = Math.PI / 2 + s / L * Math.PI * 2, w = Math.abs(Math.sin(turn)) * 64, front = Math.sin(2 * turn) >= 0;
+    ring.style.width = `${w.toFixed(2)}px`;
+    ring.style.marginLeft = `${(-w / 2).toFixed(2)}px`;
+    ring.style.borderWidth = front ? '0 2px 0 0' : '0 0 0 2px';
+    ring.style.boxShadow = front ? '1px 0 0 rgba(255,255,255,.22)' : '-1px 0 0 rgba(255,255,255,.22)';
+
+    let tone = theme === 'light' ? 1 : 0, spread = tone ? 1 : 0, bloom = 0;
+    if (wave) {
+      const k = (t - wave.at) / (reduce ? 260 : WAVE);
+      const e = ease(k);
+      tone = wave.to === 'light' ? e : 1 - e;
+      spread = reduce ? (wave.to === 'light' ? 1 : 0) : tone;
+      bloom = wave.to === 'light' && !reduce ? Math.sin(Math.PI * clamp(k * 1.1, 0, 1)) * .55 : 0;
+      if (k >= 1) wave = null;
+    }
+    root.style.setProperty('--t', tone.toFixed(3));
+    const b = ball.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+    const far = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)) + 40;
+    day.style.opacity = reduce ? tone.toFixed(3) : '1';
+    day.style.clipPath = `circle(${(spread * far).toFixed(1)}px at ${cx.toFixed(1)}px ${cy.toFixed(1)}px)`;
+    flash.style.opacity = bloom.toFixed(3);
+    flash.style.setProperty('--fx', `${cx.toFixed(1)}px`);
+    flash.style.setProperty('--fy', `${cy.toFixed(1)}px`);
+    steelDay.style.opacity = tone.toFixed(3);
+    titles.dark.style.opacity = (1 - tone).toFixed(3);
+    titles.light.style.opacity = tone.toFixed(3);
+    titles.dark.style.filter = `blur(${(tone * 3).toFixed(2)}px)`;
+    titles.light.style.filter = `blur(${((1 - tone) * 3).toFixed(2)}px)`;
+
+    let dx = 0;
+    if (shake) {
+      const k = (t - shake.at) / 260;
+      dx = k < 1 ? shake.amp * shake.dir * Math.exp(-k * 4) * Math.cos(k * 18) : 0;
+      if (k >= 1) shake = null;
+    }
+    content.style.transform = dx ? `translateX(${dx.toFixed(2)}px)` : '';
+  }
+
+  function tick(t) {
+    acc += Math.min(t - last, 64);
+    last = t;
+    let still = !!drag;
+    while (acc >= STEP) { acc -= STEP; if (!drag) still = step(); }
+    paint(t);
+    if (!drag && still && !wave && !shake) { frame = 0; return; }
+    frame = requestAnimationFrame(tick);
+  }
+  function run() {
+    if (frame) return;
+    last = now();
+    acc = 0;
+    frame = requestAnimationFrame(tick);
+  }
+
+  // a tap: a push just strong enough to clear the top. Space and Enter, or reduced motion: a short slide
+  function kick(to, slide) {
+    if (sideOf(s) === to && !drag) return;
+    if (reduce || slide) {
+      const from = s, at = now(), goal = to === 'light' ? 0 : L;
+      setTheme(to);
+      (function slide(t) {
+        s = from + (goal - from) * ease((t - at) / 220);
+        paint(t);
+        if (t - at < 280) requestAnimationFrame(slide); else run();
+      })(at);
+      return;
+    }
+    v = to === 'light' ? -KICK : KICK;
+    run();
+  }
+
+  box.addEventListener('pointerdown', e => {
+    if (drag || e.button > 0) return;
+    e.preventDefault();
+    const onBall = ball.contains(e.target);
+    drag = { id: e.pointerId, x0: e.clientX, s0: s, from: sideOf(s), onBall, moved: false, hist: [{ x: e.clientX, s, t: now() }] };
+    v = 0;
+    try { box.setPointerCapture(e.pointerId); } catch (err) {}
+    box.classList.add('dragging');
+    run();
+  });
+  box.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0;
+    if (Math.abs(dx) > 4) drag.moved = true;
+    if (drag.moved && drag.onBall && !reduce) s = stretch(drag.s0 + dx, drag.from);
+    drag.hist.push({ x: e.clientX, s, t: now() });
+    if (drag.hist.length > 12) drag.hist.shift();
+  });
+  function drop(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    box.classList.remove('dragging');
+    if (!d.moved) { kick(d.from === 'light' ? 'dark' : 'light'); return; }
+    if (reduce) { kick(e.clientX - d.x0 > 0 ? 'dark' : 'light'); return; }
+    if (d.onBall) v = release(d);
+    run();
+  }
+  box.addEventListener('pointerup', drop);
+  box.addEventListener('pointercancel', drop);
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.click(); }
+  });
+  input.addEventListener('click', e => {
+    e.preventDefault();
+    kick(sideOf(s) === 'light' ? 'dark' : 'light', true);
+  });
+
+  document.documentElement.dataset.theme = theme;
+  paint(now());
+})();
+</script>
+</body>
+</html>

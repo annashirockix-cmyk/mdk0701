@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+HOW TO USE
+1. Open this file in a browser. It is a CAPTCHA with a ginger cat asleep in it.
+   Ticking "I'm not a robot" does not wake him, it only makes him grumpier.
+   Drag the ball of yarn past him: his eyes follow it, the pupils grow, the tail
+   twitches, he crouches and pounces. When the paw lands on the yarn the box
+   ticks itself and says Verified. With the keyboard: Tab to the yarn and move it
+   with the arrow keys. Untick the box and he goes back to sleep.
+2. Numbers to change, top of the script:
+   WAKE      how much yarn play it takes to wake him, higher = lazier cat
+   POUNCE    how excited he has to get before he jumps
+   REACH     how far he will jump for the yarn, in scene units
+   NOTICE    how close the yarn must pass for him to care
+   YARN_KEY  how far one arrow key press rolls the yarn
+   Colours of the cat are in FUR, CREAM and EYE, the card and page at the top
+   of the styles (--cw-*).
+3. Copy into your site: the styles from ".cw" down (not body), the block marked
+   EFFECT, the script before </body>. The real check belongs
+   on your server: in verify() send the result there and only accept the form
+   when the server agrees. A cat is a nice gate for people, not for bots.
+4. The box is a real <input type="checkbox">, the yarn is a real button, so Tab,
+   Space and screen readers work. With reduced motion the cat sits up instead of
+   jumping.
+5. The scene is real pixel art drawn by the script, 84 by 64 pixels, scaled up
+   by whole steps so every pixel stays sharp. No images, no libraries.
+Built by @codinvisual · 13.10.2026 · t.me/CodinVisual
+Use it free on your own site, personal or commercial. Don't repost or resell this file itself.
+
+КАК ПОЛЬЗОВАТЬСЯ
+1. Откройте файл в браузере. Это капча, в ней спит рыжий кот. Галочка
+   «I'm not a robot» его не будит, только сердит. Проведите клубок мимо него:
+   он следит глазами, зрачки растут, хвост дёргается, он приседает и прыгает.
+   Когда лапа ложится на клубок, галочка ставится сама и пишет Verified.
+   С клавиатуры: Tab до клубка и стрелки. Снимите галочку, и кот снова уснёт.
+2. Числа в начале скрипта:
+   WAKE      сколько игры с клубком нужно, чтобы проснулся, больше = ленивее
+   POUNCE    насколько он должен завестись перед прыжком
+   REACH     как далеко он прыгнет за клубком, в единицах сцены
+   NOTICE    как близко должен пройти клубок, чтобы коту было интересно
+   YARN_KEY  на сколько клубок катится от одного нажатия стрелки
+   Цвета кота в FUR, CREAM и EYE, цвета карточки и страницы в начале стилей (--cw-*).
+3. В свой сайт: стили от ".cw" и ниже (без body), блок EFFECT и скрипт
+   перед </body>. Настоящая проверка должна быть на сервере:
+   в verify() отправьте результат туда и принимайте форму, только когда сервер
+   согласен. Кот это приятная дверь для людей, а не защита от ботов.
+4. Галочка это настоящий <input type="checkbox">, клубок настоящая кнопка:
+   Tab, пробел и экранный диктор работают. При «уменьшить движение» кот
+   садится, а не прыгает.
+5. Сцена это настоящий пиксель-арт, его рисует скрипт: 84 на 64 пикселя,
+   увеличенных целыми шагами, поэтому каждый пиксель остаётся чётким.
+   Без картинок и библиотек.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wake the Cat CAPTCHA</title>
+<style>
+/* Wake the Cat by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file */
+body { margin: 0; }
+
+.cw {
+  --cw-page: #141117;
+  --cw-glow: #3A2A22;
+  --cw-card: #1E1B21;
+  --cw-line: rgba(255, 236, 214, .09);
+  --cw-ink: #F3EADF;
+  --cw-soft: #A79C94;
+  --cw-lamp: #F4B867;
+  --cw-ok: #86B88F;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  background: radial-gradient(70% 55% at 50% 42%, var(--cw-glow), var(--cw-page) 70%);
+  font-family: system-ui, sans-serif;
+  color: var(--cw-ink);
+  -webkit-font-smoothing: antialiased;
+}
+.cw-card { width: 100%; max-width: 340px; padding: 18px 18px 16px; border-radius: 22px; box-sizing: border-box;
+  background: var(--cw-card); box-shadow: 0 0 0 1px var(--cw-line) inset, 0 30px 60px -30px rgba(0, 0, 0, .8), 0 8px 18px -10px rgba(0, 0, 0, .6); }
+.cw-title { margin: 2px 2px 2px; font-size: 19px; font-weight: 680; letter-spacing: -.015em; }
+.cw-task { margin: 0 2px 14px; font-size: 14px; color: var(--cw-soft); }
+.cw-scene { position: relative; height: 232px; border-radius: 15px; overflow: hidden; background: #241C22; }
+.cw-scene canvas { position: absolute; left: 50%; top: 50%; translate: -50% -50%; display: block; image-rendering: pixelated; touch-action: none; cursor: default; }
+.cw-yarn { position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: -22px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; pointer-events: none; }
+.cw-yarn:focus-visible { outline: 2px solid var(--cw-lamp); outline-offset: 2px; }
+
+.cw-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 4px 2px; border-top: 1px solid var(--cw-line); }
+.cw-box { position: relative; width: 26px; height: 26px; flex: none; }
+.cw-box input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.cw-mark { position: absolute; inset: 0; border-radius: 7px; box-shadow: 0 0 0 1.5px rgba(255, 236, 214, .32) inset; background: rgba(0, 0, 0, .18);
+  pointer-events: none; transition: background-color .2s ease, box-shadow .2s ease, scale .16s ease-out; }
+.cw-mark svg { position: absolute; inset: 4px; width: 18px; height: 18px; fill: none; stroke: #16251A; stroke-width: 2.6; stroke-linecap: round;
+  stroke-linejoin: round; stroke-dasharray: 22; stroke-dashoffset: 22; transition: stroke-dashoffset .3s cubic-bezier(.23, 1, .32, 1) .05s; }
+.cw-box input:active + .cw-mark { scale: .96; }
+.cw-box input:focus-visible + .cw-mark { outline: 2px solid var(--cw-lamp); outline-offset: 3px; }
+.cw-box input:checked + .cw-mark { background: var(--cw-ok); box-shadow: none; }
+.cw-box input:checked + .cw-mark svg { stroke-dashoffset: 0; }
+.cw-label { flex: 1; font-size: 15px; font-weight: 560; }
+.cw-status { font-size: 13px; color: var(--cw-soft); text-align: right; transition: color .2s ease; }
+.cw-status.ok { color: var(--cw-ok); font-weight: 650; }
+@media (prefers-reduced-motion: reduce) {
+  .cw-mark, .cw-mark svg { transition-duration: .01s; }
+}
+.cw-instant .cw-mark, .cw-instant .cw-mark svg, .cw-instant .cw-status { transition: none; }
+</style>
+</head>
+<body>
+
+<!-- EFFECT -->
+<div class="cw">
+  <form class="cw-card" onsubmit="return false">
+    <h1 class="cw-title">Prove you're human</h1>
+    <p class="cw-task" id="cw-task">Wake the cat to continue.</p>
+    <div class="cw-scene">
+      <canvas aria-hidden="true"></canvas>
+      <button class="cw-yarn" type="button" aria-label="Ball of yarn. Arrow keys roll it past the cat"></button>
+    </div>
+    <div class="cw-row">
+      <label class="cw-box">
+        <input type="checkbox" aria-describedby="cw-task cw-status">
+        <span class="cw-mark"><svg viewBox="0 0 18 18"><path d="M3.5 9.5l3.6 3.4 7.4-8"/></svg></span>
+      </label>
+      <span class="cw-label">I'm not a robot</span>
+      <span class="cw-status" id="cw-status" aria-live="polite">Asleep</span>
+    </div>
+  </form>
+</div>
+<!-- /EFFECT -->
+
+<script>
+/* Wake the Cat by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file */
+(() => {
+  const WAKE = 1;
+  const POUNCE = 1.9;
+  const REACH = 46;
+  const NOTICE = 58;
+  const YARN_KEY = 4;
+  const FUR = ['#2C170F', '#A44F1E', '#D8762E', '#F2A257', '#B85F24'];
+  const CREAM = ['#D8B287', '#F6DCB3'];
+  const EYE = ['#8DC36A', '#4F7F39'];
+
+  function verify() {
+    // send the result to your server here and accept the form only when it says yes
+  }
+
+  const W = 84, H = 64, FLOOR = 55, HOR = 42;
+  const root = document.querySelector('.cw');
+  const scene = root.querySelector('.cw-scene'), canvas = scene.querySelector('canvas'), yarnKey = scene.querySelector('.cw-yarn');
+  const box = root.querySelector('.cw-box input'), status = root.querySelector('.cw-status');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ctx = canvas.getContext('2d');
+  canvas.width = W;
+  canvas.height = H;
+  const img = ctx.createImageData(W, H), px = new Uint32Array(img.data.buffer);
+  const cat = new Uint8Array(W * H);
+  const rgb = h => { const n = parseInt(h.slice(1), 16); return 0xff000000 | (n & 255) << 16 | (n >> 8 & 255) << 8 | n >> 16; };
+  const C = {
+    line: rgb(FUR[0]), shade: rgb(FUR[1]), base: rgb(FUR[2]), light: rgb(FUR[3]), stripe: rgb(FUR[4]),
+    creamShade: rgb(CREAM[0]), cream: rgb(CREAM[1]), eye: rgb(EYE[0]), eyeDark: rgb(EYE[1]), pupil: rgb('#140C0A'),
+    white: rgb('#FFF4E2'), pink: rgb('#E58E8C'), nose: rgb('#CF6470'), mouth: rgb('#5E1E26'), whisker: rgb('#F3E2C8'),
+    wall: [rgb('#231A21'), rgb('#2C2128'), rgb('#3A2A2D'), rgb('#4E3631'), rgb('#6A4834')],
+    floor: [rgb('#1B1418'), rgb('#2A1E21'), rgb('#36262A'), rgb('#4A3330'), rgb('#5E4136')],
+    lamp: [rgb('#120D10'), rgb('#3A2B2A'), rgb('#C9893F'), rgb('#F1B865'), rgb('#FFE3A8')],
+    yarn: [rgb('#26405A'), rgb('#3E6C93'), rgb('#5E92BE'), rgb('#94C0E2')],
+    zzz: rgb('#F6E7CF')
+  };
+  const TONES = [0, C.line, C.shade, C.base, C.light, C.stripe, C.creamShade, C.cream, C.eye, C.eyeDark, C.pupil, C.white, C.pink, C.nose, C.mouth, C.whisker];
+  const T = { line: 1, shade: 2, base: 3, light: 4, stripe: 5, creamShade: 6, cream: 7, eye: 8, eyeDark: 9, pupil: 10, white: 11, pink: 12, nose: 13, mouth: 14, whisker: 15 };
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const dith = (x, y) => (BAYER[(y & 3) * 4 + (x & 3)] + .5) / 16;
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const ease = k => (k = clamp(k), k * k * (3 - 2 * k));
+
+  // the room: a dark wall lit by a floor lamp on the left, a wooden floor with a pool of light
+  const room = new Uint32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const d = dith(x, y);
+    let c;
+    if (y < HOR) {
+      const g = clamp(1 - Math.hypot((x - 9) / 1.25, y - 17) / 40);
+      c = C.wall[Math.min(4, Math.floor(g * g * 4.4 + d * .9))];
+    } else {
+      const g = clamp(1 - Math.hypot((x - 22) / 2.2, (y - 54) * 1.2) / 26);
+      const plank = (y - HOR) % 6 === 0 || (x + (Math.floor((y - HOR) / 6) * 17)) % 29 === 0 ? -1 : 0;
+      c = C.floor[clamp(Math.floor(1 + g * 3.2 + d * .9) + plank, 0, 4)];
+    }
+    room[y * W + x] = c;
+  }
+  for (let x = 0; x < W; x++) room[HOR * W + x] = C.floor[0];
+  // the lamp
+  const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) room[y * W + x] = c; };
+  for (let y = 18; y < 52; y++) put(8, y, C.lamp[1]);
+  for (let x = 5; x < 12; x++) { put(x, 52, C.lamp[0]); put(x, 51, C.lamp[1]); }
+  for (let y = 10; y < 18; y++) for (let x = 8 - (y - 4) / 2; x <= 8 + (y - 4) / 2; x++) put(Math.round(x), y, y > 15 ? C.lamp[3] : C.lamp[2]);
+  for (let x = 3; x < 14; x++) put(x, 18, C.lamp[4]);
+
+  // the rasteriser: ellipses with a light from the lamp side, drawn into the cat layer
+  function ell(cx, cy, rx, ry, rot, paint) {
+    const cs = Math.cos(rot), sn = Math.sin(rot), R = Math.ceil(Math.max(rx, ry)) + 1;
+    for (let y = Math.floor(cy - R); y <= cy + R; y++) for (let x = Math.floor(cx - R); x <= cx + R; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const dx = x + .5 - cx, dy = y + .5 - cy, u = (dx * cs + dy * sn) / rx, v = (-dx * sn + dy * cs) / ry;
+      if (u * u + v * v > 1) continue;
+      const t = paint(u, v, x, y);
+      if (t) cat[y * W + x] = t;
+    }
+  }
+  const lit = (u, v, x, y) => {
+    const l = -.55 * u - .8 * v + (dith(x, y) - .5) * .35;
+    return l > .5 ? T.light : l < -.3 ? T.shade : T.base;
+  };
+  const dot = (x, y, t) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) cat[y * W + x] = t; };
+
+  // the cat is a set of numbers; every pose is the same numbers with other values, and springs carry him between them
+  const POSE = {
+    sleep: { bx: 0, by: -7.5, brx: 15, bry: 7.5, brot: 0, hx: 14, hy: -6, eye: 0, happy: 0, ear: .35, p1x: 12, p1y: -1, p2x: 16, p2y: -.5, legs: 0, curl: 1, up: 0, stream: 0, cover: 0, sit: 0 },
+    watch: { bx: 0, by: -7.5, brx: 15, bry: 7.5, brot: 0, hx: 16, hy: -15, eye: 1, happy: 0, ear: 0, p1x: 19, p1y: -1, p2x: 23, p2y: -1, legs: 0, curl: .3, up: .7, stream: 0, cover: 0, sit: 0 },
+    crouch: { bx: -1, by: -7, brx: 15.5, bry: 7, brot: -.16, hx: 16, hy: -11, eye: 1, happy: 0, ear: 0, p1x: 20, p1y: -1, p2x: 23, p2y: -1, legs: 0, curl: 0, up: .3, stream: .7, cover: 0, sit: 0 },
+    fly: { bx: 0, by: -8, brx: 18, bry: 6, brot: .28, hx: 18, hy: -10, eye: 1, happy: 0, ear: 0, p1x: 25, p1y: -6, p2x: 23, p2y: -3, legs: 0, curl: 0, up: 0, stream: 1, cover: 0, sit: 0 },
+    proud: { bx: -3, by: -11.5, brx: 10, bry: 11.5, brot: 0, hx: 0, hy: -25, eye: 1, happy: 1, ear: 0, p1x: 10.5, p1y: -8.6, p2x: 3, p2y: -1, legs: 1, curl: .9, up: .1, stream: 0, cover: 0, sit: 1 }
+  };
+  const KEYS = Object.keys(POSE.sleep);
+  const pose = {}, vel = {}, goal = { ...POSE.sleep };
+  KEYS.forEach(k => { pose[k] = POSE.sleep[k]; vel[k] = 0; });
+  function aim(name, extra = {}) { Object.assign(goal, POSE[name], extra); }
+
+  const S = {
+    mode: 'sleep', face: 1, ax: 30, ay: 0, tries: 0, interest: 0, look: 0, pupil: 0, yawn: 0, roll: 0, rollAt: -9, peek: 0,
+    react: null, jump: null, behind: 0, crouchAt: 0, land: 0, twitch: 0, verified: false, zzz: [], time: 0, breath: 0
+  };
+  const yarn = { x: 70, y: 57, held: false, spin: 0, speed: 0, pinned: false, pull: null };
+
+  function draw() {
+    cat.fill(0);
+    const p = pose, f = S.face, A = { x: S.ax, y: FLOOR + S.ay };
+    const X = x => A.x + x * f, Y = y => A.y + y;
+    const breath = Math.sin(S.breath) * (S.mode === 'sleep' ? .55 : .3);
+    const sq = S.land;
+    const bx = X(p.bx), by = Y(p.by) - breath * .5 + sq * 1.5, brx = p.brx * (1 + sq * .12), bry = p.bry * (1 - sq * .15) + breath * .25;
+    const belly = Math.sin(Math.PI * clamp(S.roll));
+
+    // tail: three shapes blended, curled round the body, raised, or streaming behind
+    const root = { x: bx - f * (brx - 2) * Math.cos(p.brot), y: by - 1 + f * 0 - Math.sin(p.brot * f) * (brx - 2) * f };
+    const tw = S.twitch;
+    const c1 = { x: lerp(lerp(root.x - f * 4, root.x - f * 6, p.up), root.x - f * 9, p.stream), y: lerp(lerp(by + p.bry + 1, root.y - 5, p.up), root.y + 3, p.stream) };
+    const c2 = {
+      x: lerp(lerp(bx + f * p.brx * .5, root.x - f * 3 + tw, p.up), root.x - f * 16, p.stream),
+      y: lerp(lerp(by + p.bry + 1.5, root.y - 15, p.up), root.y - 9 + tw * .5, p.stream)
+    };
+    const tail = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14, a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c = t * t;
+      tail.push({ x: a * root.x + b * c1.x + c * c2.x, y: a * root.y + b * c1.y + c * c2.y, r: lerp(2.3, 1.4, t), ring: i % 4 === 2 });
+    }
+    const drawTail = () => tail.forEach(s => ell(s.x, s.y, s.r, s.r, 0, (u, v, x, y) => s.ring ? T.stripe : lit(u, v, x, y)));
+
+    // far paws first, a shade darker
+    const far = t => (t === T.cream ? T.creamShade : t);
+    if (!belly || belly < .5) {
+      if (p.sit < .5 && p.cover < .5) limb(bx + f * (brx - 4), by + bry * .2, X(p.p2x), Y(p.p2y) - .5, true);
+      ell(X(p.p2x), Y(p.p2y), 2.6, 1.8, 0, () => far(T.cream));
+      ell(bx - f * (brx - 6), Y(-1), 3.2, 1.8, 0, () => T.creamShade);
+    }
+    if (p.curl < .5 || p.stream > .5) drawTail();
+    // body
+    ell(bx, by, brx, bry, p.brot * f, (u, v, x, y) => {
+      if (belly > .5) return v < -.35 ? (v < -.7 ? T.creamShade : T.cream) : lit(u, v, x, y);
+      if (v > .5) return v > .8 ? T.creamShade : T.cream;
+      const along = (x - bx) * f;
+      if (v < .15 && v > -.97 && ((Math.round(along) + 60) % 6 === 0) && Math.abs(u) < .8) return T.stripe;
+      return lit(u, v, x, y);
+    });
+    if (p.sit > .5) {
+      // sitting: a cream chest and the front legs standing on the floor
+      ell(bx + f * 4, by - 2, 4, 7, 0, (u, v) => (v > .6 ? T.creamShade : T.cream));
+    }
+    // near haunch and hind paw
+    if (belly < .5) {
+      ell(bx - f * (brx - 7), by + bry * .25, 6.5 * (1 - p.sit * .1), 5.5 + p.sit * 2.5, 0, lit);
+      ell(bx - f * (brx - 9.5) + f * p.sit * 3, Y(-1), 3.4, 1.9, 0, () => T.cream);
+    } else {
+      // on his back: all four paws in the air
+      [-9, -4, 5, 10].forEach((o, i) => ell(bx + o, by - bry - 1.5 - (i % 2) * 1.2, 2.2, 2.2, 0, () => T.cream));
+    }
+    if (p.curl >= .5 && p.stream <= .5) drawTail();
+    if (p.legs > .02) for (const [lx] of [[p.p2x]]) {
+      const top = by - 2, bot = Y(-1.5);
+      for (let y = Math.round(top); y <= bot; y++) for (let k = -1; k <= 1; k++) dot(X(lx) + k, y, k === -f ? T.base : T.light);
+    }
+    // near front paw
+    const coverX = lerp(X(p.p1x), X(p.hx) + f * 1, p.cover), coverY = lerp(Y(p.p1y), Y(p.hy) - 1, p.cover);
+    if (p.sit > .5 && p.cover < .5) {
+      // sitting: the near leg reaches from the chest down onto the yarn
+      const sx = bx + f * 5, sy = by - 2;
+      for (let i = 0; i <= 7; i++) { const k = i / 7; ell(lerp(sx, coverX, k), lerp(sy, coverY - 1, k), 2, 2, 0, (u, v, x, y) => (u * u + v * v > .72 ? T.line : lit(u, v, x, y))); }
+      ell(coverX + f * .5, coverY, 2.9, 1.9, 0, (u, v) => (u * u + v * v > .75 ? T.line : v > .4 ? T.creamShade : T.cream));
+    } else if (p.cover < .5) {
+      // the forearm from the chest, so a paw stretched forward never floats apart from the cat
+      if (belly < .5) limb(bx + f * (brx - 5), by + bry * .3, coverX, coverY - .5, false);
+      ell(coverX, coverY, 2.8, 1.9, 0, () => T.cream);
+    }
+
+    // head
+    const hx = X(p.hx), hy = Y(p.hy) - breath * .4 + sq * 1.2, look = Math.round(S.look * 1.4) * (belly > .5 ? 0 : 1);
+    const earFlat = p.ear;
+    for (const s of [-1, 1]) {
+      const tipX = hx + s * (6.2 + earFlat * 2.5), tipY = hy - 10.5 + earFlat * 4;
+      const baseA = { x: hx + s * 1.5, y: hy - 5 }, baseB = { x: hx + s * 8.6, y: hy - 2.5 };
+      tri(baseA, { x: tipX, y: tipY }, baseB, T.base, T.line);
+      tri({ x: lerp(baseA.x, tipX, .25) + s * .6, y: lerp(baseA.y, tipY, .25) + 1 }, { x: lerp(tipX, hx + s * 5, .25), y: tipY + 2.6 }, { x: lerp(baseB.x, tipX, .3) - s * .6, y: lerp(baseB.y, tipY, .3) + 1 }, T.pink, 0);
+    }
+    ell(hx, hy, 8.6, 7.1, 0, (u, v, x, y) => (u * u + v * v > .8 ? T.line : lit(u, v, x, y)));
+    for (const s of [-1, 1]) ell(hx + s * 6.4, hy + 2.6, 3.2, 2.4, 0, (u, v, x, y) => (v > .55 ? T.line : lit(u, v, x, y)));
+    [-2, 0, 2].forEach(o => { dot(hx + o + look * .5, hy - 6, T.stripe); dot(hx + o + look * .5, hy - 5, T.stripe); });
+    const fx = hx + look;
+    ell(fx, hy + 2.6, 3.8, 2.5, 0, (u, v) => (v > .6 ? T.creamShade : T.cream));
+    // eyes
+    const open = S.verified && p.happy > .5 ? 0 : clamp(p.eye + S.peek * .35);
+    for (const s of [-1, 1]) {
+      const ex = Math.round(fx + s * 3.6), ey = Math.round(hy - .5);
+      if (p.happy > .5 && open < .1) { dot(ex - 1, ey + 1, T.line); dot(ex, ey, T.line); dot(ex + 1, ey + 1, T.line); continue; }
+      if (open < .2 || (s === f && S.peek > 0 && p.eye < .5 && open < .6)) { dot(ex - 1, ey, T.line); dot(ex, ey + 1, T.line); dot(ex + 1, ey, T.line); continue; }
+      const h = open > .66 ? 3 : 2;
+      for (let y = 0; y < h; y++) for (let x = -1; x <= 1; x++) dot(ex + x, ey - (h > 2 ? 1 : 0) + y, y === h - 1 ? T.eyeDark : T.eye);
+      const pw = S.pupil > .55 ? 2 : 1, pxo = Math.round(clamp(S.look, -1, 1) * .6) + (pw === 2 ? -.5 : 0);
+      for (let y = 0; y < h; y++) for (let k = 0; k < pw; k++) dot(ex + Math.round(pxo) + k, ey - (h > 2 ? 1 : 0) + y, T.pupil);
+      if (h > 2) dot(ex - 1, ey - 1, T.white);
+    }
+    // nose, mouth, whiskers, yawn
+    dot(fx, hy + 1.5, T.nose); dot(fx - 1, hy + 1.5, T.nose);
+    if (S.yawn > .15) {
+      const r = 1 + S.yawn * 1.6;
+      ell(fx - .5, hy + 4 + S.yawn * .8, 1.6 + S.yawn * .6, r, 0, (u, v) => (v > .4 ? T.pink : T.mouth));
+      dot(fx - 2, hy + 3, T.white); dot(fx + 1, hy + 3, T.white);
+    } else { dot(fx - 2, hy + 3, T.line); dot(fx + 1, hy + 3, T.line); dot(fx - .5, hy + 2.5, T.line); }
+    for (const s of [-1, 1]) for (const k of [0, 1]) { dot(fx + s * 5, hy + 2 + k * 1.5, T.whisker); dot(fx + s * 6, hy + 1.7 + k * 2, T.whisker); }
+    // a paw over the eyes
+    if (p.cover >= .5) {
+      // the leg comes up from the chest and the paw lies across both eyes
+      const sx = X(p.p1x) - f * 2, sy = Y(-3);
+      for (let i = 0; i <= 8; i++) { const k = i / 8; ell(lerp(sx, coverX, k), lerp(sy, coverY + 2, k), 2.1, 2.1, 0, (u, v, x, y) => (u * u + v * v > .7 ? T.line : lit(u, v, x, y))); }
+      ell(coverX, coverY, 4.6, 2.6, 0, (u, v) => (u * u + v * v > .72 ? T.line : v > .45 ? T.creamShade : T.cream));
+      dot(coverX - 1.5, coverY + 1, T.creamShade); dot(coverX + 1.5, coverY + 1, T.creamShade);
+    }
+    // the outline round the whole cat, then the cat goes over the room
+    for (let i = 0; i < W * H; i++) px[i] = room[i];
+    // the shadow on the floor
+    const sh = clamp(1 - (-S.ay) / 22), sx = S.mode === 'proud' ? bx : bx;
+    ell(sx, FLOOR + .5, (brx + 3) * sh, 2.4 * sh, 0, (u, v, x, y) => { px[y * W + x] = C.floor[0]; return 0; });
+    const front = yarn.y >= FLOOR + 1.5;
+    if (!front) drawYarn();
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, t = cat[i];
+      if (t) { px[i] = TONES[t]; continue; }
+      if ((x > 0 && cat[i - 1] && cat[i - 1] !== T.whisker) || (x < W - 1 && cat[i + 1] && cat[i + 1] !== T.whisker) ||
+          (y > 0 && cat[i - W] && cat[i - W] !== T.whisker) || (y < H - 1 && cat[i + W] && cat[i + W] !== T.whisker)) px[i] = C.line;
+    }
+    if (front) drawYarn();
+    for (const z of S.zzz) if (z.t >= 0 && !(z.t > 1.15 && Math.floor(z.t * 10) % 2)) glyph(z.x, z.y, z.size);
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function limb(x0, y0, x1, y1, back) {
+    const n = Math.max(2, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 1.5));
+    for (let i = 0; i <= n; i++) {
+      const k = i / n;
+      ell(lerp(x0, x1, k), lerp(y0, y1, k), 1.9, 1.9, 0, (u, v, x, y) => (back ? T.shade : lit(u, v, x, y)));
+    }
+  }
+
+  function tri(a, b, c, fill, edge) {
+    const minX = Math.floor(Math.min(a.x, b.x, c.x)), maxX = Math.ceil(Math.max(a.x, b.x, c.x));
+    const minY = Math.floor(Math.min(a.y, b.y, c.y)), maxY = Math.ceil(Math.max(a.y, b.y, c.y));
+    const s = (p, q, r) => (p.x - r.x) * (q.y - r.y) - (q.x - r.x) * (p.y - r.y);
+    for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
+      const pt = { x: x + .5, y: y + .5 };
+      const d1 = s(pt, a, b), d2 = s(pt, b, c), d3 = s(pt, c, a);
+      if ((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0)) continue;
+      dot(x, y, fill);
+    }
+  }
+
+  function drawYarn() {
+    const r = 4.2, cx = yarn.x, cy = yarn.y - r;
+    // the loose thread
+    for (let i = 1; i < 9; i++) {
+      const x = Math.round(cx + 3 + i), y = Math.round(cy + r - .5 + Math.sin(i * .9 + yarn.spin) * .7);
+      if (x < W && y < H) px[y * W + x] = C.yarn[1];
+    }
+    ell(cx, FLOOR + .5, 4.5, 1.6, 0, (u, v, x, y) => { px[y * W + x] = C.floor[0]; return 0; });
+    ell(cx, cy, r, r, 0, (u, v, x, y) => {
+      const l = -.55 * u - .8 * v;
+      const band = Math.floor((u * Math.cos(yarn.spin) + v * Math.sin(yarn.spin)) * 3.2 + 9) % 2;
+      px[y * W + x] = u * u + v * v > .78 ? C.yarn[0] : l > .5 ? C.yarn[3] : band ? C.yarn[1] : C.yarn[2];
+      return 0;
+    });
+  }
+
+  const GLYPH = ['11111', '00010', '00100', '01000', '11111'];
+  function glyph(x, y, size) {
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (GLYPH[r][c] === '1')
+      for (let a = 0; a < size; a++) for (let b = 0; b < size; b++) {
+        const X = Math.round(x) + c * size + a, Y = Math.round(y) + r * size + b;
+        if (X >= 0 && Y >= 0 && X < W && Y < H) px[Y * W + X] = C.zzz;
+      }
+  }
+
+  function headAt() { const f = S.face; return { x: S.ax + pose.hx * f, y: FLOOR + S.ay + pose.hy }; }
+  function sayStatus(text, ok) { status.textContent = text; status.classList.toggle('ok', !!ok); }
+  function snore() { const h = headAt(), x = h.x + (S.face > 0 ? 6 : -11); S.zzz.push({ x, y: h.y - 13, size: 1, t: 0 }, { x: x + S.face * 5, y: h.y - 13, size: 1, t: -.55 }); }
+
+  // ticking the box while he sleeps: he rolls over and yawns, then hides his eyes, then just grumbles
+  box.addEventListener('click', e => {
+    if (S.verified) {
+      e.preventDefault();
+      return;
+    }
+    e.preventDefault();
+    if (S.mode !== 'sleep') { sayStatus('Look, he is up'); return; }
+    S.tries++;
+    if (S.tries === 1) { S.react = { kind: 'roll', t: 0 }; sayStatus('Try again'); }
+    else if (S.tries === 2) { S.react = { kind: 'cover', t: 0 }; sayStatus('Still asleep'); }
+    else { S.react = { kind: 'grumble', t: 0 }; sayStatus('Maybe something to chase?'); }
+  });
+  box.addEventListener('change', () => {
+    if (!box.checked && S.verified) goToSleep();
+  });
+  // once verified, the box can only be unticked; that puts him back to sleep
+  box.addEventListener('pointerdown', () => { if (S.verified) setTimeout(() => { box.checked = false; goToSleep(); }, 0); });
+
+  function goToSleep() {
+    S.verified = false;
+    box.checked = false;
+    S.mode = 'sleep';
+    S.interest = 0;
+    S.tries = 0;
+    S.yawn = 0;
+    yarn.pinned = false;
+    aim('sleep');
+    sayStatus('Asleep');
+  }
+
+  // the yarn: dragged with a pointer anywhere on the scene floor, or rolled with arrow keys
+  const toScene = e => { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; };
+  let grab = null;
+  canvas.addEventListener('pointerdown', e => {
+    const p = toScene(e);
+    if (yarn.pinned || Math.hypot(p.x - yarn.x, p.y - (yarn.y - 4)) > 8) return;
+    grab = { id: e.pointerId, dx: yarn.x - p.x, dy: yarn.y - p.y };
+    yarn.held = true;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    canvas.style.cursor = 'grabbing';
+  });
+  canvas.addEventListener('pointermove', e => {
+    const p = toScene(e);
+    if (!grab) { canvas.style.cursor = !yarn.pinned && Math.hypot(p.x - yarn.x, p.y - (yarn.y - 4)) < 8 ? 'grab' : 'default'; return; }
+    if (e.pointerId !== grab.id) return;
+    moveYarn(p.x + grab.dx, p.y + grab.dy);
+  });
+  const drop = e => { if (!grab || e.pointerId !== grab.id) return; grab = null; yarn.held = false; canvas.style.cursor = 'grab'; };
+  canvas.addEventListener('pointerup', drop);
+  canvas.addEventListener('pointercancel', drop);
+  yarnKey.addEventListener('keydown', e => {
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (!d || yarn.pinned) return;
+    e.preventDefault();
+    moveYarn(yarn.x + d[0] * YARN_KEY, yarn.y + d[1] * YARN_KEY * .5);
+  });
+  let lastMove = 0;
+  function moveYarn(x, y) {
+    const nx = clamp(x, 6, W - 6), ny = clamp(y, 49, H - 4), now = performance.now();
+    const dt = Math.max(16, now - lastMove) / 1000;
+    lastMove = now;
+    const dist = Math.hypot(nx - yarn.x, ny - yarn.y);
+    yarn.spin += (nx - yarn.x) * .35;
+    yarn.speed = Math.max(yarn.speed, Math.min(dist / dt, 160));
+    yarn.x = nx;
+    yarn.y = ny;
+  }
+
+  function spring(dt, k = 120, d = 16) {
+    for (const key of KEYS) {
+      vel[key] += ((goal[key] - pose[key]) * k - vel[key] * d) * dt;
+      pose[key] += vel[key] * dt;
+    }
+  }
+
+  function update(dt) {
+    S.time += dt;
+    S.breath += dt * (S.mode === 'sleep' ? 2.4 : S.mode === 'proud' ? 6.5 : 3.6);
+    // play near the cat makes him care; a still yarn lets the feeling fade
+    const h = headAt(), d = Math.hypot(yarn.x - h.x, (yarn.y - 4 - h.y) * .8);
+    const near = clamp(1 - d / NOTICE);
+    if (!S.verified) S.interest = Math.max(0, S.interest + (yarn.speed * near * .065 - S.interest * .18) * dt);
+    yarn.speed *= Math.exp(-dt * 10);
+
+    if (S.react) {
+      const r = S.react;
+      r.t += dt;
+      if (r.kind === 'roll') {
+        S.roll = clamp(r.t / .55);
+        if (r.t > .27 && !r.flipped) { r.flipped = true; S.face = -S.face; }
+        S.yawn = Math.sin(Math.PI * clamp((r.t - .6) / .9));
+        if (r.t > 1.1 && !r.snored) { r.snored = true; snore(); }
+        if (r.t > 1.7) { S.roll = 0; S.react = null; }
+      } else if (r.kind === 'cover') {
+        goal.cover = 1;
+        goal.ear = .7;
+        if (r.t > .6 && !r.snored) { r.snored = true; snore(); }
+        if (r.t > 1) S.react = null;
+      } else {
+        goal.ear = r.t < .5 ? .9 : .35;
+        S.twitch = Math.sin(r.t * 22) * 3 * (1 - clamp(r.t / .8));
+        if (r.t > .9) { S.react = null; S.twitch = 0; }
+      }
+    }
+
+    if (S.mode === 'sleep') {
+      S.peek = clamp((S.interest - WAKE * .35) / (WAKE * .4));
+      if (S.interest > WAKE) wake();
+    } else if (S.mode === 'watch') {
+      S.look = lerp(S.look, clamp((yarn.x - h.x) / 18, -1, 1), 1 - Math.exp(-dt * 9));
+      S.pupil = clamp(S.interest / POUNCE + .15);
+      goal.hy = POSE.watch.hy + clamp((yarn.y - FLOOR) * .3, -2, 2);
+      S.twitch = Math.sin(S.time * (9 + S.interest * 6)) * clamp(S.interest / POUNCE) * 2.6;
+      const dx = (yarn.x - S.ax) * S.face;
+      // the yarn went behind him: after a short look he turns round to it
+      S.behind = dx < -4 ? (S.behind || 0) + dt : 0;
+      if (S.behind > .35) { S.face = -S.face; S.land = .6; S.behind = 0; }
+      if (S.interest > POUNCE && dx > 14 && dx < REACH + 22) {
+        if (reduce) { win(); }
+        else { S.mode = 'crouch'; S.crouchAt = S.time; aim('crouch'); }
+      }
+    } else if (S.mode === 'crouch') {
+      const k = S.time - S.crouchAt;
+      S.look = clamp((yarn.x - h.x) / 18, -1, 1);
+      S.pupil = 1;
+      goal.bx = POSE.crouch.bx + Math.sin(k * 26) * .9 * clamp(k / .2);
+      S.twitch = Math.sin(k * 30) * 1.5;
+      if (k > .62) leap();
+    } else if (S.mode === 'leap') {
+      const j = S.jump;
+      j.t += dt;
+      const k = clamp(j.t / j.dur);
+      S.ax = lerp(j.from, j.to, ease(k));
+      S.ay = -Math.sin(Math.PI * k) * j.height;
+      if (k < .5) aim('fly'); else aim('fly', { p1x: j.reach, p1y: -1, brot: -.05 });
+      if (k >= 1) {
+        S.ax = j.to;
+        S.ay = 0;
+        S.land = 1;
+        const paw = S.ax + j.reach * S.face;
+        if (Math.abs(yarn.x - paw) < 9) { win(); }
+        else { S.mode = 'watch'; S.interest = POUNCE * .6; aim('watch'); }
+      }
+    } else if (S.mode === 'proud') {
+      S.look *= Math.exp(-dt * 4);
+      S.twitch = Math.sin(S.breath) * .6;
+    }
+    S.land = Math.max(0, S.land - dt * 6);
+    if (yarn.pull) {
+      const q = yarn.pull, k = ease((q.t += dt) / .45);
+      yarn.spin = lerp(q.fs, q.ts, k);
+      yarn.x = lerp(q.fx, q.tx, k);
+      yarn.y = lerp(q.fy, q.ty, k);
+      if (k >= 1) yarn.pull = null;
+    }
+
+    // the snores drift up and fade
+    for (const z of S.zzz) { z.t += dt; if (z.t > 0) { z.y -= dt * 5; z.x += dt * 1.5 * S.face; } }
+    S.zzz = S.zzz.filter(z => z.t < 1.5);
+    spring(dt, S.mode === 'leap' ? 300 : 120, S.mode === 'leap' ? 26 : 16);
+  }
+
+  function wake() {
+    S.mode = 'watch';
+    S.zzz = [];
+    S.peek = 0;
+    S.yawn = 0;
+    const side = Math.sign(yarn.x - S.ax) || 1;
+    if (side !== S.face) { S.face = side; S.land = .6; }
+    aim('watch');
+    sayStatus('He sees it');
+  }
+
+  function leap() {
+    S.mode = 'leap';
+    const f = S.face, ahead = (yarn.x - S.ax) * f;
+    // a far yarn gets the full jump, a near one a short pounce with the paw stretched to it
+    let to = ahead > 30 ? yarn.x - 22 * f : S.ax + f * 4;
+    to = Math.round(f > 0 ? clamp(to, 18, W - 28) : clamp(to, 28, W - 18));
+    const reach = clamp((yarn.x - to) * f, 12, 24);
+    S.jump = { t: 0, from: S.ax, to, reach, dur: ahead > 30 ? .52 : .36, height: ahead > 30 ? 15 : 7 };
+    aim('fly');
+  }
+
+  function win() {
+    S.mode = 'proud';
+    S.verified = true;
+    yarn.pinned = true;
+    if (grab) { try { canvas.releasePointerCapture(grab.id); } catch (err) {} grab = null; yarn.held = false; }
+    // he drags the yarn in under his paw
+    yarn.pull = { t: 0, fx: yarn.x, fy: yarn.y, tx: clamp(S.ax + S.face * 10.5, 6, W - 6), ty: FLOOR + .5, fs: yarn.spin, ts: Math.round(yarn.spin / (Math.PI * 2)) * Math.PI * 2 };
+    aim('proud');
+    box.checked = true;
+    sayStatus('Verified', true);
+    verify();
+  }
+
+  // for a page that already knows the visitor passed: show the verified cat at once, nothing to replay
+  window.wakeTheCat = {
+    restore(x = 50) {
+      Object.assign(S, { ax: x, ay: 0, face: 1, mode: 'proud', verified: true, breath: 0, land: 0, look: 0, roll: 0, yawn: 0, peek: 0, interest: 0, react: null, zzz: [] });
+      Object.assign(yarn, { pinned: true, x: clamp(x + 10.5, 6, W - 6), y: FLOOR + .5, spin: 0, pull: null, speed: 0 });
+      Object.assign(goal, POSE.proud); KEYS.forEach(k => { pose[k] = POSE.proud[k]; vel[k] = 0; });
+      root.classList.add('cw-instant');
+      box.checked = true; sayStatus('Verified', true);
+      requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('cw-instant')));
+    },
+    reset() {
+      root.classList.add('cw-instant');
+      S.ax = 30; S.face = 1; S.ay = 0; yarn.x = 70; yarn.y = 57; yarn.spin = 0; S.zzz = []; goToSleep(); KEYS.forEach(k => { pose[k] = POSE.sleep[k]; vel[k] = 0; });
+      draw();
+      requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('cw-instant')));
+    }
+  };
+
+  function fit() {
+    const w = scene.clientWidth, k = w / W;
+    canvas.style.width = W * k + 'px';
+    canvas.style.height = H * k + 'px';
+    scene.style.height = H * k + 'px';
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  let last = performance.now(), on = true;
+  new IntersectionObserver(es => { on = es[0].isIntersecting; }).observe(scene);
+  (function loop(now) {
+    const dt = Math.min(.05, (now - last) / 1000);
+    last = now;
+    if (on) {
+      update(dt);
+      draw();
+      const r = canvas.getBoundingClientRect(), s = scene.getBoundingClientRect();
+      yarnKey.style.left = (r.left - s.left + yarn.x / W * r.width) + 'px';
+      yarnKey.style.top = (r.top - s.top + (yarn.y - 4) / H * r.height) + 'px';
+    }
+    requestAnimationFrame(loop);
+  })(last);
+})();
+</script>
+</body>
+</html>

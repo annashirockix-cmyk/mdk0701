@@ -1,0 +1,107 @@
+/* ============================================================
+   ANIMATIONS.CSS - Визуальные эффекты (Магазин)
+   ============================================================ */
+
+/* === 1. ЭФФЕКТЫ ТЕКСТА === */
+.fx-rainbow-text {
+    background: linear-gradient(270deg, red, orange, yellow, green, cyan, blue, violet);
+    background-size: 1400% 1400%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbowMove 10s linear infinite;
+}
+@keyframes rainbowMove { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+
+.fx-neon-text {
+    color: #fff;
+    text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--accent), 0 0 40px var(--accent);
+    animation: neonPulse 1.5s infinite alternate;
+}
+@keyframes neonPulse {
+    from { text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--accent), 0 0 40px var(--accent); }
+    to { text-shadow: 0 0 2px #fff, 0 0 5px #fff, 0 0 10px var(--accent), 0 0 20px var(--accent); }
+}
+
+.fx-glitch-text {
+    position: relative;
+    color: #fff;
+    animation: glitch-skew 1s infinite linear alternate-reverse;
+}
+.fx-glitch-text::before, .fx-glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+}
+.fx-glitch-text::before {
+    left: 2px; text-shadow: -2px 0 red; clip: rect(44px, 450px, 56px, 0); animation: glitch-anim 5s infinite linear alternate-reverse;
+}
+.fx-glitch-text::after {
+    left: -2px; text-shadow: -2px 0 blue; clip: rect(44px, 450px, 56px, 0); animation: glitch-anim2 5s infinite linear alternate-reverse;
+}
+@keyframes glitch-anim { 0% { clip: rect(19px, 9999px, 72px, 0); } 100% { clip: rect(91px, 9999px, 31px, 0); } }
+@keyframes glitch-anim2 { 0% { clip: rect(87px, 9999px, 10px, 0); } 100% { clip: rect(5px, 9999px, 97px, 0); } }
+@keyframes glitch-skew { 0% { transform: skew(0deg); } 20% { transform: skew(-2deg); } 40% { transform: skew(3deg); } 60% { transform: skew(1deg); } 80% { transform: skew(-3deg); } 100% { transform: skew(0deg); } }
+
+.fx-typewriter {
+    overflow: hidden;
+    border-right: .15em solid var(--accent);
+    white-space: nowrap;
+    margin: 0 auto;
+    letter-spacing: .05em;
+    animation: typing 2.5s steps(40, end), blink-caret .75s step-end infinite;
+}
+@keyframes typing { from { width: 0 } to { width: 100% } }
+@keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: var(--accent) } }
+
+/* === 2. ЭФФЕКТЫ ФОНА === */
+.fx-aurora-bg {
+    background: linear-gradient(120deg, rgba(255,107,61,0.15), rgba(255,0,204,0.1), rgba(0,255,204,0.15), rgba(255,107,61,0.15));
+    background-size: 300% 300%;
+    animation: auroraMove 12s ease infinite;
+    border-radius: 16px;
+}
+@keyframes auroraMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+.fx-matrix-bg {
+    background-color: #000;
+    background-image: linear-gradient(0deg, transparent 24%, rgba(0, 255, 0, 0.05) 25%, rgba(0, 255, 0, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 0, 0.05) 75%, rgba(0, 255, 0, 0.05) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 0, 0.05) 25%, rgba(0, 255, 0, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 0, 0.05) 75%, rgba(0, 255, 0, 0.05) 76%, transparent 77%, transparent);
+    background-size: 50px 50px;
+    animation: matrixScroll 10s linear infinite;
+}
+@keyframes matrixScroll { from { background-position: 0 0; } to { background-position: 0 50px; } }
+
+.fx-starfield-bg {
+    background: radial-gradient(circle, #fff 1px, transparent 1px);
+    background-size: 50px 50px;
+    background-color: #000;
+    animation: starMove 5s linear infinite;
+}
+@keyframes starMove { from { background-position: 0 0; } to { background-position: 0 50px; } }
+
+/* === 3. ЭФФЕКТЫ КАРТОЧЕК (Hover) === */
+.fx-holo-card {
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+}
+.fx-holo-card::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(255,255,255,0.3), transparent 30%);
+    animation: holoRotate 4s linear infinite;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.fx-holo-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+.fx-holo-card:hover::before { opacity: 1; }
+@keyframes holoRotate { 100% { transform: rotate(360deg); } }
+
+.fx-3d-card {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s;
+}
+.fx-3d-card:hover {
+    transform: perspective(1000px) rotateX(10deg) rotateY(-10deg) translateY(-5px);
+    box-shadow: -10px 10px 20px rgba(0,0,0,0.3);
+}

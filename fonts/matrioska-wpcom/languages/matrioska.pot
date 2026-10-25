@@ -1,0 +1,246 @@
+# Copyright (C) 2025 Automattic
+# This file is distributed under the GNU General Public License v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Matrioska 1.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/theme/matrioska\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-08-22T01:23:31+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+
+#. Theme Name of the theme
+#: style.css
+msgid "Matrioska"
+msgstr ""
+
+#. Theme URI of the theme
+#: style.css
+msgid "https://themeshaper.com/matrioska/"
+msgstr ""
+
+#. Description of the theme
+#: style.css
+msgid "Matrioska is a blog design that displays posts overlapping featured images as a Matryoshka effect."
+msgstr ""
+
+#. Author of the theme
+#: style.css
+msgid "Automattic"
+msgstr ""
+
+#. Author URI of the theme
+#: style.css
+msgid "https://automattic.com"
+msgstr ""
+
+#: patterns/404.php
+msgctxt "Pattern title"
+msgid "404"
+msgstr ""
+
+#: patterns/404.php:17
+msgid "Oops!<br>The page can’t<br>be found."
+msgstr ""
+
+#: patterns/404.php:27
+msgid "It looks like nothing was found at this location. Maybe try a search?"
+msgstr ""
+
+#: patterns/archive.php
+msgctxt "Pattern title"
+msgid "archive"
+msgstr ""
+
+#: patterns/archive.php:13
+#: patterns/archive.php:42
+#: patterns/index.php:13
+#: patterns/index.php:40
+#: patterns/post-meta.php:14
+#: patterns/search.php:17
+#: patterns/search.php:46
+msgid "By"
+msgstr ""
+
+#: patterns/archive.php:49
+#: patterns/index.php:47
+#: patterns/post-meta.php:21
+#: patterns/search.php:53
+msgid "·"
+msgstr ""
+
+#: patterns/footer-minimal.php
+msgctxt "Pattern title"
+msgid "footer-minimal"
+msgstr ""
+
+#: patterns/footer-minimal.php:16
+#: patterns/footer-post.php:17
+#: patterns/footer.php:16
+msgid ""
+"\n"
+"Designed with <a href=\"https://wordpress.org\" rel=\"nofollow\">WordPress</a>"
+msgstr ""
+
+#: patterns/footer-post.php
+msgctxt "Pattern title"
+msgid "footer-post"
+msgstr ""
+
+#: patterns/footer.php
+msgctxt "Pattern title"
+msgid "footer"
+msgstr ""
+
+#: patterns/index.php
+msgctxt "Pattern title"
+msgid "index"
+msgstr ""
+
+#: patterns/post-meta.php
+msgctxt "Pattern title"
+msgid "post-meta"
+msgstr ""
+
+#: patterns/post-meta.php:27
+msgid "—"
+msgstr ""
+
+#: patterns/search.php
+msgctxt "Pattern title"
+msgid "search"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Default"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Sugar"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Aubergine"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Underworld"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Teakwood"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Cosmic"
+msgstr ""
+
+#: theme.json
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+msgctxt "Color name"
+msgid "Base"
+msgstr ""
+
+#: theme.json
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+msgctxt "Color name"
+msgid "Contrast"
+msgstr ""
+
+#: theme.json
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+msgctxt "Color name"
+msgid "Primary"
+msgstr ""
+
+#: theme.json
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+msgctxt "Color name"
+msgid "Secondary"
+msgstr ""
+
+#: theme.json
+#: styles/aubergine.json
+#: styles/cosmic.json
+#: styles/moss.json
+#: styles/sugar.json
+#: styles/teakwood.json
+msgctxt "Color name"
+msgid "Tertiary"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "System Font"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Medium"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Extra Large"
+msgstr ""
+
+#: styles/aubergine.json
+msgctxt "Style variation name"
+msgid "Aubergine"
+msgstr ""
+
+#: styles/cosmic.json
+msgctxt "Style variation name"
+msgid "Cosmic"
+msgstr ""
+
+#: styles/moss.json
+msgctxt "Style variation name"
+msgid "Moss"
+msgstr ""
+
+#: styles/sugar.json
+msgctxt "Style variation name"
+msgid "Sugar"
+msgstr ""
+
+#: styles/teakwood.json
+msgctxt "Style variation name"
+msgid "Teakwood"
+msgstr ""

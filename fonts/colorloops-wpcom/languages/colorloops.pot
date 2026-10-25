@@ -1,0 +1,315 @@
+# Copyright (C) 2024 Automattic
+# This file is distributed under the GNU General Public License v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Colorloops 1.0.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/theme/colorloops\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2024-09-28T02:45:44+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: colorloops\n"
+
+#. Theme Name of the theme
+#: style.css
+msgid "Colorloops"
+msgstr ""
+
+#. Theme URI of the theme
+#: style.css
+msgid "https://themeshaper.com/colorloops/"
+msgstr ""
+
+#. Description of the theme
+#: style.css
+msgid "Colorloops is a minimalistic theme designed to bring some color to your blogging. With a thoughtful, neutral frame, this theme will make your blog posts shine with a colorful effect."
+msgstr ""
+
+#. Author of the theme
+#: style.css
+msgid "Automattic"
+msgstr ""
+
+#. Author URI of the theme
+#: style.css
+msgid "https://automattic.com"
+msgstr ""
+
+#: patterns/404.php
+msgctxt "Pattern title"
+msgid "404"
+msgstr ""
+
+#: patterns/404.php:20
+msgid "Oops! That page can’t be found."
+msgstr ""
+
+#: patterns/404.php:28
+msgid "It looks like nothing was found at this location. Maybe try a search?"
+msgstr ""
+
+#: patterns/footer.php
+msgctxt "Pattern title"
+msgid "footer"
+msgstr ""
+
+#: patterns/footer.php:12
+msgid "Designed with <a href=\"https://wordpress.org\" rel=\"nofollow\">WordPress</a>"
+msgstr ""
+
+#: patterns/sidebar.php
+msgctxt "Pattern title"
+msgid "sidebar"
+msgstr ""
+
+#: patterns/sidebar.php:12
+msgid "From the blog"
+msgstr ""
+
+#: patterns/sidebar.php:28
+msgid "About the author"
+msgstr ""
+
+#: patterns/sidebar.php:32
+msgid "Sophia Bennett is an art historian and freelance writer with a passion for exploring the intersections between nature, symbolism, and artistic expression. With a background in Renaissance and modern art, Sophia enjoys uncovering the hidden meanings behind iconic works and sharing her insights with art lovers of all levels. When she’s not visiting museums or researching the latest trends in contemporary art, you can find her hiking in the countryside, always chasing the next rainbow."
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Base"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Contrast"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Primary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Secondary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Tertiary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Quaternary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Quinary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Senary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Septenary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Octonary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Nonary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Denary"
+msgstr ""
+
+#: styles/autunnale.json
+#: styles/bright-garden.json
+#: theme.json
+msgctxt "Color name"
+msgid "Undenary"
+msgstr ""
+
+#: styles/autunnale.json
+msgctxt "Style variation name"
+msgid "Autunnale"
+msgstr ""
+
+#: styles/bright-garden.json
+msgctxt "Style variation name"
+msgid "Bright Garden"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Default"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Green One"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Green Two"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Yellow One"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Yellow Two"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Orange One"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Orange Two"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Purple One"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Purple Two"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Turquoise One"
+msgstr ""
+
+#: theme.json
+msgctxt "Duotone name"
+msgid "Turquoise Two"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "2X-Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "X-Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Medium"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "X-Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "2X-Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "System Font"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "Bricolage Grotesque"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "Libre Caslon Text"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "Open Sauce Sans"
+msgstr ""
+
+#: theme.json
+msgctxt "Font family name"
+msgid "Overpass Mono"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Medium"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Extra Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Double Extra Large"
+msgstr ""

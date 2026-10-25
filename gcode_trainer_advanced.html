@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!--
+  G-Code Trainer — Полный курс на 100 уровней
+  Улучшенный интерфейс, 2 окна симулятора (XY и XZ), сохранение следа.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Тренажер G-кода PRO</title>
+<style>
+  :root {
+    --bg-dark: #0d1117;
+    --bg-panel: #161b22;
+    --bg-header: #010409;
+    --border: #30363d;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --success: #3fb950;
+    --danger: #f85149;
+    --warn: #d29922;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  body { 
+    margin: 0; background: var(--bg-dark); color: var(--text-main);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; box-sizing: border-box;
+  }
+  
+  .app-container {
+    width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: 12px;
+  }
+  
+  .header h1 { margin: 0 0 4px 0; font-size: 24px; font-weight: 600; }
+  .header p { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+  .main-workspace {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 65vh; min-height: 500px;
+  }
+
+  @media (max-width: 800px) {
+    .main-workspace { grid-template-columns: 1fr; height: auto; }
+    .panel { min-height: 300px; }
+  }
+
+  .panel {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  .panel-header {
+    background: var(--bg-header); padding: 8px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--text-muted); font-family: var(--mono);
+  }
+
+  /* Редактор */
+  .editor-area { flex: 1; position: relative; }
+  .code-input {
+    width: 100%; height: 100%; background: transparent; border: none; outline: none; resize: none;
+    padding: 16px; color: var(--text-main); font-family: var(--mono); font-size: 14px;
+    line-height: 1.5; box-sizing: border-box; white-space: pre; overflow-wrap: normal; overflow-x: auto;
+  }
+  
+  /* Консоль */
+  .console-area {
+    height: 30%; min-height: 120px; background: var(--bg-dark); border-top: 1px solid var(--border);
+    padding: 12px 16px; font-family: var(--mono); font-size: 12px; overflow-y: auto;
+  }
+  .log-line { margin-bottom: 4px; }
+  .log-info { color: var(--text-muted); }
+  .log-err { color: var(--danger); }
+  .log-ok { color: var(--success); }
+  .log-sys { color: var(--accent); }
+
+  /* Симулятор */
+  .sim-workspace { flex: 1; display: flex; flex-direction: column; }
+  .sim-view { flex: 1; position: relative; background: #0d1117; overflow: hidden; }
+  .sim-top { border-bottom: 1px solid var(--border); }
+  .sim-label { position: absolute; top: 8px; left: 8px; font-size: 10px; color: var(--text-muted); font-family: var(--mono); pointer-events: none; }
+  .sim-canvas { width: 100%; height: 100%; display: block; }
+
+  /* Подсказка */
+  .hint-box {
+    position: absolute; bottom: 16px; right: 16px; background: rgba(22, 27, 34, 0.95);
+    border: 1px solid var(--warn); border-radius: 6px; padding: 12px 16px;
+    max-width: 280px; font-size: 13px; color: var(--text-main); box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    z-index: 10; backdrop-filter: blur(4px);
+  }
+  .hint-box strong { color: var(--warn); display: block; margin-bottom: 4px; }
+  .hint-box[hidden] { display: none; }
+
+  /* Оверлей теории */
+  .theory-overlay {
+    position: absolute; inset: 0; background: rgba(13, 17, 23, 0.95); z-index: 20;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px;
+    text-align: center; backdrop-filter: blur(4px);
+  }
+  .theory-overlay[hidden] { display: none; }
+  .theory-content {
+    background: var(--bg-panel); padding: 24px; border-radius: 8px; border: 1px solid var(--border);
+    max-width: 600px; text-align: left; max-height: 80%; overflow-y: auto;
+  }
+  .theory-content h2 { margin-top: 0; font-size: 20px; color: var(--accent); }
+  .theory-content ul { padding-left: 20px; }
+  .theory-content li { margin-bottom: 8px; }
+  .theory-content code { background: var(--bg-dark); padding: 2px 6px; border-radius: 4px; font-family: var(--mono); color: var(--warn); }
+
+  /* Панель управления */
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg-panel); color: var(--text-main); font-weight: 500; font-size: 14px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn:hover { background: #21262d; border-color: #8b949e; }
+  .btn[hidden] { display: none; }
+  .btn-primary { background: #238636; border-color: #2ea043; color: #fff; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-danger { color: var(--danger); border-color: rgba(248, 81, 73, 0.4); }
+  .btn-danger:hover { background: rgba(248, 81, 73, 0.1); }
+  .status-msg { margin-left: auto; font-size: 14px; color: var(--text-muted); }
+  .status-msg.ok { color: var(--success); font-weight: 600; }
+  .status-msg.err { color: var(--danger); font-weight: 600; }
+
+  /* Поле ввода */
+  .single-input-wrap {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; width: 80%; max-width: 400px; z-index: 15;
+  }
+  .single-input {
+    flex: 1; background: var(--bg-dark); border: 1px solid var(--accent); border-radius: 4px;
+    padding: 10px; color: var(--accent); font-family: var(--mono); outline: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="header">
+    <h1 id="level-title">Загрузка...</h1>
+    <p id="level-desc"></p>
+  </div>
+
+  <div class="main-workspace">
+    <!-- ЛЕВАЯ ПАНЕЛЬ (Код и консоль) -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>part.nc</span>
+        <span id="file-status">Редактор</span>
+      </div>
+      <div class="editor-area">
+        <textarea class="code-input" id="editor" spellcheck="false" hidden></textarea>
+        <canvas id="editor-canvas" style="width:100%; height:100%; display:none;"></canvas>
+      </div>
+      <div class="console-area" id="console"></div>
+      
+      <!-- Поле ввода для практики -->
+      <div class="single-input-wrap" id="single-wrap" hidden>
+        <input type="text" class="single-input" id="single-input" placeholder="Введите команду...">
+        <button class="btn btn-primary" id="single-btn">OK</button>
+      </div>
+    </div>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ (Симулятор) -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>Симулятор</span>
+        <span id="sim-status">Ожидание</span>
+      </div>
+      <div class="sim-workspace">
+        <div class="sim-view sim-top">
+          <div class="sim-label">Вид сверху (X - Y)</div>
+          <canvas class="sim-canvas" id="sim-xy"></canvas>
+        </div>
+        <div class="sim-view">
+          <div class="sim-label">Вид сбоку (X - Z)</div>
+          <canvas class="sim-canvas" id="sim-xz"></canvas>
+        </div>
+      </div>
+      
+      <div class="hint-box" id="hint-box" hidden>
+        <strong>💡 Подсказка</strong>
+        <span id="hint-text"></span>
+      </div>
+
+      <div class="theory-overlay" id="theory" hidden>
+        <div class="theory-content" id="theory-content"></div>
+        <button class="btn btn-primary" id="theory-next" style="margin-top:16px;">Понятно, перейти к практике</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="run-btn" hidden>▶ Запустить</button>
+    <button class="btn" id="hint-btn" hidden>💡 Подсказка</button>
+    <button class="btn btn-danger" id="answer-btn" hidden>Показать ответ</button>
+    <button class="btn" id="reset-btn" hidden>Сброс</button>
+    <button class="btn btn-primary" id="next-btn" hidden>Далее →</button>
+    <span class="status-msg" id="status-msg"></span>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// БАЗА ЗНАНИЙ (100 УРОВНЕЙ)
+// ==========================================
+const LEVELS = [];
+
+// 1-2: Теория
+LEVELS.push({
+  type: 'theory', title: "Введение в G-код",
+  text: `<h2>Основы</h2><p>Программа ЧПУ состоит из кадров (строк).</p><ul>
+    <li><code>G21</code> — метрическая система (мм).</li>
+    <li><code>G90</code> — абсолютные координаты (от нуля).</li>
+    <li><code>G91</code> — относительные координаты (от текущей точки).</li>
+    <li><code>M3 S1500</code> — включить шпиндель (1500 об/мин).</li>
+    <li><code>M5</code> — выключить шпиндель.</li>
+    <li><code>M30</code> — конец программы.</li></ul>`
+});
+LEVELS.push({
+  type: 'theory', title: "Движение и координаты",
+  text: `<h2>Команды движения</h2><ul>
+    <li><code>G0</code> — быстрый холостой ход (без резания).</li>
+    <li><code>G1</code> — рабочая подача (резание). Требует скорость <code>F</code> (мм/мин).</li>
+    <li><code>G54</code> — рабочая система координат.</li></ul>
+    <p><i>Пример:</i> <code>G0 X10 Y10 Z5</code> — подойти, <code>G1 Z-2 F100</code> — опуститься.</p>`
+});
+
+// 3-7: Практика
+LEVELS.push({ type: 'single', title: "Практика 1", desc: "Включите абсолютную систему.", prompt: "G90", solution: "G90" });
+LEVELS.push({ type: 'single', title: "Практика 2", desc: "Включите относительную систему.", prompt: "G91", solution: "G91" });
+LEVELS.push({ type: 'single', title: "Практика 3", desc: "Включите шпиндель на 2500 об/мин.", prompt: "M3 S2500", solution: "M3 S2500", answers: ["M3 S2500", "S2500 M3"] });
+LEVELS.push({ type: 'single', title: "Практика 4", desc: "Переместите в X10 Y20 Z5 на быстром ходу.", prompt: "G0 X10 Y20 Z5", solution: "G0 X10 Y20 Z5", answers: ["G0 X10 Y20 Z5", "G00 X10 Y20 Z5"] });
+LEVELS.push({ type: 'single', title: "Практика 5", desc: "Опустите фрезу на Z-2 со скоростью 100.", prompt: "G1 Z-2 F100", solution: "G1 Z-2 F100", answers: ["G1 Z-2 F100", "G01 Z-2 F100"] });
+
+// 8-17: Поиск ошибок
+const bugScenarios = [
+  {
+    code: [
+      { t: 'G21', c: '#58a6ff' }, { t: 'G90', c: '#58a6ff' },
+      { t: 'G0 X10 Y10 Z5', c: '#c9d1d9', err: 'Нет включения шпинделя!', fix: 'M3 S1500', color: '#3fb950' },
+      { t: 'G1 Z-2 F200', c: '#c9d1d9' }, { t: 'G1 X50 Y10', c: '#c9d1d9' }, { t: 'G0 Z5', c: '#c9d1d9' }, { t: 'M30', c: '#3fb950' }
+    ],
+    path: [{ x: 10, y: 10, z: 5, rapid: true }, { x: 10, y: 10, z: -2, rapid: false }, { x: 50, y: 10, z: -2, rapid: false }, { x: 50, y: 10, z: 5, rapid: true }]
+  },
+  {
+    code: [
+      { t: 'G21', c: '#58a6ff' }, { t: 'G90', c: '#58a6ff' }, { t: 'M3 S1500', c: '#3fb950' },
+      { t: 'G0 X20 Y20 Z5', c: '#c9d1d9' }, { t: 'G1 Z-1', c: '#c9d1d9', err: 'Отсутствует подача F', fix: 'G1 Z-1 F150', color: '#c9d1d9' },
+      { t: 'G1 X80 Y20', c: '#c9d1d9' }, { t: 'G0 Z5', c: '#c9d1d9' }, { t: 'M30', c: '#3fb950' }
+    ],
+    path: [{ x: 20, y: 20, z: 5, rapid: true }, { x: 20, y: 20, z: -1, rapid: false }, { x: 80, y: 20, z: -1, rapid: false }, { x: 80, y: 20, z: 5, rapid: true }]
+  },
+  {
+    code: [
+      { t: 'G21', c: '#58a6ff' }, { t: 'G90', c: '#58a6ff' }, { t: 'M3 S1500', c: '#3fb950' },
+      { t: 'G0 X20 Y20 Z5', c: '#c9d1d9' }, { t: 'G1 Z-1 F100', c: '#c9d1d9' }, { t: 'G1 X80 Y20', c: '#c9d1d9' },
+      { t: 'G0 X40 Y40', c: '#c9d1d9', err: 'Быстрый ход на глубине!', fix: 'G1 X40 Y40', color: '#c9d1d9' },
+      { t: 'G0 Z5', c: '#c9d1d9' }, { t: 'M30', c: '#3fb950' }
+    ],
+    path: [{ x: 20, y: 20, z: 5, rapid: true }, { x: 20, y: 20, z: -1, rapid: false }, { x: 80, y: 20, z: -1, rapid: false }, { x: 40, y: 40, z: -1, rapid: false }, { x: 40, y: 40, z: 5, rapid: true }]
+  }
+];
+for (let i = 0; i < 10; i++) {
+  const b = bugScenarios[i % bugScenarios.length];
+  LEVELS.push({ type: 'fix', title: `Поиск ошибок ${i+1}`, file: `bug${i+1}.nc`, hint: "Найдите ошибку.", code: JSON.parse(JSON.stringify(b.code)), path: JSON.parse(JSON.stringify(b.path)) });
+}
+
+// 18-57: Легкий
+for (let i = 0; i < 40; i++) {
+  const s = 20 + (i % 5) * 10;
+  const isRel = i >= 20;
+  LEVELS.push({
+    type: 'code', title: `Квадрат ${s} (${isRel?'G91':'G90'})`, desc: `Нарисуйте квадрат.`,
+    startCode: `G21\nG90\nM3 S1500\nG0 X20 Y20 Z5\nG1 Z-2 F150\n${isRel?'G91\n':''}; Код...\n\nG0 Z5\nM30`,
+    solution: isRel 
+      ? `G21\nG90\nM3 S1500\nG0 X20 Y20 Z5\nG1 Z-2 F150\nG91\nG1 X${s} Y0\nG1 X0 Y${s}\nG1 X-${s} Y0\nG1 X0 Y-${s}\nG90\nG0 Z5\nM30`
+      : `G21\nG90\nM3 S1500\nG0 X20 Y20 Z5\nG1 Z-2 F150\nG1 X${20+s} Y20\nG1 X${20+s} Y${20+s}\nG1 X20 Y${20+s}\nG1 X20 Y20\nG0 Z5\nM30`,
+    targetPath: [[20,20], [20+s,20], [20+s,20+s], [20,20+s], [20,20]],
+    hint: "Точки квадрата: (20,20) -> (20+s,20) -> (20+s,20+s) -> (20,20+s)."
+  });
+}
+
+// 58-77: Средний
+for (let i = 0; i < 20; i++) {
+  const s = 40 + (i % 5) * 10;
+  if (i < 10) {
+    LEVELS.push({
+      type: 'code', title: `Треугольник ${s}`, desc: `Нарисуйте треугольник.`,
+      startCode: `G21\nG90\nM3 S1500\nG0 X20 Y20 Z5\nG1 Z-2 F150\n;...\nG0 Z5\nM30`,
+      solution: `G21\nG90\nM3 S1500\nG0 X20 Y20 Z5\nG1 Z-2 F150\nG1 X${20+s} Y20\nG1 X${20+s/2} Y${20+s}\nG1 X20 Y20\nG0 Z5\nM30`,
+      targetPath: [[20,20], [20+s,20], [20+s/2,20+s], [20,20]]
+    });
+  } else {
+    LEVELS.push({
+      type: 'code', title: `Ромб ${s}`, desc: `Нарисуйте ромб с центром (50,50).`,
+      startCode: `G21\nG90\nM3 S1500\nG0 X50 Y${50+s} Z5\nG1 Z-2 F150\n;...\nG0 Z5\nM30`,
+      solution: `G21\nG90\nM3 S1500\nG0 X50 Y${50+s} Z5\nG1 Z-2 F150\nG1 X${50+s} Y50\nG1 X50 Y${50-s}\nG1 X${50-s} Y50\nG1 X50 Y${50+s}\nG0 Z5\nM30`,
+      targetPath: [[50,50+s], [50+s,50], [50,50-s], [50-s,50], [50,50+s]]
+    });
+  }
+}
+
+// 78-99: Сложный
+for (let i = 0; i < 22; i++) {
+  const points = 5 + (i % 5);
+  const r = 30;
+  const targetPath = [];
+  for (let a = 0; a <= points; a++) {
+    const angle = (a / points) * Math.PI * 2;
+    targetPath.push([50 + Math.cos(angle) * r, 50 + Math.sin(angle) * r]);
+  }
+  LEVELS.push({
+    type: 'code', title: `Многоугольник (${points})`, desc: `Нарисуйте ${points}-угольник.`,
+    startCode: `G21\nG90\nM3 S1500\nG0 X80 Y50 Z5\nG1 Z-2 F150\n;...\nG0 Z5\nM30`,
+    solution: null, targetPath: targetPath, hint: null
+  });
+}
+
+// 100: Хардкор
+LEVELS.push({
+  type: 'hardcore', title: "ФИНАЛЬНЫЙ ХАРДКОР", desc: "Нарисуйте звезду. Подсказок нет.",
+  startCode: `G21\nG90\nM3 S2000\nG0 X50 Y80 Z5\nG1 Z-2 F100\n;...\nG0 Z5\nM30`,
+  solution: null, targetPath: [[50,80], [61,61], [82,58], [66,44], [70,24], [50,35], [30,24], [34,44], [18,58], [39,61], [50,80]], hint: null
+});
+
+// ==========================================
+// ОСНОВНАЯ ЛОГИКА
+// ==========================================
+const NEED = 0.5;
+const TOLERANCE = 25;
+const CHECK_TOLERANCE = 5;
+
+const editor = document.getElementById('editor');
+const editorCanvas = document.getElementById('editor-canvas');
+const eCtx = editorCanvas.getContext('2d');
+const simXY = document.getElementById('sim-xy');
+const xyCtx = simXY.getContext('2d');
+const simXZ = document.getElementById('sim-xz');
+const xzCtx = simXZ.getContext('2d');
+
+const titleEl = document.getElementById('level-title');
+const descEl = document.getElementById('level-desc');
+const statusMsg = document.getElementById('status-msg');
+const consoleEl = document.getElementById('console');
+const fileStatus = document.getElementById('file-status');
+const simStatus = document.getElementById('sim-status');
+
+const btnRun = document.getElementById('run-btn');
+const btnHint = document.getElementById('hint-btn');
+const btnAnswer = document.getElementById('answer-btn');
+const btnReset = document.getElementById('reset-btn');
+const btnNext = document.getElementById('next-btn');
+
+const hintBox = document.getElementById('hint-box');
+const hintText = document.getElementById('hint-text');
+const theoryBox = document.getElementById('theory');
+const theoryContent = document.getElementById('theory-content');
+const btnTheoryNext = document.getElementById('theory-next');
+const singleWrap = document.getElementById('single-wrap');
+const singleInput = document.getElementById('single-input');
+const btnSingle = document.getElementById('single-btn');
+
+let currentLevelIdx = 0;
+let activeCode = []; // Для отрисовки кода в режиме fix
+let bugs = [], stroke = null, done = false, isSimulating = false;
+let simStartTime = 0;
+let userCuts = [];
+let permanentCuts = []; // Для сохранения следа
+
+let dpr = window.devicePixelRatio || 1;
+let simTransXY = { scale: 1, cx: 0, cy: 0, ox: 0, oy: 0 };
+let simTransXZ = { scaleX: 1, scaleZ: 1, cx: 0, cy: 0, ox: 0, oy: 0 };
+
+// ==========================================
+// ПАРСЕР И ВАЛИДАТОР
+// ==========================================
+function getArcPoints(x1, y1, x2, y2, i, j, clockwise) {
+  const cx = x1 + i, cy = y1 + j, r = Math.hypot(i, j);
+  let a1 = Math.atan2(y1 - cy, x1 - cx), a2 = Math.atan2(y2 - cy, x2 - cx);
+  if (clockwise) { if (a2 >= a1) a2 -= 2 * Math.PI; } else { if (a2 <= a1) a2 += 2 * Math.PI; }
+  const pts = [];
+  for (let s = 0; s <= 36; s++) {
+    const a = a1 + (a2 - a1) * (s / 36);
+    pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+  }
+  return pts;
+}
+
+function parseGCode(code) {
+  const lines = code.split('\n');
+  let currentX = 0, currentY = 0, currentZ = 5, isRelative = false;
+  let path = [{x: currentX, y: currentY, z: currentZ, rapid: true}];
+  
+  lines.forEach(line => {
+    line = line.split(';')[0].trim().toUpperCase();
+    if (!line) return;
+    if (line.includes('G90')) isRelative = false;
+    if (line.includes('G91')) isRelative = true;
+
+    const matchX = line.match(/(?:^|\s)X([+-]?\d*\.?\d+)/);
+    const matchY = line.match(/(?:^|\s)Y([+-]?\d*\.?\d+)/);
+    const matchZ = line.match(/(?:^|\s)Z([+-]?\d*\.?\d+)/);
+    const matchI = line.match(/(?:^|\s)I([+-]?\d*\.?\d+)/);
+    const matchJ = line.match(/(?:^|\s)J([+-]?\d*\.?\d+)/);
+
+    let nextX = currentX, nextY = currentY, nextZ = currentZ;
+    if (matchX) nextX = isRelative ? currentX + parseFloat(matchX[1]) : parseFloat(matchX[1]);
+    if (matchY) nextY = isRelative ? currentY + parseFloat(matchY[1]) : parseFloat(matchY[1]);
+    if (matchZ) nextZ = isRelative ? currentZ + parseFloat(matchZ[1]) : parseFloat(matchZ[1]);
+
+    let isRapid = line.includes('G0');
+    if (line.includes('G2') || line.includes('G3')) {
+      const i = matchI ? parseFloat(matchI[1]) : 0, j = matchJ ? parseFloat(matchJ[1]) : 0;
+      const arcPts = getArcPoints(currentX, currentY, nextX, nextY, i, j, line.includes('G2'));
+      arcPts.forEach(pt => path.push({ x: pt.x, y: pt.y, z: nextZ, isArc: true, rapid: isRapid }));
+    } else if (line.includes('G0') || line.includes('G1')) {
+      path.push({ x: nextX, y: nextY, z: nextZ, rapid: isRapid });
+    }
+    currentX = nextX; currentY = nextY; currentZ = nextZ;
+  });
+
+  const cuts = [];
+  for (let k = 1; k < path.length; k++) {
+    if (path[k-1].z < 0 && path[k].z < 0) cuts.push([path[k-1].x, path[k-1].y, path[k].x, path[k].y]);
+  }
+  return { path, cuts };
+}
+
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / l2; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+function validate(userCuts, targetPath) {
+  if (!userCuts || userCuts.length === 0) return 999;
+  const targets = Array.isArray(targetPath[0][0]) ? targetPath : [targetPath];
+  let maxError = 0;
+  for (const segment of targets) {
+    for (let i = 0; i < segment.length - 1; i++) {
+      const [tx1, ty1] = segment[i], [tx2, ty2] = segment[i+1];
+      for (let t = 0; t <= 1; t += 0.05) {
+        const px = tx1 + (tx2 - tx1) * t, py = ty1 + (ty2 - ty1) * t;
+        let minDist = Infinity;
+        for (const [ux1, uy1, ux2, uy2] of userCuts) {
+          const d = distToSegment(px, py, ux1, uy1, ux2, uy2); if (d < minDist) minDist = d;
+        }
+        if (minDist > maxError) maxError = minDist;
+      }
+    }
+  }
+  return maxError;
+}
+
+// ==========================================
+// ИНТЕРФЕЙС
+// ==========================================
+function addLog(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `log-line log-${type}`;
+  el.innerText = msg;
+  consoleEl.appendChild(el);
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+function clearLogs() { consoleEl.innerHTML = ''; }
+
+function updateTransforms() {
+  const w = simXY.clientWidth, h = simXY.clientHeight;
+  const level = LEVELS[currentLevelIdx];
+  
+  let minX = 0, maxX = 100, minY = 0, maxY = 100;
+  if (level && level.targetPath) {
+    const flat = level.targetPath.flat(2);
+    if (flat.length > 0) {
+      minX = Math.min(...level.targetPath.flat(1).map(p => p[0]));
+      maxX = Math.max(...level.targetPath.flat(1).map(p => p[0]));
+      minY = Math.min(...level.targetPath.flat(1).map(p => p[1]));
+      maxY = Math.max(...level.targetPath.flat(1).map(p => p[1]));
+    }
+  }
+  
+  const pad = 30;
+  const pW = Math.max(maxX - minX, 80);
+  const pH = Math.max(maxY - minY, 80);
+  
+  // XY
+  const scaleXY = Math.min(w / (pW + pad*2), h / (pH + pad*2));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  simTransXY = { scale: scaleXY, cx: w/2, cy: h/2, ox: centerX, oy: centerY };
+  
+  // XZ (Z отображаем вверх, но фреза уходит вниз, так что инвертируем)
+  const hXZ = simXZ.clientHeight;
+  const scaleXbot = w / (pW + pad*2);
+  const scaleZbot = hXZ / 20; // 20 мм по Z на всю высоту
+  simTransXZ = { scaleX: scaleXbot, scaleZ: scaleZbot, cx: w/2, cy: hXZ * 0.3, ox: centerX, oy: 0 };
+}
+
+function loadLevel(index) {
+  currentLevelIdx = index;
+  const level = LEVELS[index];
+  
+  titleEl.textContent = `${index + 1}. ${level.title}`;
+  descEl.textContent = level.desc || '';
+  statusMsg.textContent = '';
+  statusMsg.className = 'status-msg';
+  
+  theoryBox.hidden = true;
+  singleWrap.hidden = true;
+  editor.hidden = true;
+  editorCanvas.style.display = 'none';
+  btnRun.hidden = true;
+  btnHint.hidden = !level.hint && level.type !== 'fix';
+  btnAnswer.hidden = !level.solution;
+  hintBox.hidden = true;
+  btnReset.hidden = true;
+  btnNext.hidden = true;
+  
+  done = false; isSimulating = false; stroke = null; userCuts = []; permanentCuts = [];
+  fileStatus.textContent = level.file || 'main.nc';
+  simStatus.textContent = 'Ожидание';
+  clearLogs();
+
+  if (level.type === 'theory') {
+    theoryBox.hidden = false;
+    theoryContent.innerHTML = level.text;
+    btnHint.hidden = true;
+    addLog('> Система готова.', 'sys');
+  } else if (level.type === 'single') {
+    singleWrap.hidden = false;
+    singleInput.value = '';
+    singleInput.disabled = false;
+    btnSingle.hidden = false;
+    singleInput.focus();
+    addLog('> Ожидание команды...', 'info');
+  } else if (level.type === 'code' || level.type === 'hardcore') {
+    editor.hidden = false;
+    editor.value = level.startCode;
+    btnRun.hidden = false;
+    addLog('> Редактор готов. Напишите код и нажмите "Запустить".', 'info');
+  } else if (level.type === 'fix') {
+    btnHint.hidden = false;
+    editorCanvas.style.display = 'block';
+    activeCode = level.code.map(line => ({ ...line }));
+    bugs = [];
+    let bugIdx = 0;
+    activeCode.forEach((line, i) => {
+      if (!line.err) return;
+      bugs.push({ k: bugIdx++, line: i, fixed: false, hit: null, samples: [] });
+    });
+    addLog('> Найдены ошибки в коде.', 'err');
+  }
+  
+  resizeCanvases();
+}
+
+function resizeCanvases() {
+  const rectE = editor.parentElement.getBoundingClientRect();
+  editorCanvas.width = rectE.width * dpr;
+  editorCanvas.height = rectE.height * dpr;
+  editorCanvas.style.width = '100%';
+  editorCanvas.style.height = '100%';
+  eCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  simXY.width = simXY.clientWidth * dpr;
+  simXY.height = simXY.clientHeight * dpr;
+  xyCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  simXZ.width = simXZ.clientWidth * dpr;
+  simXZ.height = simXZ.clientHeight * dpr;
+  xzCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  updateTransforms();
+  drawEditor();
+  drawSimBg();
+  drawSim();
+}
+
+function drawEditor() {
+  const level = LEVELS[currentLevelIdx];
+  if (level.type !== 'fix') return;
+  
+  const w = editorCanvas.width / dpr, h = editorCanvas.height / dpr;
+  eCtx.clearRect(0, 0, w, h);
+  eCtx.fillStyle = '#161b22'; // bg-panel
+  eCtx.fillRect(0, 0, w, h);
+  
+  const fontSize = 14, lineH = 21, padX = 16, padY = 16, gutterW = 40;
+  eCtx.font = `${fontSize}px ${getComputedStyle(document.documentElement).getPropertyValue('--mono')}`;
+  
+  let x = padX + gutterW, y = padY + fontSize;
+  
+  activeCode.forEach((line, i) => {
+    // Номера строк
+    eCtx.fillStyle = '#8b949e';
+    eCtx.textAlign = 'right';
+    eCtx.fillText(String(i + 1), padX + gutterW - 10, y);
+    
+    // Код
+    eCtx.fillStyle = line.c;
+    eCtx.textAlign = 'left';
+    eCtx.fillText(line.t, x, y);
+    
+    // Координаты для заштриховки
+    line.x = x;
+    line.y = y - fontSize;
+    line.w = eCtx.measureText(line.t).width;
+    
+    y += lineH;
+  });
+
+  // Привязка зон для ошибок
+  bugs.forEach((bug) => {
+    const line = activeCode[bug.line];
+    bug.startX = line.x;
+    bug.endX = line.x + line.w;
+    bug.y = line.y + fontSize * 0.85;
+    const n = Math.max(20, Math.round((bug.endX - bug.startX) / 3));
+    if (!bug.hit) bug.hit = new Array(n).fill(false);
+    bug.samples = [];
+    for (let k = 0; k < n; k++) {
+      const t = k / (n - 1);
+      bug.samples.push([bug.startX + (bug.endX - bug.startX) * t, bug.y]);
+    }
+  });
+}
+
+function drawSimBg() {
+  const level = LEVELS[currentLevelIdx];
+  
+  // XY BG
+  const w = simXY.width / dpr, h = simXY.height / dpr;
+  xyCtx.clearRect(0, 0, w, h);
+  xyCtx.fillStyle = '#0d1117';
+  xyCtx.fillRect(0, 0, w, h);
+  
+  xyCtx.strokeStyle = 'rgba(255,255,255,0.03)';
+  for (let i = 0; i < w; i += 20) { xyCtx.beginPath(); xyCtx.moveTo(i, 0); xyCtx.lineTo(i, h); xyCtx.stroke(); }
+  for (let i = 0; i < h; i += 20) { xyCtx.beginPath(); xyCtx.moveTo(0, i); xyCtx.lineTo(w, i); xyCtx.stroke(); }
+
+  const t = simTransXY;
+  const sx = t.cx + (0 - t.ox) * t.scale, sy = t.cy - (0 - t.oy) * t.scale;
+  xyCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+  xyCtx.beginPath(); xyCtx.moveTo(0, sy); xyCtx.lineTo(w, sy); xyCtx.stroke();
+  xyCtx.beginPath(); xyCtx.moveTo(sx, 0); xyCtx.lineTo(sx, h); xyCtx.stroke();
+  
+  if (level && level.targetPath) {
+    xyCtx.strokeStyle = 'rgba(88, 166, 255, 0.4)';
+    xyCtx.lineWidth = 1.5;
+    xyCtx.setLineDash([4, 4]);
+    const drawTarget = (path) => {
+      xyCtx.beginPath();
+      path.forEach(([x, y], i) => {
+        const px = t.cx + (x - t.ox) * t.scale, py = t.cy - (y - t.oy) * t.scale;
+        if (i === 0) xyCtx.moveTo(px, py); else xyCtx.lineTo(px, py);
+      });
+      xyCtx.stroke();
+    };
+    if (Array.isArray(level.targetPath[0][0])) level.targetPath.forEach(drawTarget);
+    else drawTarget(level.targetPath);
+    xyCtx.setLineDash([]);
+  }
+
+  // XZ BG
+  const wb = simXZ.width / dpr, hb = simXZ.height / dpr;
+  xzCtx.clearRect(0, 0, wb, hb);
+  xzCtx.fillStyle = '#0d1117';
+  xzCtx.fillRect(0, 0, wb, hb);
+  
+  xzCtx.strokeStyle = 'rgba(255,255,255,0.03)';
+  for (let i = 0; i < wb; i += 20) { xzCtx.beginPath(); xzCtx.moveTo(i, 0); xzCtx.lineTo(i, hb); xzCtx.stroke(); }
+  for (let i = 0; i < hb; i += 20) { xzCtx.beginPath(); xzCtx.moveTo(0, i); xzCtx.lineTo(wb, i); xzCtx.stroke(); }
+
+  const tb = simTransXZ;
+  // Заготовка (материал)
+  xzCtx.fillStyle = 'rgba(255,255,255,0.05)';
+  xzCtx.fillRect(0, tb.cy - 10, wb, 20); // Плашка материала
+
+  const sxB = tb.cx + (0 - tb.ox) * tb.scaleX, syB = tb.cy;
+  xzCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+  xzCtx.beginPath(); xzCtx.moveTo(0, syB); xzCtx.lineTo(wb, syB); xzCtx.stroke();
+  xzCtx.beginPath(); xzCtx.moveTo(sxB, 0); xzCtx.lineTo(sxB, hb); xzCtx.stroke();
+}
+
+function drawSim() {
+  const level = LEVELS[currentLevelIdx];
+  if (!level) return;
+  
+  const t = simTransXY;
+  const tb = simTransXZ;
+
+  // XY
+  xyCtx.save();
+  if (permanentCuts.length > 0) {
+    xyCtx.strokeStyle = 'rgba(63, 185, 80, 0.8)';
+    xyCtx.lineWidth = 2;
+    xyCtx.shadowColor = 'rgba(63, 185, 80, 0.8)';
+    xyCtx.shadowBlur = 8;
+    permanentCuts.forEach(([p1, p2]) => {
+      const px1 = t.cx + (p1.x - t.ox) * t.scale, py1 = t.cy - (p1.y - t.oy) * t.scale;
+      const px2 = t.cx + (p2.x - t.ox) * t.scale, py2 = t.cy - (p2.y - t.oy) * t.scale;
+      xyCtx.beginPath(); xyCtx.moveTo(px1, py1); xyCtx.lineTo(px2, py2); xyCtx.stroke();
+    });
+  }
+  if (isSimulating) {
+    const cur = permanentCuts[permanentCuts.length - 1];
+    if (cur) {
+      const p = cur[1];
+      const px = t.cx + (p.x - t.ox) * t.scale, py = t.cy - (p.y - t.oy) * t.scale;
+      xyCtx.beginPath(); xyCtx.arc(px, py, 4, 0, Math.PI * 2);
+      xyCtx.fillStyle = '#3fb950'; xyCtx.fill();
+    }
+  }
+  xyCtx.restore();
+
+  // XZ
+  xzCtx.save();
+  if (permanentCuts.length > 0) {
+    xzCtx.strokeStyle = 'rgba(63, 185, 80, 0.8)';
+    xzCtx.lineWidth = 2;
+    xzCtx.shadowColor = 'rgba(63, 185, 80, 0.8)';
+    xzCtx.shadowBlur = 8;
+    permanentCuts.forEach(([p1, p2]) => {
+      const px1 = tb.cx + (p1.x - tb.ox) * tb.scaleX, py1 = tb.cy - (p1.z - tb.oy) * tb.scaleZ;
+      const px2 = tb.cx + (p2.x - tb.ox) * tb.scaleX, py2 = tb.cy - (p2.z - tb.oy) * tb.scaleZ;
+      xzCtx.beginPath(); xzCtx.moveTo(px1, py1); xzCtx.lineTo(px2, py2); xzCtx.stroke();
+    });
+  }
+  if (isSimulating) {
+    const cur = permanentCuts[permanentCuts.length - 1];
+    if (cur) {
+      const p = cur[1];
+      const px = tb.cx + (p.x - tb.ox) * tb.scaleX, py = tb.cy - (p.z - tb.oy) * tb.scaleZ;
+      xzCtx.beginPath(); xzCtx.arc(px, py, 4, 0, Math.PI * 2);
+      xzCtx.fillStyle = '#3fb950'; xzCtx.fill();
+    }
+  }
+  xzCtx.restore();
+}
+
+// ==========================================
+// СОБЫТИЯ
+// ==========================================
+btnHint.addEventListener('click', () => {
+  const level = LEVELS[currentLevelIdx];
+  if (hintBox.hidden) {
+    if (level.type === 'fix') {
+      const unfixed = bugs.find(b => !b.fixed);
+      if (unfixed) hintText.innerHTML = `Строка ${unfixed.line + 1}: ${level.code[unfixed.line].err}`;
+      else hintText.innerHTML = "Все ошибки уже исправлены.";
+    } else {
+      hintText.innerHTML = level.hint || "Нет подсказки.";
+    }
+    hintBox.hidden = false;
+  } else { hintBox.hidden = true; }
+});
+
+btnAnswer.addEventListener('click', () => {
+  const level = LEVELS[currentLevelIdx];
+  if (level.type === 'single') {
+    singleInput.value = level.solution;
+    checkSingle();
+  } else if (level.type === 'code') {
+    editor.value = level.solution;
+    statusMsg.textContent = 'Ответ вставлен. Нажмите "Запустить".';
+    statusMsg.className = 'status-msg ok';
+  } else if (level.type === 'fix') {
+    bugs.forEach(bug => { if (!bug.fixed) fixBug(bug); });
+  }
+});
+
+btnTheoryNext.addEventListener('click', () => loadLevel(currentLevelIdx + 1));
+btnSingle.addEventListener('click', checkSingle);
+singleInput.addEventListener('keydown', e => { if (e.key === 'Enter') checkSingle(); });
+
+function checkSingle() {
+  const val = singleInput.value.trim().toUpperCase().replace(/\s+/g, ' ');
+  const level = LEVELS[currentLevelIdx];
+  const answers = level.answers || [level.prompt];
+  
+  if (answers.includes(val)) {
+    statusMsg.textContent = "Верно!";
+    statusMsg.className = 'status-msg ok';
+    addLog(`> Команда "${val}" принята.`, 'ok');
+    singleInput.disabled = true;
+    btnSingle.hidden = true;
+    if (currentLevelIdx < LEVELS.length - 1) btnNext.hidden = false;
+  } else {
+    statusMsg.textContent = "Неверно.";
+    statusMsg.className = 'status-msg err';
+    addLog(`> Ошибка в команде. Попробуйте еще раз.`, 'err');
+    singleInput.value = '';
+  }
+}
+
+btnRun.addEventListener('click', () => {
+  if (isSimulating) return;
+  const { path, cuts } = parseGCode(editor.value);
+  if (path.length < 2 || cuts.length === 0) {
+    statusMsg.textContent = 'Ошибка: Нет движения или резания.';
+    statusMsg.className = 'status-msg err';
+    addLog('> [ОШИБКА] Программа не содержит резов.', 'err');
+    return;
+  }
+  userCuts = cuts; isSimulating = true; done = false; permanentCuts = [];
+  simStartTime = performance.now();
+  statusMsg.textContent = 'Выполнение...';
+  statusMsg.className = 'status-msg';
+  simStatus.textContent = 'В процессе...';
+  addLog('> Запуск программы...', 'sys');
+  drawSimBg();
+});
+
+function checkCodeResult() {
+  const level = LEVELS[currentLevelIdx];
+  const error = validate(userCuts, level.targetPath);
+  
+  if (error <= CHECK_TOLERANCE) {
+    statusMsg.textContent = `Успех! Отклонение: ${error.toFixed(2)} мм.`;
+    statusMsg.className = 'status-msg ok';
+    addLog(`> Деталь обработана. Отклонение ${error.toFixed(2)} мм.`, 'ok');
+    simStatus.textContent = 'Готово';
+    
+    if (currentLevelIdx === LEVELS.length - 1) {
+      alert("🎉 ПОЗДРАВЛЯЕМ! Вы прошли Хардкор!\n\nВаш секретный код для бонуса:\n\nCNC_MASTER_100\n\nПокажите его преподавателю!");
+      statusMsg.textContent = "Хардкор пройден! Код получен.";
+      
+      // ОТПРАВЛЯЕМ СООБЩЕНИЕ В ПОРТАЛ ДЛЯ АЧИВКИ
+      if (window.parent) {
+          window.parent.postMessage({ type: 'GCODE_SUCCESS', level: currentLevelIdx }, '*');
+      }
+    } else {
+      if (currentLevelIdx < LEVELS.length - 1) btnNext.hidden = false;
+    }
+  } else {
+    statusMsg.textContent = `Ошибка формы. Отклонение ${error.toFixed(2)} мм.`;
+    statusMsg.className = 'status-msg err';
+    addLog(`> [ОШИБКА] Отклонение ${error.toFixed(2)} мм.`, 'err');
+    simStatus.textContent = 'Ошибка';
+  }
+}
+
+const segDist = (px, py, ax, ay, bx, by) => { const vx = bx - ax, vy = by - ay, l = vx * vx + vy * vy || 1; const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / l)); return Math.hypot(px - (ax + vx * t), py - (ay + vy * t)); };
+
+editorCanvas.addEventListener('pointerdown', e => {
+  if (done || LEVELS[currentLevelIdx].type !== 'fix') return;
+  const rect = editorCanvas.getBoundingClientRect();
+  stroke = { pts: [[e.clientX - rect.left, e.clientY - rect.top]], len: 0 };
+});
+
+editorCanvas.addEventListener('pointermove', e => {
+  if (!stroke || done) return;
+  const rect = editorCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const [ax, ay] = stroke.pts[stroke.pts.length - 1];
+  const d = Math.hypot(x - ax, y - ay); if (d < 2) return;
+  stroke.pts.push([x, y]); stroke.len += d;
+
+  bugs.forEach(bug => {
+    if (bug.fixed) return;
+    let gained = 0;
+    bug.samples.forEach(([sx, sy], i) => {
+      if (!bug.hit[i] && segDist(sx, sy, ax, ay, x, y) < TOLERANCE) { bug.hit[i] = true; gained++; }
+    });
+    if (gained && bug.hit.filter(Boolean).length / bug.hit.length >= NEED) fixBug(bug);
+  });
+});
+
+editorCanvas.addEventListener('pointerup', () => { stroke = null; });
+editorCanvas.addEventListener('pointercancel', () => { stroke = null; });
+
+function fixBug(bug) {
+  bug.fixed = true;
+  const line = activeCode[bug.line];
+  line.t = line.fix; line.c = line.color;
+  addLog(`> Строка ${bug.line + 1} исправлена.`, 'ok');
+  drawEditor();
+  if (bugs.every(b => b.fixed)) {
+    done = true; isSimulating = true; simStartTime = performance.now(); permanentCuts = [];
+    btnReset.hidden = false;
+    if (currentLevelIdx < LEVELS.length - 1) btnNext.hidden = false;
+    statusMsg.textContent = `Симуляция...`; statusMsg.className = "status-msg ok";
+    simStatus.textContent = 'В процессе...';
+    drawSimBg();
+  }
+}
+
+btnReset.addEventListener('click', () => loadLevel(currentLevelIdx));
+btnNext.addEventListener('click', () => loadLevel(currentLevelIdx + 1));
+
+// ==========================================
+// АНИМАЦИЯ
+// ==========================================
+function frame(t) {
+  if (LEVELS[currentLevelIdx].type === 'fix' && stroke && stroke.pts.length > 1) {
+    eCtx.save();
+    eCtx.strokeStyle = 'rgba(88, 166, 255, 0.8)';
+    eCtx.lineWidth = 3;
+    eCtx.lineCap = 'round';
+    eCtx.shadowColor = 'rgba(88, 166, 255, 0.8)';
+    eCtx.shadowBlur = 8;
+    eCtx.beginPath();
+    stroke.pts.forEach(([x, y], i) => i ? eCtx.lineTo(x, y) : eCtx.moveTo(x, y));
+    eCtx.stroke();
+    eCtx.restore();
+  }
+
+  if (isSimulating) {
+    const level = LEVELS[currentLevelIdx];
+    let simPath = level.type === 'fix' ? level.path : parseGCode(editor.value).path;
+    let simTime = 6000; // Скорость анимации
+
+    const progress = Math.min(1, (t - simStartTime) / simTime);
+    
+    let totalLen = 0; const segs = [];
+    for (let i = 1; i < simPath.length; i++) {
+      const p1 = simPath[i-1], p2 = simPath[i];
+      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y) + Math.abs(p2.z - p1.z) * 0.5;
+      totalLen += dist; segs.push({ p1, p2, dist });
+    }
+
+    const targetLen = totalLen * progress;
+    let currentLen = 0;
+    
+    permanentCuts = [];
+    for (let seg of segs) {
+      if (currentLen + seg.dist >= targetLen) {
+        const p = (targetLen - currentLen) / (seg.dist || 1);
+        const partialP2 = { 
+           x: seg.p1.x + (seg.p2.x - seg.p1.x) * p, 
+           y: seg.p1.y + (seg.p2.y - seg.p1.y) * p, 
+           z: seg.p1.z + (seg.p2.z - seg.p1.z) * p 
+        };
+        if (seg.p1.z < 0 && partialP2.z < 0) permanentCuts.push([seg.p1, partialP2]);
+        break;
+      }
+      currentLen += seg.dist;
+      if (seg.p1.z < 0 && seg.p2.z < 0) permanentCuts.push([seg.p1, seg.p2]);
+    }
+
+    drawSimBg();
+    drawSim();
+
+    if (progress >= 1) {
+      isSimulating = false;
+      if (level.type === 'code' || level.type === 'hardcore') checkCodeResult();
+      else { statusMsg.textContent = `Деталь обработана.`; statusMsg.className = "status-msg ok"; simStatus.textContent = 'Готово'; addLog('> Деталь обработана.', 'ok'); }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+window.addEventListener('load', () => {
+  loadLevel(0);
+  window.addEventListener('resize', resizeCanvases);
+  requestAnimationFrame(frame);
+});
+</script>
+</body>
+</html>

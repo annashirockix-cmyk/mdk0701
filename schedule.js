@@ -4,18 +4,18 @@ window.renderSchedulePage = function(){
   var app = document.getElementById("app"); 
   if (!app) return; 
   app.innerHTML = ""; 
-  document.getElementById("crumbs").textContent = "Расписание";
+  var crumbs = document.getElementById("crumbs");
+  if (crumbs) crumbs.textContent = "Расписание";
   
   app.appendChild(el('<a class="backlink" href="#/" style="color:var(--accent);">← На главную</a>'));
   
-  var isTeacher = state.staff && (state.staff.role === "teacher" || state.staff.role === "admin");
+  // ИСПРАВЛЕНО: используем window.state
+  var isTeacher = window.state.staff && (window.state.staff.role === "teacher" || window.state.staff.role === "admin");
   
   app.appendChild(el(`<section class="hero"><h1>Расписание занятий (1 семестр)</h1><p>${isTeacher ? 'Режим редактирования. Нажмите "Сохранить" после изменений.' : 'Расписание на семестр'}</p></section>`));
 
-  // Оставляем только нужные группы
   var groups = ["ТМ 2-5", "ТМ 2-6", "ТМ 3-4", "ТМ 4-3"];
 
-  // Структура дней и пар (разное время в пн и остальные дни)
   var scheduleStructure = [
     { 
       name: "ПОНЕДЕЛЬНИК", 
@@ -82,9 +82,7 @@ window.renderSchedulePage = function(){
     }
   ];
 
-  // Предзаполненные данные из Excel (чтобы не вводить вручную)
   var defaultData = {
-    // ПОНЕДЕЛЬНИК
     "ПОНЕДЕЛЬНИК_8.00-8.45_ТМ 2-5": { sub1: "Разговор о важном", sub2: "" },
     "ПОНЕДЕЛЬНИК_8.00-8.45_ТМ 2-6": { sub1: "Разговор о важном", sub2: "" },
     "ПОНЕДЕЛЬНИК_8.00-8.45_ТМ 3-4": { sub1: "Разговор о важном", sub2: "" },
@@ -110,7 +108,6 @@ window.renderSchedulePage = function(){
     "ПОНЕДЕЛЬНИК_14.15-15.50_ТМ 3-4": { sub1: "ПРАКТИКА", sub2: "" },
     "ПОНЕДЕЛЬНИК_14.15-15.50_ТМ 4-3": { sub1: "", sub2: "" },
 
-    // ВТОРНИК
     "ВТОРНИК_8.00-9.35_ТМ 2-5": { sub1: "", sub2: "" },
     "ВТОРНИК_8.00-9.35_ТМ 2-6": { sub1: "МАТЕМАТИКА\nЧеремушкина", sub2: "" },
     "ВТОРНИК_8.00-9.35_ТМ 3-4": { sub1: "ПРАКТИКА", sub2: "" },
@@ -133,7 +130,6 @@ window.renderSchedulePage = function(){
 
     "ВТОРНИК_15.10-16.45_ТМ 2-5": { sub1: "ИСТОРИЯ\nАлексеева", sub2: "" },
     
-    // СРЕДА
     "СРЕДА_8.00-9.35_ТМ 2-5": { sub1: "МАТЕМАТИКА\nЧеремушкина", sub2: "" },
     "СРЕДА_8.00-9.35_ТМ 2-6": { sub1: "ИСТОРИЯ\nАлексеева", sub2: "" },
     "СРЕДА_8.00-9.35_ТМ 3-4": { sub1: "ПРАКТИКА", sub2: "" },
@@ -154,7 +150,6 @@ window.renderSchedulePage = function(){
     "СРЕДА_13.25-15.00_ТМ 3-4": { sub1: "ПРАКТИКА", sub2: "" },
     "СРЕДА_13.25-15.00_ТМ 4-3": { sub1: "ПЛАНИРОВАНИЕ\nИванова", sub2: "" },
 
-    // ЧЕТВЕРГ
     "ЧЕТВЕРГ_8.00-9.35_ТМ 2-5": { sub1: "ИНФОРМАТИКА*\nМахонина", sub2: "" },
     "ЧЕТВЕРГ_8.00-9.35_ТМ 2-6": { sub1: "МАТЕРИАЛОВЕДЕНИЕ\nРемишевская", sub2: "" },
     "ЧЕТВЕРГ_8.00-9.35_ТМ 3-4": { sub1: "ПРАКТИКА", sub2: "" },
@@ -175,7 +170,6 @@ window.renderSchedulePage = function(){
     "ЧЕТВЕРГ_13.25-15.00_ТМ 3-4": { sub1: "ПРАКТИКА", sub2: "" },
     "ЧЕТВЕРГ_13.25-15.00_ТМ 4-3": { sub1: "СБОРКА УЗЛОВ\nШироких", sub2: "" },
 
-    // ПЯТНИЦА
     "ПЯТНИЦА_8.00-9.35_ТМ 2-5": { sub1: "МЕТРОЛОГИЯ\nМАТЕРИАЛОВЕДЕНИЕ", sub2: "" },
     "ПЯТНИЦА_8.00-9.35_ТМ 2-6": { sub1: "ИНФОРМАТИКА*\nТазина", sub2: "" },
     "ПЯТНИЦА_8.00-9.35_ТМ 3-4": { sub1: "ПРАКТИКА", sub2: "" },
@@ -203,7 +197,6 @@ window.renderSchedulePage = function(){
     if (res && res.ok && res.schedule) {
       try { 
           var parsed = JSON.parse(res.schedule); 
-          // Если данных с сервера нет, используем дефолтные
           if (Object.keys(parsed).length === 0) {
               scheduleData = JSON.parse(JSON.stringify(defaultData));
           } else {
@@ -241,18 +234,15 @@ window.renderSchedulePage = function(){
       times.forEach((timeObj, timeIdx) => {
         tableHtml += `<tr>`;
         
-        // Ячейка дня (объединяем строки)
         if (timeIdx === 0) {
           tableHtml += `<td rowspan="${times.length}" style="border:1px solid var(--border); font-weight:bold; background:var(--card-soft); vertical-align:middle; writing-mode:vertical-rl; transform:rotate(180deg);">${day}</td>`;
         }
 
-        // Ячейка времени + номер пары
         tableHtml += `<td style="border:1px solid var(--border); padding:4px; font-size:12px;">
             <b>${timeObj.t}</b><br>
             <span style="font-size:10px; color:var(--muted);">${timeObj.label}</span>
         </td>`;
 
-        // Ячейки для групп
         groups.forEach(group => {
           var cellKey = `${day}_${timeObj.t}_${group}`;
           var cellData = scheduleData[cellKey] || { sub1: "", sub2: "" };

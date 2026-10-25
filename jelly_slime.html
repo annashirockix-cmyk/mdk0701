@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+  Jelly Slime by @codinvisual · t.me/CodinVisual
+
+  HOW TO USE
+  Try it: double-click this file. Move the mouse and the slime hops after it.
+    Grab the slime and pull. It stretches like taffy and wobbles back when you let go.
+    Press into it and it squishes.
+    Click anywhere else in the room to drop a cookie. It jumps on it and the cookie melts inside.
+    Shake the mouse fast right next to it and it gets scared.
+    Works with a finger on phones too. On the keyboard, Tab to the room,
+    move the dot with the arrow keys and press Space to click.
+  Put it on your site:
+  1. Copy the .slime-room rules from <style> into your CSS (skip `body { ... }` and .demo).
+  2. Put <div class="slime-room"><canvas></canvas></div> where the slime should live.
+     Any width works, the height is set in CSS.
+  3. Copy the <script> block right before </body>. Several rooms on one page each get their own slime.
+  Want your page to react? The room fires an event on every trick:
+     document.querySelector('.slime-room').addEventListener('slime', e => console.log(e.detail.action));
+     The action is hop, eat, poke or scared.
+  Worth changing:
+    JELLY = 0.12   how soft the body is. 0.06 wobbles slow and floppy, 0.25 quick and firm like a gummy bear
+    HUE = 340      the jelly colour. 200 is blue raspberry, 95 is lime, 28 is orange
+    HOP = 9        how high it jumps
+    SIZE = 1       body scale
+
+  Everything is in this one file: styles in <style>, markup in <body>, logic in <script>.
+  No libraries, no images, the slime is drawn on a canvas so it stays sharp on any screen.
+
+  Built by @codinvisual · 2026-09-18 · t.me/CodinVisual
+  Use it free on your own site, personal or commercial. Don't repost or resell this file itself.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jelly Slime</title>
+<style>
+  /* Jelly Slime by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file */
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0B0710; color: #F3EAF2; font-family: system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .demo { width: min(560px, calc(100vw - 32px)); text-align: center; }
+  .demo p { margin: 14px 0 0; color: #9C8AA3; font-size: 14px; }
+
+  .slime-room { position: relative; height: 360px; border-radius: 28px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    background: linear-gradient(#170C1D, #2C1733); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
+  .slime-room canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .slime-room.is-over { cursor: grab; }
+  .slime-room.is-grabbing { cursor: grabbing; }
+  .slime-room:focus-visible { outline: 2px solid #FF7AA2; outline-offset: 3px; }
+</style>
+</head>
+<body>
+<div class="demo">
+  <div class="slime-room" tabindex="0" role="application" aria-label="Jelly slime that follows the pointer. Use the arrow keys to move the dot and Space to click"><canvas></canvas></div>
+  <p>Move the mouse, pull the slime, click to drop a cookie</p>
+</div>
+
+<script>
+// Jelly Slime by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file
+(() => {
+  const JELLY = 0.12;  // lower = wobblier
+  const HUE = 340;                                  // jelly colour
+  const HOP = 9, GRAVITY = 0.62;                    // jump speed and gravity, px per step
+  const SIZE = 1;                                   // body scale
+  const SCARE = 1400;                               // shake speed in px per second that scares it
+  const STEP = 1 / 60, N = 48;                      // the body is 48 points, simulated 60 times a second
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (x, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const eout = k => 1 - Math.pow(1 - clamp(k), 3);
+  const jelly = (l, a, s = 100) => `hsla(${HUE},${s}%,${l}%,${a})`;
+
+  document.querySelectorAll('.slime-room').forEach(room => {
+    const canvas = room.querySelector('canvas'), g = canvas.getContext('2d');
+    const bg = document.createElement('canvas'), b = bg.getContext('2d');
+    let W = 0, H = 0, FLOOR = 0, K = 1, RX = 74, RY = 58, SINK = 11, dpr = 1, now = 0;
+    const mouse = { x: 0, y: 0, inside: false, px: 0, pt: 0, dir: 0, vmax: 0, flips: [] };
+    const finger = { down: false, id: null, x: 0, y: 0, ax: 0, ay: 0 };
+    const mood = { crouchT: -1, hopTo: 0, landT: -9, fearT: -9, sweatT: -9, eatT: -9, pokeT: -9, blinkT: 2, look: [0, 0] };
+    let cookies = [], keyboard = false;
+    const emit = action => room.dispatchEvent(new CustomEvent('slime', { detail: { action } }));
+
+    const slime = {
+      x: 0, y: 0, vx: 0, vy: 0, air: false, sx: 1, sy: 1, tug: { x: 0, y: 0 }, points: [],
+      home(p) { return { x: this.x + p.rx * this.sx + this.tug.x * p.w, y: this.y + p.ry * this.sy + this.tug.y * p.w }; },
+      pull(f) {                                     // the part under the finger follows it, softer the further you pull
+        const dx = f.x - f.ax, dy = f.y - f.ay, k = 1 / (1 + Math.hypot(dx, dy) / 120);
+        this.tug = { x: dx * k, y: dy * k };
+      },
+      touches(c) { return !c.eaten && !this.air && c.y >= FLOOR - c.r - 2 && Math.abs(c.x - this.x) < RX * .8; },
+      eat(c) { c.eaten = true; c.eatT = now; c.lx = c.x - this.x; c.ly = c.y - this.y; mood.eatT = now; emit('eat'); },
+    };
+
+    function shapePoints() {                        // an ellipse that sags a little into the floor
+      for (let i = 0; i < N; i++) {
+        const a = i / N * Math.PI * 2, p = slime.points[i] || (slime.points[i] = { x: 0, y: 0, vx: 0, vy: 0, w: 0 });
+        p.a = a; p.rx = RX * Math.cos(a); p.ry = -(RY - SINK) + RY * Math.sin(a);
+      }
+    }
+
+    function resize() {                             // crisp on retina, sized by CSS
+      const r = room.getBoundingClientRect(); dpr = Math.min(devicePixelRatio || 1, 2);
+      const first = !W;
+      W = r.width; H = r.height; FLOOR = H - 54;
+      K = SIZE * clamp(W / 460, .78, 1); RX = 74 * K; RY = 58 * K; SINK = 11 * K;
+      canvas.width = bg.width = Math.round(W * dpr); canvas.height = bg.height = Math.round(H * dpr);
+      shapePoints();
+      if (first) {
+        slime.x = W * .4; slime.y = FLOOR; mouse.x = W * .7; mouse.y = FLOOR - 120;
+        for (const p of slime.points) { const h = slime.home(p); p.x = h.x; p.y = Math.min(FLOOR, h.y); }
+      }
+      slime.x = clamp(slime.x, RX + 8, W - RX - 8); if (!slime.air) slime.y = FLOOR;
+      // the room: dark wall, a glossy floor and the line where they meet
+      b.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const wall = b.createLinearGradient(0, 0, 0, FLOOR - 26); wall.addColorStop(0, '#170C1D'); wall.addColorStop(1, '#2C1733');
+      b.fillStyle = wall; b.fillRect(0, 0, W, H);
+      const fl = b.createLinearGradient(0, FLOOR - 26, 0, H); fl.addColorStop(0, '#3A2040'); fl.addColorStop(.35, '#26132B'); fl.addColorStop(1, '#12081A');
+      b.fillStyle = fl; b.fillRect(0, FLOOR - 26, W, H - FLOOR + 26);
+      b.fillStyle = 'rgba(255,190,225,.10)'; b.fillRect(0, FLOOR - 26, W, 1.5);
+    }
+    new ResizeObserver(resize).observe(room); resize();
+
+    // input
+    const local = e => { const r = room.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    function inside(p, grow = 1.1) {                // is this point on the jelly (a little generous)
+      let cx = 0, cy = 0; for (const q of slime.points) { cx += q.x; cy += q.y; } cx /= N; cy /= N;
+      let hit = false;
+      for (let i = 0, j = N - 1; i < N; j = i++) {
+        const a = slime.points[i], c = slime.points[j];
+        const ax = cx + (a.x - cx) * grow, ay = cy + (a.y - cy) * grow, bx = cx + (c.x - cx) * grow, by = cy + (c.y - cy) * grow;
+        if ((ay > p.y) !== (by > p.y) && p.x < (bx - ax) * (p.y - ay) / (by - ay) + ax) hit = !hit;
+      }
+      return hit;
+    }
+    function grab(p) {                              // the points near the finger follow it, the rest less and less
+      let best = 0, bd = 1e9;
+      slime.points.forEach((q, i) => { const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; best = i; } });
+      slime.points.forEach((q, i) => { const di = Math.min(Math.abs(i - best), N - Math.abs(i - best)); q.w = Math.exp(-((di / 4.2) ** 2)); });
+      Object.assign(finger, { down: true, x: p.x, y: p.y, ax: p.x, ay: p.y });
+      room.classList.add('is-grabbing');
+    }
+    function release() {
+      if (!finger.down) return;
+      finger.down = false; finger.id = null; slime.tug = { x: 0, y: 0 }; mood.pokeT = now; emit('poke');
+      room.classList.remove('is-grabbing');
+    }
+    function dropCookie(x, y) {
+      if (cookies.filter(c => !c.eaten).length >= 3) return;
+      const r = 15 * K;
+      cookies.push({ x: clamp(x, r, W - r), y: Math.min(y, FLOOR - r - 4), vx: reduce ? 0 : (Math.random() - .5) * .8, vy: reduce ? 0 : -2.2, rot: 0, r, born: now, eaten: false });
+    }
+
+    room.addEventListener('pointerdown', e => {
+      const p = local(e); keyboard = false; Object.assign(mouse, p, { inside: true });
+      if (finger.down) return;                      // one finger at a time
+      if (inside(p)) { finger.id = e.pointerId; room.setPointerCapture(e.pointerId); grab(p); }
+      else { dropCookie(p.x, p.y); mood.clickT = now; mood.click = p; }
+    });
+    room.addEventListener('pointermove', e => {
+      const p = local(e); keyboard = false; Object.assign(mouse, p, { inside: true });
+      if (finger.down && e.pointerId === finger.id) { finger.x = p.x; finger.y = p.y; }
+      room.classList.toggle('is-over', !finger.down && inside(p));
+      // a fast shake right next to it is scary: two quick changes of direction
+      const t = e.timeStamp, dx = p.x - mouse.px;
+      if (Math.abs(dx) > 1) {
+        const dir = Math.sign(dx), v = Math.abs(dx) / Math.max(.004, (t - mouse.pt) / 1000);
+        if (dir !== mouse.dir) { if (mouse.vmax > SCARE) mouse.flips.push(t); mouse.vmax = 0; mouse.dir = dir; }
+        mouse.vmax = Math.max(mouse.vmax, v);
+      }
+      mouse.px = p.x; mouse.pt = t; mouse.flips = mouse.flips.filter(f => t - f < 500);
+      if (!finger.down && mouse.flips.length >= 2 && Math.hypot(p.x - slime.x, p.y - (slime.y - RY)) < 170 * K) {
+        if (now - mood.fearT > 1.2) { mood.sweatT = now; emit('scared'); }
+        mood.fearT = now;
+      }
+    });
+    room.addEventListener('pointerup', e => { if (e.pointerId === finger.id) release(); });
+    room.addEventListener('pointercancel', e => { if (e.pointerId === finger.id) release(); });
+    room.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !finger.down) { mouse.inside = false; room.classList.remove('is-over'); } });
+    room.addEventListener('keydown', e => {
+      const d = { ArrowLeft: [-24, 0], ArrowRight: [24, 0], ArrowUp: [0, -24], ArrowDown: [0, 24] }[e.key];
+      if (d) { mouse.x = clamp(mouse.x + d[0], 8, W - 8); mouse.y = clamp(mouse.y + d[1], 8, FLOOR - 8); }
+      else if (e.key === ' ' || e.key === 'Enter') {
+        if (inside(mouse)) {                        // a quick poke toward the middle of the jelly
+          grab(mouse); finger.x = lerp(mouse.x, slime.x, .2); finger.y = lerp(mouse.y, slime.y - RY, .2) + 12 * K;
+          setTimeout(release, 200);
+        } else dropCookie(mouse.x, mouse.y);
+      } else return;
+      e.preventDefault(); keyboard = true; mouse.inside = true;
+    });
+    room.addEventListener('blur', () => { keyboard = false; release(); });
+
+    // behaviour: what it wants, hops, squash and stretch
+    const fearAt = t => { const a = t - mood.fearT; return a < 0 || a > 1.21 ? 0 : a < .86 ? eout(a / .09) : 1 - eout((a - .86) / .35); };
+    function think() {
+      const food = cookies.find(c => !c.eaten);
+      const target = food ? food.x : mouse.inside ? mouse.x : null;
+      const afraid = now - mood.fearT < .86, lo = RX + 8, hi = W - RX - 8;
+      if (slime.air) {
+        slime.vy += GRAVITY; slime.x += slime.vx; slime.y += slime.vy;
+        if (slime.y >= FLOOR) { slime.y = FLOOR; slime.vx = slime.vy = 0; slime.air = false; mood.landT = now; }
+      } else if (mood.crouchT >= 0) {
+        if (now - mood.crouchT >= .14) {            // anticipation done, jump
+          const T = 2 * HOP / GRAVITY, to = clamp(mood.hopTo, lo, hi);
+          slime.vy = -HOP; slime.vx = clamp((to - slime.x) / T, -4.6, 4.6); slime.air = true; mood.crouchT = -1; emit('hop');
+        }
+      } else if (target !== null && !finger.down && !afraid && now - mood.landT > .3 && Math.abs(target - slime.x) > 26 * K) {
+        if (reduce) slime.x = clamp(slime.x + clamp((target - slime.x) * .05, -1.4, 1.4), lo, hi);   // glides instead of hopping
+        else { mood.crouchT = now; mood.hopTo = target; }
+      }
+      let sx = 1, sy = 1;
+      if (!reduce) { const br = Math.sin(now * Math.PI * 2 / 1.7); sy += .02 * br; sx -= .012 * br; }
+      if (mood.crouchT >= 0) { const e = eout((now - mood.crouchT) / .14); sx += .18 * e; sy -= .24 * e; }
+      if (slime.air) { const st = clamp(Math.abs(slime.vy) * .02, 0, .2); sy += st; sx -= st * .55; }
+      const sl = now - mood.landT; if (sl < .24) { const e = 1 - eout(sl / .24); sx += .1 * e; sy -= .12 * e; }
+      if (!reduce) { const f = fearAt(now); sx += .17 * f; sy -= .25 * f; }
+      const ya = now - mood.eatT; if (!reduce && ya > .1 && ya < 1.4) { const w = Math.sin((ya - .1) * Math.PI * 2 * 3.2) * Math.exp(-(ya - .1) * 2.6); sy += .07 * w; sx -= .05 * w; }
+      slime.sx = sx; slime.sy = sy;
+      // eyes follow the cookie first, then the pointer
+      const tx = food ? food.x : mouse.inside ? mouse.x : slime.x, ty = food ? food.y : mouse.inside ? mouse.y : slime.y - 40;
+      const lx = clamp((tx - slime.x) / 110, -1, 1), ly = clamp((ty - (slime.y - RY)) / 110, -1, 1);
+      mood.look = [lerp(mood.look[0], lx, .2), lerp(mood.look[1], ly, .2)];
+      if (now > mood.blinkT + .08) mood.blinkT = now + 2 + Math.random() * 3;
+    }
+    function moveCookies() {
+      for (const c of cookies) {
+        if (c.eaten) continue;
+        c.vy += .42; c.x += c.vx; c.y += c.vy; c.rot += c.vx / c.r;
+        if (c.y > FLOOR - c.r) { c.y = FLOOR - c.r; c.vy = Math.abs(c.vy) > 1.4 && !reduce ? -c.vy * .34 : 0; c.vx *= .8; }
+        c.x = clamp(c.x, c.r, W - c.r);
+      }
+      cookies = cookies.filter(c => !c.eaten || now - c.eatT < 2.4);
+    }
+
+    // one step of the jelly, 60 times a second
+    function tick() {
+      now += STEP;
+      think();
+      for (const p of slime.points) {
+        const home = slime.home(p);  // its shape
+        p.vx += (home.x - p.x) * JELLY;
+        p.vy += (home.y - p.y) * JELLY;
+        p.vx *= 0.92; p.vy *= 0.92;
+        p.x += p.vx; p.y += p.vy;
+        if (p.y > FLOOR) { p.y = FLOOR; p.vy = 0; }
+      }
+      if (finger.down) slime.pull(finger);
+      for (const cookie of cookies) {
+        if (slime.touches(cookie)) slime.eat(cookie);
+      }
+      moveCookies();
+    }
+
+    // drawing
+    function bodyPath(P) {                          // smooth closed curve through the points
+      g.beginPath(); g.moveTo((P[N - 1][0] + P[0][0]) / 2, (P[N - 1][1] + P[0][1]) / 2);
+      for (let i = 0; i < N; i++) { const a = P[i], c = P[(i + 1) % N]; g.quadraticCurveTo(a[0], a[1], (a[0] + c[0]) / 2, (a[1] + c[1]) / 2); }
+      g.closePath();
+    }
+    function drawCookie(x, y, r, rot, a = 1) {
+      g.save(); g.translate(x, y); g.rotate(rot); g.globalAlpha *= a;
+      g.beginPath();
+      for (let i = 0; i <= 24; i++) { const u = i / 24 * Math.PI * 2, q = r * (1 + .05 * Math.sin(u * 5 + 1) + .03 * Math.sin(u * 9)); i ? g.lineTo(Math.cos(u) * q, Math.sin(u) * q) : g.moveTo(Math.cos(u) * q, Math.sin(u) * q); }
+      const cg = g.createRadialGradient(-r * .35, -r * .4, r * .1, 0, 0, r * 1.05);
+      cg.addColorStop(0, '#F7D193'); cg.addColorStop(.65, '#DB9E58'); cg.addColorStop(1, '#AE6E33');
+      g.fillStyle = cg; g.fill();
+      g.fillStyle = '#4A2614';
+      for (const [u, v, s] of [[-.42, -.2, .2], [.3, -.38, .17], [.12, .3, .22], [-.2, .45, .15], [.52, .15, .14], [-.55, .28, .12]]) { g.beginPath(); g.ellipse(u * r, v * r, s * r, s * r * .8, u * 3, 0, 7); g.fill(); }
+      g.restore();
+    }
+    const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+
+    function drawFace(P, fear) {
+      let top = 1e9, tx = 0, tn = 0, minX = 1e9, maxX = -1e9;
+      P.forEach(([x, y], i) => { top = Math.min(top, y); minX = Math.min(minX, x); maxX = Math.max(maxX, x); const a = slime.points[i].a; if (a > Math.PI * 1.25 && a < Math.PI * 1.75) { tx += x; tn++; } });
+      const S = RX / 66, fx = tx / tn + mood.look[0] * 5 * S, fy = lerp(top, FLOOR, .44) + mood.look[1] * 4 * S;
+      const sp = 19 * clamp((maxX - minX) / (2 * RX), .8, 1.35);
+      const eat = now - mood.eatT, food = cookies.some(c => !c.eaten);
+      const inward = finger.down && ((finger.x - finger.ax) * (slime.x - finger.ax) + (finger.y - finger.ay) * (slime.y - RY * .6 - finger.ay)) > 0;
+      const stretched = finger.down && !inward && Math.hypot(slime.tug.x, slime.tug.y) > 8;
+      const happy = eat < 1.5 || (now - mood.pokeT < .45 && !finger.down);
+      const squeeze = fear > .3 || (finger.down && inward);
+      const blink = clamp(1 - Math.abs(now - mood.blinkT) / .07);
+      g.save(); g.translate(fx, fy); g.scale(S, S);
+      g.fillStyle = `hsla(${HUE + 5},100%,74%,${.34 + (happy ? .3 : 0)})`;
+      for (const s of [-1, 1]) { g.beginPath(); g.ellipse(s * (sp + 13), 11, 7.5, 4, 0, 0, 7); g.fill(); }
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      const ink = `hsl(${HUE},70%,13%)`;
+      for (const s of [-1, 1]) {
+        const ex = s * sp;
+        if (happy) { g.strokeStyle = ink; g.lineWidth = 3.2; g.beginPath(); g.arc(ex, 3, 6.5, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); continue; }
+        if (squeeze) { g.strokeStyle = ink; g.lineWidth = 3.2; g.beginPath(); g.moveTo(ex - s * 6, -5); g.lineTo(ex + s * 3, 0); g.lineTo(ex - s * 6, 5); g.stroke(); continue; }
+        const k = stretched ? 1.16 : 1, h = 10.5 * k * (1 - blink * .88);
+        g.fillStyle = `hsl(${HUE},75%,10%)`; g.beginPath(); g.ellipse(ex, 0, 7.6 * k, h, 0, 0, 7); g.fill();
+        if (blink < .5) {
+          g.fillStyle = '#fff'; g.beginPath(); g.arc(ex - 2.4, -3.8 * k, 2.9 * k, 0, 7); g.fill();
+          g.globalAlpha = .8; g.beginPath(); g.arc(ex + 2.6, 3.6, 1.3, 0, 7); g.fill(); g.globalAlpha = 1;
+        }
+      }
+      g.strokeStyle = ink; g.fillStyle = `hsl(${HUE},72%,20%)`; g.lineWidth = 2.4;
+      const chomp = slime.air && food;
+      if (chomp || stretched) {                       // open mouth
+        const o = chomp ? 1 : .6;
+        g.beginPath(); g.ellipse(0, 13, 4.8 * o + 1.5, 5.5 * o + 1, 0, 0, 7); g.fill();
+        g.fillStyle = jelly(75, 1); g.beginPath(); g.ellipse(0, 12 + 3.5 * o + 1, 3 * o, 1.8 * o, 0, 0, 7); g.fill();
+      } else if (eat < .9) {                          // chewing
+        g.beginPath(); g.ellipse(0, 13, 4.5, 1 + 3 * Math.abs(Math.sin(eat * Math.PI * 6)), 0, 0, 7); g.fill();
+      } else if (fear > .3) {                         // wavy, trembling
+        g.beginPath(); for (let i = 0; i <= 8; i++) { const u = i / 8, x = -7 + 14 * u, y = 12 + 1.5 * Math.sin(u * Math.PI * 3 + now * 40); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+      } else {                                        // small smile
+        g.beginPath(); g.arc(0, 10, 4.6 * (happy ? 1.4 : 1), Math.PI * .18, Math.PI * .82); g.stroke();
+      }
+      g.restore();
+    }
+
+    function draw() {
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, W, H);
+      g.drawImage(bg, 0, 0, W, H);
+      for (const c of cookies) if (!c.eaten) {        // cookies on the floor, with a shadow and a little pop when they appear
+        const h = clamp((FLOOR - c.r - c.y) / 150), pop = clamp((now - c.born) / .16);
+        g.fillStyle = `rgba(0,0,0,${.45 * (1 - h)})`; g.beginPath(); g.ellipse(c.x + 2, FLOOR + 1, c.r * (1 - h * .5), 3.2, 0, 0, 7); g.fill();
+        drawCookie(c.x, c.y, c.r * (pop < 1 ? .7 + .3 * eout(pop) + .12 * Math.sin(pop * Math.PI) : 1), c.rot);
+      }
+      const fear = reduce ? 0 : fearAt(now);
+      const P = slime.points.map((p, i) => fear ? [p.x + fear * (1.6 * Math.sin(now * 101 + i * 1.7) + 1.2 * Math.sin(now * 88)), p.y + fear * 1.3 * Math.cos(now * 94 + i * 2.3)] : [p.x, p.y]);
+      let cx = 0, cy = 0, minX = 1e9, maxX = -1e9, top = 1e9, low = -1e9;
+      for (const [x, y] of P) { cx += x; cy += y; minX = Math.min(minX, x); maxX = Math.max(maxX, x); top = Math.min(top, y); low = Math.max(low, y); }
+      cx /= N; cy /= N;
+      const lift = clamp((FLOOR - low) / 90), w = (maxX - minX) * .5, box = [minX - 20, top - 20, maxX - minX + 40, FLOOR - top + 40];
+
+      g.save(); g.globalCompositeOperation = 'lighter';  // glow on the wall
+      const glow = g.createRadialGradient(cx, cy, 10, cx, cy, 190 * K);
+      glow.addColorStop(0, jelly(64, .2 - .05 * fear)); glow.addColorStop(1, jelly(64, 0));
+      g.fillStyle = glow; g.fillRect(cx - 190 * K, cy - 190 * K, 380 * K, 380 * K); g.restore();
+
+      g.save(); g.beginPath(); g.rect(0, FLOOR, W, H - FLOOR); g.clip();   // reflection in the glossy floor
+      g.translate(0, FLOOR * 2); g.scale(1, -1); bodyPath(P);
+      const rf = g.createLinearGradient(0, FLOOR, 0, FLOOR - 70); rf.addColorStop(0, jelly(69, .22 * (1 - lift))); rf.addColorStop(1, jelly(69, 0));
+      g.fillStyle = rf; g.fill(); g.restore();
+
+      g.save();                                       // contact shadow and a pink caustic, both shrink in the air
+      const sh = g.createRadialGradient(cx + 6, FLOOR + 1, 0, cx + 6, FLOOR + 1, w * (1 - lift * .45));
+      sh.addColorStop(0, `rgba(8,2,10,${.55 * (1 - lift * .6)})`); sh.addColorStop(1, 'rgba(8,2,10,0)');
+      g.translate(0, FLOOR + 1); g.scale(1, .16); g.translate(0, -(FLOOR + 1));
+      g.fillStyle = sh; g.fillRect(cx - 220, FLOOR - 220, 440, 440);
+      g.globalCompositeOperation = 'lighter';
+      const ca = g.createRadialGradient(cx + 16, FLOOR + 2, 0, cx + 16, FLOOR + 2, w * .75 * (1 - lift * .5));
+      ca.addColorStop(0, jelly(72, .5 * (1 - lift))); ca.addColorStop(1, jelly(72, 0));
+      g.fillStyle = ca; g.fillRect(cx - 220, FLOOR - 220, 440, 440); g.restore();
+
+      // the jelly itself: the room seen through it, colour, what it ate, light
+      g.save(); bodyPath(P); g.clip();
+      g.save(); g.translate(cx, cy); g.scale(1.14, 1.14); g.translate(-cx, -cy - 6); g.drawImage(bg, 0, 0, W, H); g.restore();
+      const base = g.createLinearGradient(0, top, 0, FLOOR);
+      base.addColorStop(0, jelly(75 + 5 * fear, .88)); base.addColorStop(.55, jelly(64, .86)); base.addColorStop(1, jelly(48, .9, 74));
+      g.fillStyle = base; g.fillRect(...box);
+      const core = g.createRadialGradient(cx + 6, cy + 8, 4, cx, cy, (maxX - minX) * .55);
+      core.addColorStop(0, jelly(31, .32, 88)); core.addColorStop(1, jelly(31, 0, 88));
+      g.fillStyle = core; g.fillRect(...box);
+      for (let i = 0; i < 4; i++) {                   // air bubbles trapped inside
+        const bx = cx + [-30, 22, 36, -12][i] * (maxX - minX) / 148, by = cy + [-6, 16, -14, 22][i] * K + Math.sin(now * 1.2 + i) * 2, r = [3, 2.2, 1.6, 2.6][i] * K;
+        g.strokeStyle = jelly(92, .55); g.lineWidth = 1; g.beginPath(); g.arc(bx, by, r, 0, 7); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.arc(bx - r * .35, by - r * .35, r * .35, 0, 7); g.fill();
+      }
+      const eaten = cookies.filter(c => c.eaten);
+      for (const c of eaten) {                        // a swallowed cookie sinks into the belly and melts into crumbs
+        const e = now - c.eatT, m = eout(e / .5);
+        const kx = lerp(slime.x + c.lx, slime.x + 24 * K, m), ky = lerp(slime.y + c.ly, FLOOR - 24 * K, m);
+        const dis = clamp((e - .55) / 1.6), r = c.r * (1 - (dis < .5 ? 4 * dis ** 3 : 1 - (-2 * dis + 2) ** 3 / 2) * .85);
+        g.filter = 'blur(.7px)'; if (dis < 1) drawCookie(kx, ky, r, c.rot + e * 1.6, 1 - dis * dis); g.filter = 'none';
+        for (let i = 0; i < 9; i++) {
+          const s = clamp((e - .6 - i * .06) / 1.6); if (s <= 0 || s >= 1) continue;
+          const an = hash(i + 3) * 7, d = (6 + 26 * eout(s) * (.5 + hash(i) * .6)) * K;
+          g.fillStyle = `rgba(${i % 3 ? '214,150,80' : '90,45,20'},${.85 * (1 - s)})`;
+          g.beginPath(); g.arc(kx + Math.cos(an) * d, ky + Math.sin(an) * d * .8 - s * 8, 1.4 + hash(i + 9) * 1.3, 0, 7); g.fill();
+        }
+        for (let i = 0; i < 5; i++) {
+          const s = clamp((e - .7 - i * .22) / 1.1); if (s <= 0 || s >= 1) continue;
+          const bx = kx + (hash(i + 21) - .5) * 20 + Math.sin(s * 9 + i) * 2, by = ky - s * (ky - top - 10);
+          g.strokeStyle = jelly(94, .7 * (1 - s)); g.lineWidth = 1; g.beginPath(); g.arc(bx, by, 1.5 + s * 1.5, 0, 7); g.stroke();
+        }
+      }
+      if (eaten.length) { g.fillStyle = jelly(64, .4); g.fillRect(...box); }
+      g.globalCompositeOperation = 'lighter';         // light bouncing up from the floor
+      const bounce = g.createRadialGradient(cx + 10, FLOOR, 0, cx + 10, FLOOR, (maxX - minX) * .55);
+      bounce.addColorStop(0, jelly(74, .34)); bounce.addColorStop(1, jelly(74, 0));
+      g.fillStyle = bounce; g.fillRect(...box);
+      g.globalCompositeOperation = 'source-over';     // bright rim where the jelly is thin
+      bodyPath(P); g.strokeStyle = jelly(88, .3); g.lineWidth = 14; g.stroke();
+      bodyPath(P); g.strokeStyle = jelly(94, .4); g.lineWidth = 3.5; g.stroke();
+      g.restore();
+      bodyPath(P); g.strokeStyle = jelly(80, .55); g.lineWidth = 1.1; g.stroke();
+
+      // gloss: a streak along the top left edge that bends with the jelly, a sparkle and a small kick light
+      const arc = [];
+      P.forEach(([x, y], i) => { const a = slime.points[i].a; if (a > Math.PI * 1.08 && a < Math.PI * 1.42) arc.push([lerp(x, cx, .16), lerp(y, cy, .16)]); });
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      const a0 = arc[0], a1 = arc[arc.length - 1];
+      for (const [lw, al] of [[8, .28], [3.6, .9]]) {
+        const hl = g.createLinearGradient(a0[0], a0[1], a1[0], a1[1]);
+        hl.addColorStop(0, 'rgba(255,255,255,0)'); hl.addColorStop(.45, `rgba(255,255,255,${al})`); hl.addColorStop(1, 'rgba(255,255,255,0)');
+        g.strokeStyle = hl; g.lineWidth = lw * RX / 66;
+        g.beginPath(); g.moveTo(a0[0], a0[1]);
+        for (let i = 1; i < arc.length - 1; i++) g.quadraticCurveTo(arc[i][0], arc[i][1], (arc[i][0] + arc[i + 1][0]) / 2, (arc[i][1] + arc[i + 1][1]) / 2);
+        g.lineTo(a1[0], a1[1]); g.stroke();
+      }
+      const tip = P[Math.round(N * .71)], sp = [lerp(tip[0], cx, .2), lerp(tip[1], cy, .2)];
+      const sg = g.createRadialGradient(sp[0], sp[1], 0, sp[0], sp[1], 7); sg.addColorStop(0, 'rgba(255,255,255,.95)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = sg; g.fillRect(sp[0] - 8, sp[1] - 8, 16, 16);
+      const lo = P[Math.round(N * .08)], lp = [lerp(lo[0], cx, .14), lerp(lo[1], cy, .14)];
+      const lg = g.createRadialGradient(lp[0], lp[1], 0, lp[0], lp[1], 10); lg.addColorStop(0, jelly(93, .55)); lg.addColorStop(1, jelly(93, 0));
+      g.fillStyle = lg; g.fillRect(lp[0] - 11, lp[1] - 11, 22, 22);
+
+      drawFace(P, fear);
+
+      const fs = now - mood.sweatT;                   // two drops of cold sweat when it gets scared
+      if (!reduce && fs > 0 && fs < .55) for (const s of [-1, 1]) {
+        g.save(); g.translate(slime.x + s * (44 + 80 * fs) * K, top + 8 - 150 * fs + 330 * fs * fs); g.rotate(s * (.6 + fs * 1.5));
+        g.globalAlpha = 1 - fs / .55; g.scale(1.2, 1.2); g.fillStyle = '#F6ECFF';
+        g.beginPath(); g.moveTo(0, -7); g.bezierCurveTo(4, -2, 5, 3, 0, 5); g.bezierCurveTo(-5, 3, -4, -2, 0, -7); g.fill(); g.restore();
+      }
+      const cs = now - (mood.clickT ?? -9);           // click ring where the cookie came from
+      if (cs < .45 && mood.click) { g.strokeStyle = `rgba(255,255,255,${.7 * (1 - cs / .45)})`; g.lineWidth = 2; g.beginPath(); g.arc(mood.click.x, mood.click.y, 6 + cs * 60, 0, 7); g.stroke(); }
+      if (keyboard) {                                 // the dot you move with the arrow keys
+        g.fillStyle = 'rgba(255,255,255,.16)'; g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 2;
+        g.beginPath(); g.arc(mouse.x, mouse.y, 12, 0, 7); g.fill(); g.stroke();
+      }
+    }
+
+    // fixed steps keep the jelly the same on 60 Hz and 120 Hz screens, pause when the room is off screen
+    let last = performance.now(), acc = 0, visible = true;
+    new IntersectionObserver(([en]) => { visible = en.isIntersecting; }).observe(room);
+    (function frame(ts) {
+      acc += Math.min(.1, (ts - last) / 1000); last = ts;
+      if (visible) { while (acc >= STEP) { tick(); acc -= STEP; } draw(); } else acc = 0;
+      requestAnimationFrame(frame);
+    })(last);
+  });
+})();
+</script>
+</body>
+</html>

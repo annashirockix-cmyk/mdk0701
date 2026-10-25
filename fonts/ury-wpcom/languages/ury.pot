@@ -1,0 +1,306 @@
+# Copyright (C) 2026 Automattic
+# This file is distributed under the GNU General Public License v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Ury 1.0.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/theme/ury\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-08-13T02:36:01+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+
+#. Theme Name of the theme
+#: style.css
+msgid "Ury"
+msgstr ""
+
+#. Theme URI of the theme
+#: style.css
+msgid "https://themeshaper.com/ury/"
+msgstr ""
+
+#. Description of the theme
+#: style.css
+msgid "Ury is a minimal blogging theme designed for comfortable, distraction-free reading. A fixed sidebar holds your site title, navigation, and tagline while your posts fill a wide content column. It offers a variety of highly readable typography pairings and three color schemes -- a light default, a warm sepia, and a dark mode -- so you can match the look to the mood of your writing."
+msgstr ""
+
+#. Author of the theme
+#: style.css
+msgid "Automattic"
+msgstr ""
+
+#. Author URI of the theme
+#: style.css
+msgid "https://automattic.com/"
+msgstr ""
+
+#: patterns/404.php
+msgctxt "Pattern title"
+msgid "404"
+msgstr ""
+
+#: patterns/404.php:23
+msgid "Page not found"
+msgstr ""
+
+#: patterns/404.php:27
+msgid "The page you are looking for doesn't exist, or it has been moved. Please try searching using the form below."
+msgstr ""
+
+#: patterns/404.php:30
+#: patterns/search.php:25
+msgid "Search"
+msgstr ""
+
+#: patterns/archive.php
+msgctxt "Pattern title"
+msgid "archive"
+msgstr ""
+
+#: patterns/archive.php:44
+#: patterns/search.php:44
+msgid "Sorry, but nothing was found. Please try a search with different keywords."
+msgstr ""
+
+#: patterns/footer.php
+msgctxt "Pattern title"
+msgid "footer"
+msgstr ""
+
+#. Translators: 1. is the start of a 'a' HTML element, 2. is the end of a 'a' HTML element
+#: patterns/footer.php:20
+#, php-format
+msgid "Designed with %1$sWordPress%2$s"
+msgstr ""
+
+#: patterns/header.php
+msgctxt "Pattern title"
+msgid "header"
+msgstr ""
+
+#: patterns/header.php:25
+msgid "Recent Posts"
+msgstr ""
+
+#: patterns/search.php
+msgctxt "Pattern title"
+msgid "search"
+msgstr ""
+
+#: patterns/search.php:25
+msgid "Type here..."
+msgstr ""
+
+#: patterns/single.php
+msgctxt "Pattern title"
+msgid "single"
+msgstr ""
+
+#. translators: Preposition rendered between the post date and the category list, as in "July 17, 2026 in Uncategorized".
+#: patterns/single.php:32
+msgid "in"
+msgstr ""
+
+#: patterns/single.php:55
+msgid "Comments"
+msgstr ""
+
+#: theme.json
+#: styles/dark.json
+#: styles/sepia.json
+msgctxt "Color name"
+msgid "Color 1"
+msgstr ""
+
+#: theme.json
+#: styles/dark.json
+#: styles/sepia.json
+msgctxt "Color name"
+msgid "Color 2"
+msgstr ""
+
+#: theme.json
+#: styles/dark.json
+#: styles/sepia.json
+msgctxt "Color name"
+msgid "Color 3"
+msgstr ""
+
+#: theme.json
+#: styles/dark.json
+#: styles/sepia.json
+msgctxt "Color name"
+msgid "Color 4"
+msgstr ""
+
+#: theme.json
+#: styles/dark.json
+#: styles/sepia.json
+msgctxt "Color name"
+msgid "Color 5"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "2X-Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "X-Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Regular"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "X-Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Space size name"
+msgid "2X-Large"
+msgstr ""
+
+#: theme.json
+#: styles/quattrocento-sans-sorts-mill-goudy.json
+msgctxt "Font family name"
+msgid "Sorts Mill Goudy"
+msgstr ""
+
+#: theme.json
+#: styles/quattrocento-sans-cooper.json
+#: styles/quattrocento-sans-sorts-mill-goudy.json
+#: styles/spectral-atkinson-hyperlegible.json
+#: styles/wittgenstein-quattrocento-sans.json
+msgctxt "Font family name"
+msgid "Quattrocento Sans"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Small"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Medium"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "X-Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Font size name"
+msgid "2X-Large"
+msgstr ""
+
+#: theme.json
+msgctxt "Template part name"
+msgid "Header"
+msgstr ""
+
+#: theme.json
+msgctxt "Template part name"
+msgid "Footer"
+msgstr ""
+
+#: styles/atkinson-hyperlegible-newsreader.json
+#: styles/atkinson-hyperlegible-wittgenstein.json
+#: styles/spectral-atkinson-hyperlegible.json
+msgctxt "Font family name"
+msgid "Atkinson Hyperlegible"
+msgstr ""
+
+#: styles/atkinson-hyperlegible-newsreader.json
+msgctxt "Font family name"
+msgid "Newsreader"
+msgstr ""
+
+#: styles/atkinson-hyperlegible-newsreader.json
+msgctxt "Style variation name"
+msgid "Atkinson Hyperlegible + Newsreader"
+msgstr ""
+
+#: styles/atkinson-hyperlegible-wittgenstein.json
+#: styles/wittgenstein-quattrocento-sans.json
+msgctxt "Font family name"
+msgid "Wittgenstein"
+msgstr ""
+
+#: styles/atkinson-hyperlegible-wittgenstein.json
+msgctxt "Style variation name"
+msgid "Atkinson Hyperlegible + Wittgenstein"
+msgstr ""
+
+#: styles/cooper-spectral.json
+#: styles/quattrocento-sans-cooper.json
+msgctxt "Font family name"
+msgid "Cooper*"
+msgstr ""
+
+#: styles/cooper-spectral.json
+#: styles/spectral-atkinson-hyperlegible.json
+#: styles/wittgenstein-quattrocento-sans.json
+msgctxt "Font family name"
+msgid "Spectral"
+msgstr ""
+
+#: styles/cooper-spectral.json
+msgctxt "Style variation name"
+msgid "Cooper* + Spectral"
+msgstr ""
+
+#: styles/dark.json
+msgctxt "Style variation name"
+msgid "Dark"
+msgstr ""
+
+#: styles/quattrocento-sans-cooper.json
+msgctxt "Style variation name"
+msgid "Quattrocento Sans + Cooper*"
+msgstr ""
+
+#: styles/quattrocento-sans-sorts-mill-goudy.json
+msgctxt "Style variation name"
+msgid "Quattrocento Sans + Sorts Mill Goudy"
+msgstr ""
+
+#: styles/sepia.json
+msgctxt "Style variation name"
+msgid "Sepia"
+msgstr ""
+
+#: styles/spectral-atkinson-hyperlegible.json
+msgctxt "Style variation name"
+msgid "Spectral + Atkinson Hyperlegible"
+msgstr ""
+
+#: styles/wittgenstein-quattrocento-sans.json
+msgctxt "Style variation name"
+msgid "Wittgenstein + Quattrocento Sans"
+msgstr ""

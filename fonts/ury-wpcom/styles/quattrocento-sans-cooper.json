@@ -1,0 +1,114 @@
+{
+	"$schema": "https://schemas.wp.org/wp/7.0/theme.json",
+	"settings": {
+		"typography": {
+			"fontFamilies": [
+				
+				{
+					"fontFace": [
+						{
+							"fontFamily": "\"Quattrocento Sans\"",
+							"fontStyle": "normal",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/quattrocento-sans/quattrocento-sans-400-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Quattrocento Sans\"",
+							"fontStyle": "normal",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/quattrocento-sans/quattrocento-sans-700-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Quattrocento Sans\"",
+							"fontStyle": "italic",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/quattrocento-sans/quattrocento-sans-400-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Quattrocento Sans\"",
+							"fontStyle": "italic",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/quattrocento-sans/quattrocento-sans-700-italic.woff2"
+							]
+						}
+					],
+					"fontFamily": "\"Quattrocento Sans\", sans-serif",
+					"name": "Quattrocento Sans",
+					"slug": "quattrocento-sans"
+				},
+				
+				{
+					"fontFace": [
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "normal",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-400-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "normal",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-700-normal.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "italic",
+							"fontWeight": "400",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-400-italic.woff2"
+							]
+						},
+						{
+							"fontFamily": "\"Cooper\"",
+							"fontStyle": "italic",
+							"fontWeight": "700",
+							"src": [
+								"file:./assets/fonts/cooper/cooper-700-italic.woff2"
+							]
+						}
+					],
+					"fontFamily": "\"Cooper\"",
+					"name": "Cooper*",
+					"slug": "cooper"
+				}
+			]
+		}
+	},
+	"styles": {
+		"blocks": {
+			"core/site-title": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--quattrocento-sans)",
+					"fontStyle": "normal",
+					"fontWeight": "700"
+				}
+			}
+		},
+		"elements": {
+			"heading": {
+				"typography": {
+					"fontFamily": "var(--wp--preset--font-family--quattrocento-sans)",
+					"fontStyle": "normal",
+					"fontWeight": "700"
+				}
+			}
+		},
+		"typography": {
+			"fontFamily": "var(--wp--preset--font-family--cooper)"
+		}
+	},
+	"version": 3,
+	"title": "Quattrocento Sans + Cooper*"
+}

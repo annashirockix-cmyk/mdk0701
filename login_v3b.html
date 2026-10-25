@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+  Liquid Metal Login V3 by @codinvisual · t.me/CodinVisual
+
+  HOW TO USE
+  Try it: double-click this file, it opens in your browser.
+  Click the button, type anything, press Enter twice. Escape closes the form.
+  Put it on your site:
+  1. Copy everything inside <style> except the `body { ... }` rule into your CSS.
+  2. Copy the <form class="mercury"> block to the spot where your sign in button should be.
+  3. Copy the <script> block right before </body>.
+  4. Connect your backend: find `a real server request goes here` and put your fetch() there.
+  Worth changing:
+  STRETCH 240 at the top of the script: how far the halves pull apart before the metal snaps. 120 is a short rip.
+  SNAP 0.94 at the top of the script: seconds the neck keeps stretching. 0.5 snaps almost at once.
+  MELT 24 inside the shader: how gooey the metal is where it joins. 8 is stiff, 40 is syrup.
+  TINT inside the shader: the color the metal turns after sign in.
+
+  Everything is in this one file: styles in <style>, markup in <body>, logic and the WebGL shader in <script>.
+  No libraries, no build step, works offline. Needs WebGL2, which every current browser has.
+
+  Built by @codinvisual · 2026-09-19 · t.me/CodinVisual
+  Use it free on your own site, personal or commercial. Don't repost or resell this file itself.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquid Metal Login V3</title>
+<style>
+  /* Liquid Metal Login V3 by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file */
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+    background: radial-gradient(40% 45% at 0% 50%, rgba(255,115,66,.2), transparent 70%), radial-gradient(40% 45% at 100% 40%, rgba(108,235,217,.17), transparent 70%),
+      radial-gradient(70% 55% at 50% 35%, #1C2029, #0B0D11 70%, #06070A); }
+
+  .mercury { position: relative; width: min(460px, calc(100vw - 32px)); aspect-ratio: 540 / 440; margin: 0; }
+  .mercury canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* everything below is laid out at 540 x 440 and scaled to the form width by the script */
+  .mercury .ui { position: absolute; left: 0; top: 0; width: 540px; height: 440px; transform-origin: 0 0; }
+  .mercury .go { position: absolute; left: 52px; top: 168px; width: 436px; height: 104px; padding: 0; border: 0; border-radius: 52px; background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px; font: 650 31px system-ui, sans-serif; color: #0B0D10;
+    text-shadow: 0 1.2px 0 rgba(255,255,255,.45); transition: opacity .15s ease-out; -webkit-tap-highlight-color: transparent; }
+  .mercury .go:focus-visible { outline: 2px solid #6CEBD9; outline-offset: 6px; }
+  .mercury .go svg { display: none; width: 30px; height: 30px; }
+  .mercury[data-state="done"] .go svg { display: block; }
+  .mercury[data-state="opening"] .go, .mercury[data-state="open"] .go, .mercury[data-state="closing"] .go { opacity: 0; pointer-events: none; }
+  .mercury .field { position: absolute; left: 38px; width: 464px; height: 88px; box-sizing: border-box; padding: 14px 26px 0; opacity: 0; pointer-events: none; transition: opacity .2s ease-out; }
+  .mercury[data-state="open"] .field { opacity: 1; pointer-events: auto; }
+  .mercury .f1 { top: 120px; }
+  .mercury .f2 { top: 232px; }
+  .mercury label { display: block; font: 500 17px system-ui, sans-serif; color: #8A93A3; }
+  .mercury input { display: block; width: 100%; margin: 6px 0 0; padding: 0; border: 0; outline: 0; background: none; font: 500 25px system-ui, sans-serif; color: #F3F5F8; caret-color: #6CEBD9; }
+</style>
+</head>
+<body>
+
+<form class="mercury" id="mercury" data-state="idle" novalidate>
+  <canvas></canvas>
+  <div class="ui">
+    <div class="field f1"><label for="m-user">Username</label><input id="m-user" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" tabindex="-1"></div>
+    <div class="field f2"><label for="m-pass">Password</label><input id="m-pass" name="password" type="password" autocomplete="current-password" tabindex="-1"></div>
+    <button class="go" type="button"><svg viewBox="0 0 30 30"><path d="M7 15.5l5 5L23 9.5" fill="none" stroke="#0B0D10" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Sign in</span></button>
+  </div>
+</form>
+
+<script>
+/* Liquid Metal Login V3 by @codinvisual · t.me/CodinVisual · free for your own site, don't resell this file */
+(() => {
+  const STRETCH = 240, SNAP = 0.94;
+
+  const form = document.getElementById('mercury'), cv = form.querySelector('canvas'), ui = form.querySelector('.ui');
+  const btn = form.querySelector('.go'), label = btn.querySelector('span');
+  const user = form.querySelector('#m-user'), pass = form.querySelector('#m-pass');
+  const CX = 270, CY = 220, HW = 232, HR = 218, PH = 52, HH = 26, FH = 44, FGAP = 24, W0 = 192;
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const eout = k => 1 - Math.pow(1 - clamp(k), 3);
+  const eio = k => (k = clamp(k), k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+  const spring = (s, w, z) => s <= 0 ? 0 : 1 - Math.exp(-z * w * s) * (Math.cos(w * Math.sqrt(1 - z * z) * s) + z / Math.sqrt(1 - z * z) * Math.sin(w * Math.sqrt(1 - z * z) * s));
+
+  const FS = `#version 300 es
+precision highp float;
+uniform vec4 A, B, NECK, FX;
+uniform vec3 KEY;
+uniform vec2 RAD, P, ACT, RES;
+uniform float THICK, rest, waist, snap, win, field, SCALE;
+out vec4 o;
+const float MELT = 24.;
+const vec3 VIEW = vec3(0., 0., 1.), TINT = vec3(.42, 1., .9), ACCENT = vec3(.42, .92, .85);
+const vec2 C = vec2(270., 220.);
+
+float box(vec2 p, vec2 b, vec4 r) {
+  r.xy = p.x > 0. ? r.xy : r.zw;
+  r.x = p.y > 0. ? r.x : r.y;
+  vec2 q = abs(p) - b + r.x;
+  return min(max(q.x, q.y), 0.) + length(max(q, 0.)) - r.x;
+}
+vec2 pill(vec2 p) { return vec2(box(p - C, P, vec4(P.y)), P.y); }
+vec2 top(vec2 p) { return mix(vec2(box(p - A.xy, A.zw, RAD.yxyx), THICK), pill(p), rest); }
+vec2 bot(vec2 p) { return mix(vec2(box(p - B.xy, B.zw, RAD.xyxy), THICK), pill(p), rest); }
+vec2 join(vec2 a, vec2 b) { return a.x < b.x ? a : b; }
+vec2 smin(vec2 a, vec2 b, float k) {
+  float h = clamp(.5 + .5 * (b.x - a.x) / k, 0., 1.);
+  return vec2(mix(b.x, a.x, h) - k * h * (1. - h), mix(b.y, a.y, h));
+}
+vec2 neck(vec2 p, float w) {
+  if (max(NECK.z, w) <= 0.) return vec2(1e5, 1.);
+  float y0 = NECK.x - A.w, y1 = NECK.y + B.w, len = max(y1 - y0, 1.);
+  float u = abs(2. * (p.y - y0) / len - 1.);
+  float rad = w + (NECK.z - w) * u * u, k = 4. * (NECK.z - w) * u / len;
+  float d = max((abs(p.x - C.x) - rad) / sqrt(1. + k * k), abs(p.y - (y0 + y1) * .5) - len * .5);
+  return vec2(d, max(rad, 1.5));
+}
+vec2 drops(vec2 p, float s) {
+  if (s <= 0. || s >= 1.) return vec2(1e5, 1.);
+  float k = s * s * (3. - 2. * s), mid = (NECK.x + NECK.y) * .5, r = 11. * (1. - .75 * s);
+  float a = length(p - vec2(C.x - 2., mix(mid - 6., NECK.x, k))) - r;
+  float b = length(p - vec2(C.x + 2., mix(mid + 6., NECK.y, k))) - r * .8;
+  return vec2(min(a, b), r);
+}
+vec2 shape(vec2 p) {
+  vec2 d = join(top(p), bot(p));
+  d = smin(d, neck(p, waist), MELT);
+  d = smin(d, drops(p, snap), MELT);
+  return d;
+}
+vec3 normal(vec2 p, float s) {
+  vec2 e = vec2(.4, 0.);
+  vec2 g = vec2(shape(p + e.xy).x - shape(p - e.xy).x, shape(p + e.yx).x - shape(p - e.yx).x);
+  float slope = min((1. - s) / sqrt(max(1. - (1. - s) * (1. - s), 1e-4)), 14.);
+  vec2 dome = vec2((p.x - C.x) / P.x * .32 * (1. - field), 0.);
+  return normalize(vec3(normalize(g + 1e-6) * slope + dome, 1.));
+}
+float fresnel(float c) { return mix(.8, 1., pow(1. - c, 5.)); }
+vec3 env(vec3 r) {
+  float el = asin(clamp(-r.y, -1., 1.)), az = atan(r.x, r.z);
+  float h = el + .45;
+  vec3 sky = mix(vec3(.58, .62, .7), vec3(.96, .98, 1.04), smoothstep(0., .8, h));
+  sky = mix(sky, vec3(.16, .17, .2), smoothstep(.62, .78, el) * smoothstep(1.02, .92, el));
+  sky = mix(sky, vec3(.42, .45, .52), smoothstep(1.3, 1.45, el));
+  vec3 grd = mix(vec3(.05, .045, .05), vec3(.012, .013, .016), smoothstep(0., .5, -h));
+  vec3 c = mix(grd, sky, smoothstep(-.012, .012, h)) + vec3(.7) * exp(-abs(h) * 45.);
+  c += vec3(1.8) * smoothstep(.95, 1.0, el) * smoothstep(1.3, 1.24, el);
+  c = mix(c, vec3(.02, .022, .03) + vec3(.06) * smoothstep(-.2, .6, -r.y), smoothstep(.05, -.35, r.z));
+  c += vec3(1., .5, .3) * 1.1 * exp(-pow((az + 1.75) * 1.8, 2.)) * exp(-pow((el - .12) * 2.6, 2.));
+  c += ACCENT * 1.1 * exp(-pow((az - 1.75) * 1.8, 2.)) * exp(-pow((el - .06) * 2.6, 2.));
+  float back = smoothstep(.1, -.5, r.z);
+  c += back * (vec3(1., .45, .26) * .35 * smoothstep(0., -.8, r.x) + ACCENT * .3 * smoothstep(0., .8, r.x));
+  return c;
+}
+
+void main() {
+  vec2 p = vec2(gl_FragCoord.x, RES.y - gl_FragCoord.y) / SCALE;
+  vec2 d = shape(p);
+  float s = clamp(-d.x / d.y, 0., 1.);
+  vec3 n = normal(p, s);
+  vec3 r = reflect(-VIEW, n);
+  vec3 col = env(r) * fresnel(n.z);
+  col += pow(max(dot(r, KEY), 0.), 32.);
+  col = mix(col, col * TINT, win);
+
+  float deep = field * smoothstep(THICK - .5, THICK + 1.5, -d.x);
+  vec3 glass = vec3(.05, .056, .07) + .05 * smoothstep(40., -40., p.y - (p.y < C.y ? A.y : B.y));
+  col = mix(col, glass, deep);
+  float focus = p.y < C.y ? ACT.x : ACT.y;
+  col = mix(col, ACCENT, focus * field * smoothstep(1.6, 0., abs(-d.x - THICK)));
+  float mid = (NECK.x + NECK.y) * .5;
+  col += vec3(.85, .95, 1.) * FX.x * exp(-length(p - vec2(C.x, mid)) / 30.);
+  col += vec3(.9, 1., 1.) * FX.y * exp(-abs(p.y - C.y) / 4.) * smoothstep(0., -30., d.x);
+
+  float a = clamp(.5 - d.x * SCALE, 0., 1.);
+  float shadow = .6 * smoothstep(54., -24., shape(p - vec2(0., 36.)).x);
+  float glow = (FX.z * .45 + focus * field * .4) * exp(-max(d.x, 0.) / (FX.z > 0. ? 26. : 10.));
+  float flash = FX.x * .9 * exp(-length(p - vec2(C.x, mid)) / 40.);
+  vec3 light = ACCENT * glow + vec3(.85, .95, 1.) * flash;
+  o = vec4(clamp(col, 0., 1.) * a + light * (1. - a), a + clamp(shadow + glow + flash, 0., 1.) * (1. - a));
+}`;
+
+  const gl = cv.getContext('webgl2', { premultipliedAlpha: true, antialias: false });
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, '#version 300 es\nin vec2 a; void main() { gl_Position = vec4(a, 0., 1.); }'));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const U = {};
+  for (const n of ['A', 'B', 'NECK', 'FX', 'KEY', 'RAD', 'P', 'ACT', 'RES', 'THICK', 'rest', 'waist', 'snap', 'win', 'field', 'SCALE']) U[n] = gl.getUniformLocation(prog, n);
+
+  let scale = 1;
+  function fit() {
+    const k = form.clientWidth / 540, dpr = Math.min(devicePixelRatio || 1, 2);
+    ui.style.transform = `scale(${k})`;
+    cv.width = Math.round(540 * k * dpr); cv.height = Math.round(440 * k * dpr); scale = k * dpr;
+    last = '';
+  }
+  new ResizeObserver(fit).observe(form);
+
+  let state = 'idle', t0 = 0, mergeT = -9, press = 0, win = 0, actT = 0, actB = 0, submitting = false, last = '';
+  const now = () => performance.now() / 1000;
+  function go(s) { state = s; t0 = now(); form.dataset.state = s; }
+
+  function geo(t) {
+    const g = { hw: HR, rest: 1, gap: 0, hh: HH, field: 0, waist: -1e4, patch: 0, snap: 0, P: [HR + 3 * press, PH - 4 * press], flash: 0, merge: 0 };
+    const tau = t - t0;
+    if (state === 'opening' || state === 'open') {
+      g.rest = 0;
+      if (tau < SNAP) {
+        const k = tau / SNAP;
+        g.rest = 1 - clamp(tau / .05);
+        g.gap = STRETCH * (1 - (1 - k) * (1 - k));
+        g.hw = lerp(HR, HW, eout(tau / .4));
+        g.hh = HH + 2.5 * Math.exp(-8 * tau) * Math.sin(30 * tau);
+        g.waist = W0 * (1 - k);
+        g.patch = Math.min(Math.max(g.waist, lerp(W0, 70, eio(k))), g.waist + .7 * g.gap + 12);
+        g.rOut = HH; g.rIn = Math.min(g.hh, 20 * eout(tau / .15));
+        return g;
+      }
+      const u = tau - SNAP;
+      g.hw = HW;
+      g.gap = Math.max(3, STRETCH + (FGAP - STRETCH) * spring(u, 11, .72));
+      g.hh = lerp(HH, FH, eio((u - .12) / .5)) + 3 * Math.exp(-7 * u) * Math.sin(22 * u);
+      g.field = eio((u - .22) / .45);
+      g.waist = -(g.gap * .5 + 20) * Math.pow(clamp(u / .4), 1.4);
+      g.patch = 70 * (1 - eout(u / .45));
+      g.snap = clamp(u / .34); g.flash = Math.exp(-u / .09);
+    } else if (state === 'closing') {
+      const c = clamp(tau / .38);
+      g.rest = eio((c - .55) / .45);
+      g.gap = FGAP * (1 - eio(c)); g.hw = lerp(HW, HR, eio(c));
+      g.hh = lerp(FH, HH, eio(c)); g.field = 1 - eio(c / .75);
+    }
+    const m = t - mergeT;
+    if (m >= 0 && m < 1.2) { const w = Math.exp(-7 * m) * Math.sin(24 * m); g.merge = Math.exp(-m / .12); g.P = [HR - 2 * w, PH + 4.5 * w]; }
+    g.rOut = Math.min(g.hh, lerp(HH, 16, g.field)); g.rIn = Math.min(g.hh, lerp(20, 16, g.field));
+    return g;
+  }
+
+  let prev = now();
+  function frame() {
+    const t = now(), dt = Math.min(.05, t - prev); prev = t;
+    if (state === 'opening' && t - t0 > SNAP + .5) { state = 'open'; form.dataset.state = 'open'; user.focus(); }
+    if (state === 'closing' && t - t0 >= .38) { mergeT = t; if (submitting) { go('loading'); send(); } else go('idle'); }
+    const g = geo(t);
+    const ease = k => Math.min(1, dt * k);
+    press += ((btn.matches(':active') && state === 'idle' ? 1 : 0) - press) * ease(22);
+    win += ((state === 'done' ? 1 : 0) - win) * ease(state === 'done' ? 9 : 6);
+    actT += ((document.activeElement === user ? 1 : 0) - actT) * ease(14);
+    actB += ((document.activeElement === pass ? 1 : 0) - actB) * ease(14);
+    const kx = state === 'loading' ? -.45 + 1.35 * Math.sin(2 * Math.PI * (t - t0) / .94) : -.45, kl = Math.hypot(kx, .75, .7);
+    const hh = g.hh, yT = CY - g.gap / 2 - hh, yB = CY + g.gap / 2 + hh;
+    const vals = [CX, yT, g.hw, hh, CX, yB, g.hw, hh, CY - g.gap / 2, CY + g.gap / 2, g.patch, g.flash, g.merge, win * .8, kx, g.rOut, g.rIn, ...g.P,
+      actT, actB, lerp(hh, 7, g.field), g.rest, g.waist, g.snap, win, g.field, scale, cv.width].map(v => v.toFixed(3)).join();
+    if (vals !== last) {
+      last = vals;
+      gl.uniform4f(U.A, CX, yT, g.hw, hh); gl.uniform4f(U.B, CX, yB, g.hw, hh);
+      gl.uniform4f(U.NECK, CY - g.gap / 2, CY + g.gap / 2, g.patch, 0); gl.uniform4f(U.FX, g.flash, g.merge, win * .8, 0);
+      gl.uniform3f(U.KEY, kx / kl, -.75 / kl, .7 / kl);
+      gl.uniform2f(U.RAD, g.rOut, g.rIn); gl.uniform2f(U.P, g.P[0], g.P[1]); gl.uniform2f(U.ACT, actT, actB); gl.uniform2f(U.RES, cv.width, cv.height);
+      gl.uniform1f(U.THICK, lerp(hh, 7, g.field)); gl.uniform1f(U.rest, g.rest); gl.uniform1f(U.waist, g.waist);
+      gl.uniform1f(U.snap, g.snap); gl.uniform1f(U.win, win); gl.uniform1f(U.field, g.field); gl.uniform1f(U.SCALE, scale);
+      gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  async function send() {
+    try {
+      // a real server request goes here, for example:
+      // const res = await fetch('/api/login', { method: 'POST', body: new FormData(form) });
+      // if (!res.ok) throw new Error('wrong user or password');
+      await new Promise(r => setTimeout(r, 1300));
+      const left = .94 - (now() - t0) % .94;               // let the light finish its pass
+      setTimeout(() => {
+        go('done'); label.textContent = 'Signed in';
+        setTimeout(reset, 2600);                            // on your site, redirect here instead
+      }, left * 1000);
+    } catch (e) {
+      submitting = false; go('opening');
+    }
+  }
+  function reset() { user.value = pass.value = ''; label.textContent = 'Sign in'; submitting = false; go('idle'); }
+
+  btn.addEventListener('click', () => { if (state === 'idle') { go('opening'); user.tabIndex = pass.tabIndex = 0; } });
+  user.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pass.focus(); } });
+  pass.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (!user.value || !pass.value) { (user.value ? pass : user).focus(); return; }
+    submitting = true; document.activeElement.blur(); go('closing');
+  });
+  form.addEventListener('keydown', e => { if (e.key === 'Escape' && state === 'open') { submitting = false; document.activeElement.blur(); go('closing'); } });
+  form.addEventListener('submit', e => e.preventDefault());
+
+  fit(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
